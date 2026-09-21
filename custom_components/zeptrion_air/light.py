@@ -14,6 +14,7 @@ from homeassistant.components.light import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import (
@@ -48,6 +49,22 @@ async def async_setup_entry(
         _LOGGER.error("Hub serial not found in platform_data.")
         return False
 
+    # The hub device itself is registered in __init__.py before platform setup
+    # is forwarded, so we can resolve its registry device_id here and link
+    # child entities via the modern `via_device_id` field instead of the
+    # deprecated `via_device` identifiers-tuple field.
+    dev_reg = dr.async_get(hass)
+    hub_device_entry = dev_reg.async_get_device_by_identifier(
+        (DOMAIN, hub_serial), entry.entry_id
+    )
+    hub_device_id: str | None = hub_device_entry.id if hub_device_entry else None
+    if hub_device_id is None:
+        _LOGGER.warning(
+            "Could not resolve hub device registry entry for serial %s; "
+            "light entities will be created without a via_device_id link.",
+            hub_serial,
+        )
+
     new_entities: list[ZeptrionAirLight] = []
 
     for channel_info_dict in identified_channels_list:
@@ -66,7 +83,7 @@ async def async_setup_entry(
         light_device_info: dict[str, Any] = {
             "identifiers": {(DOMAIN, f"{hub_serial}_ch{channel_id}")},
             "name": desired_name,
-            "via_device": (DOMAIN, hub_serial),
+            "via_device_id": hub_device_id,
             "manufacturer": hub_manufacturer,
             "sw_version": hub_sw_version,
             "model": f"Zeptrion Air Channel {channel_id} - {'Dimmer' if is_dimmer else 'Switch'}",

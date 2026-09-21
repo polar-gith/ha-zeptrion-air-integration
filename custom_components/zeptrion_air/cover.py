@@ -12,6 +12,7 @@ from homeassistant.components.cover import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -53,6 +54,22 @@ async def async_setup_entry(
         return False
     hub_serial_for_blinds: str = hub_serial_for_blinds_maybe
 
+    # The hub device itself is registered in __init__.py before platform setup
+    # is forwarded, so we can resolve its registry device_id here and link
+    # child entities via the modern `via_device_id` field instead of the
+    # deprecated `via_device` identifiers-tuple field.
+    dev_reg = dr.async_get(hass)
+    hub_device_entry = dev_reg.async_get_device_by_identifier(
+        (DOMAIN, hub_serial_for_blinds), entry.entry_id
+    )
+    hub_device_id: str | None = hub_device_entry.id if hub_device_entry else None
+    if hub_device_id is None:
+        _LOGGER.warning(
+            "Could not resolve hub device registry entry for serial %s; "
+            "cover entities will be created without a via_device_id link.",
+            hub_serial_for_blinds,
+        )
+
     new_entities: list[ZeptrionAirBlind] = []
 
     panel_type_mapping: dict[int, str] = {
@@ -93,7 +110,7 @@ async def async_setup_entry(
             blind_device_info: dict[str, Any] = {
                 "identifiers": {(DOMAIN, f"{hub_serial_for_blinds}_ch{channel_id}")},
                 "name": desired_name, 
-                "via_device": (DOMAIN, hub_serial_for_blinds),
+                "via_device_id": hub_device_id,
                 "manufacturer": hub_manufacturer,
                 "sw_version": hub_sw_version,
             }
