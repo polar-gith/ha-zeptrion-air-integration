@@ -57,7 +57,7 @@ Channels with category 1 (on/off) or category 3 (dimmer) are exposed as Home Ass
 
 **Devices**
 
-*   Each light channel is registered as its own Home Assistant device, linked to the parent hub via `via_device`, with the device model shown as "Switch" or "Dimmer" depending on category.
+*   Each light channel is registered as its own Home Assistant device, linked to the parent hub via `via_device_id` (the hub's device-registry ID, replacing the deprecated `via_device` identifier tuple), with the device model shown as "Switch" or "Dimmer" depending on category.
 
 ## Current Limitations
 
@@ -66,6 +66,8 @@ Channels with category 1 (on/off) or category 3 (dimmer) are exposed as Home Ass
 *   **Sensors are Static:** The sensor entities for channel name, group, and icon ID are populated once during setup and do not update dynamically if changed on the Zeptrion device itself (though these are typically static).
 
 ## Installation
+
+**Requirements:** Home Assistant 2026.8.0 or newer (needed for `via_device_id`, which is used to link light and cover devices to their hub).
 
 This fork is not (and is not meant to become) a separate listing in the official HACS store - add it as a **custom repository** instead:
 

@@ -12,6 +12,7 @@ from homeassistant.components.cover import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -45,13 +46,29 @@ async def async_setup_entry(
 
     main_hub_device_info: dict[str, Any] = platform_data.get("hub_device_info", {})
     identified_channels_list: list[dict[str, Any]] = platform_data.get("identified_channels", [])
-    hub_entry_title: str = platform_data.get("entry_title", "Zeptrion Air Hub") 
-    
+    hub_entry_title: str = platform_data.get("entry_title", "Zeptrion Air Hub")
+
     hub_serial_for_blinds_maybe: str | None = platform_data.get("hub_serial")
     if not hub_serial_for_blinds_maybe:
         _LOGGER.error("Hub serial not found in platform_data.")
         return False
     hub_serial_for_blinds: str = hub_serial_for_blinds_maybe
+
+    # The hub device itself is registered in __init__.py before platform setup
+    # is forwarded, so we can resolve its registry device_id here and link
+    # child entities via the modern `via_device_id` field instead of the
+    # deprecated `via_device` identifiers-tuple field.
+    dev_reg = dr.async_get(hass)
+    hub_device_entry = dev_reg.async_get_device_by_identifier(
+        (DOMAIN, hub_serial_for_blinds), entry.entry_id
+    )
+    hub_device_id: str | None = hub_device_entry.id if hub_device_entry else None
+    if hub_device_id is None:
+        _LOGGER.warning(
+            "Could not resolve hub device registry entry for serial %s; "
+            "cover entities will be created without a via_device_id link.",
+            hub_serial_for_blinds,
+        )
 
     new_entities: list[ZeptrionAirBlind] = []
 
@@ -67,17 +84,17 @@ async def async_setup_entry(
             device_type: str | None = channel_info_dict.get('device_type')
 
             if channel_id_maybe is None or channel_cat_maybe is None or device_type != "cover":
-                if device_type != "cover" and channel_id_maybe is not None: 
-                     _LOGGER.debug("Skipping channel %s (Cat: %s). Not a cover device_type ('%s').", 
+                if device_type != "cover" and channel_id_maybe is not None:
+                     _LOGGER.debug("Skipping channel %s (Cat: %s). Not a cover device_type ('%s').",
                                    channel_id_maybe, channel_cat_maybe, device_type)
-                else: 
-                     _LOGGER.warning("Skipping channel due to missing id, cat or not being a cover: %s", 
+                else:
+                     _LOGGER.warning("Skipping channel due to missing id, cat or not being a cover: %s",
                                      channel_info_dict)
                 continue
-            
+
             channel_id: int = channel_id_maybe
             channel_cat: int = channel_cat_maybe
-            
+
             entity_base_name: str | None = channel_info_dict.get("entity_base_name")
             desired_name: str = entity_base_name if entity_base_name is not None else f"Channel {channel_id}"
 
@@ -86,14 +103,14 @@ async def async_setup_entry(
 
             _LOGGER.debug("Channel %s (Cat: %s). Type is cover. Using Name: '%s'. Entity base slug: '%s'. Creating entity.",
                           channel_id, channel_cat, desired_name, entity_base_slug)
-            
+
             hub_manufacturer: str = main_hub_device_info.get("manufacturer", "Feller AG")
             hub_sw_version: str | None = main_hub_device_info.get("sw_version")
 
             blind_device_info: dict[str, Any] = {
                 "identifiers": {(DOMAIN, f"{hub_serial_for_blinds}_ch{channel_id}")},
-                "name": desired_name, 
-                "via_device": (DOMAIN, hub_serial_for_blinds),
+                "name": desired_name,
+                "via_device_id": hub_device_id,
                 "manufacturer": hub_manufacturer,
                 "sw_version": hub_sw_version,
             }
@@ -102,7 +119,7 @@ async def async_setup_entry(
 
             new_entities.append(
                 ZeptrionAirBlind(
-                    config_entry=entry, 
+                    config_entry=entry,
                     device_info_for_blind_entity=blind_device_info,
                     channel_id=channel_id,
                     hub_serial=hub_serial_for_blinds,
@@ -110,7 +127,7 @@ async def async_setup_entry(
                     entity_base_slug=entity_base_slug
                 )
             )
-    
+
     if new_entities:
         for entity in new_entities:
             _LOGGER.debug("Preparing to add cover entity: Name: %s, Unique ID: %s",
@@ -119,7 +136,7 @@ async def async_setup_entry(
         async_add_entities(new_entities)
     else:
         _LOGGER.info("No Zeptrion Air cover entities to add.")
-    
+
     return True
 
 
@@ -129,28 +146,28 @@ class ZeptrionAirBlind(CoverEntity):
     def __init__(
         self,
         config_entry: ConfigEntry,
-        device_info_for_blind_entity: dict[str, Any], 
+        device_info_for_blind_entity: dict[str, Any],
         channel_id: int,
-        hub_serial: str, 
+        hub_serial: str,
         entry_title: str,
         entity_base_slug: str,
     ) -> None:
         """Initialize the Zeptrion Air blind."""
-        self.config_entry: ConfigEntry = config_entry 
+        self.config_entry: ConfigEntry = config_entry
         self._channel_id: int = channel_id
-        
+
         self._attr_device_info: dict[str, Any] = device_info_for_blind_entity
-        
+
         name_val = device_info_for_blind_entity.get("name")
         self._attr_name: str = str(name_val) if name_val is not None else f"Channel {channel_id}"
         self._attr_unique_id = f"zapp_{hub_serial}_ch{self._channel_id}"
-        
+
         _LOGGER.debug("ZeptrionAirBlind cover entity initialized:")
         _LOGGER.debug("  Friendly name: '%s'", self._attr_name)
         _LOGGER.debug("  Unique ID: '%s'", self._attr_unique_id)
 
         self._attr_device_class = CoverDeviceClass.SHUTTER
-        
+
         self._attr_is_closed: bool | None = None
         self._attr_is_opening: bool = False
         self._attr_is_closing: bool = False
@@ -273,7 +290,7 @@ class ZeptrionAirBlind(CoverEntity):
                 ZEPTRION_AIR_WEBSOCKET_MESSAGE, self.async_handle_websocket_message
             )
         )
-                                            
+
         platform: entity_platform.EntityPlatform | None = entity_platform.async_get_current_platform()
 
         if platform:
@@ -347,13 +364,13 @@ class ZeptrionAirBlind(CoverEntity):
                 self._attr_is_opening = False
                 self._attr_is_closing = False
                 self._active_action = None
-                
+
             else:
                 _LOGGER.warning("Blind %s received unexpected message value %s, ignoring.",
                                 self._attr_name, message_value)
 
             _LOGGER.debug("Finished WS for %s: cmd_action=%s, active_action=%s, is_closed=%s, is_opening=%s, is_closing=%s",
-                          self._attr_name, self._commanded_action, self._active_action, self._attr_is_closed, 
+                          self._attr_name, self._commanded_action, self._active_action, self._attr_is_closed,
                           self._attr_is_opening, self._attr_is_closing)
             self.async_write_ha_state()
 
