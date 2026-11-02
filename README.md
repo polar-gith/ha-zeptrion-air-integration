@@ -2,12 +2,9 @@
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=polar-gith&repository=ha-zeptrion-air-integration&category=integration)
 
-> **This is a maintained fork** of [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration) by [@alternize](https://github.com/alternize), published by [@polar-gith](https://github.com/polar-gith). All credit for the original integration goes to alternize and its contributors. This fork exists to make two currently open, not-yet-merged pull requests against the upstream project usable right away:
+> **This is a maintained fork** of [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration) by [@alternize](https://github.com/alternize), published by [@polar-gith](https://github.com/polar-gith). All credit for the original integration goes to alternize and its contributors. This fork adds a Lovelace card resource fix and a light platform for switches/dimmers that are not yet in the upstream release.
 >
-> *   [#19 - fix: use res_type when registering the Lovelace card resource](https://github.com/alternize/ha-zeptrion-air-integration/pull/19)
-> *   [#20 - feat: add light platform for Zeptrion Air switches and dimmers](https://github.com/alternize/ha-zeptrion-air-integration/pull/20)
->
-> Once these are merged upstream, this fork will be retired in favor of the original repository again. See [Credits & Upstream](#credits--upstream) below for details.
+> Once those changes land upstream, this fork will be retired in favor of the original repository again. See [Credits & Upstream](#credits--upstream) below for details.
 
 ## Description
 
@@ -76,7 +73,7 @@ This fork is not (and is not meant to become) a separate listing in the official
 2.  Add `https://github.com/polar-gith/ha-zeptrion-air-integration` with category **Integration**.
 3.  Install "Zeptrion Air Integration" from HACS as usual.
 
-Once PRs [#19](https://github.com/alternize/ha-zeptrion-air-integration/pull/19) and [#20](https://github.com/alternize/ha-zeptrion-air-integration/pull/20) are merged upstream, switch back to the official repository: [Add repository to HACS](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&repository=ha-zeptrion-air-integration&owner=alternize).
+Once this fork's changes have landed upstream, switch back to the official repository: [Add repository to HACS](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&repository=ha-zeptrion-air-integration&owner=alternize).
 
 ## Technical Details: API Usage
 
@@ -105,7 +102,7 @@ Please try to follow Home Assistant's development guidelines and ensure code is 
 
 ## Credits & Upstream
 
-This project is based entirely on the original work by [**alternize**](https://github.com/alternize) at [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration). This fork, maintained by [**polar-gith**](https://github.com/polar-gith), only adds the contents of two pull requests opened against that upstream repository ([#19](https://github.com/alternize/ha-zeptrion-air-integration/pull/19), [#20](https://github.com/alternize/ha-zeptrion-air-integration/pull/20)) so they can be used while they await review. Please direct general feedback and feature requests to the upstream project; issues specific to this fork's unmerged changes can be filed here.
+This project is based entirely on the original work by [**alternize**](https://github.com/alternize) at [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration). This fork, maintained by [**polar-gith**](https://github.com/polar-gith), adds a small number of fixes and features on top of that work so they can be used before they land in the upstream release. Please direct general feedback and feature requests to the upstream project; issues specific to this fork's changes can be filed here.
 
 ## Disclaimer & License
 
