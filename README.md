@@ -1,5 +1,12 @@
 # Home Assistant Zeptrion Air Integration
 
+> **This is a maintained fork** of [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration) by [@alternize](https://github.com/alternize), published by [@polar-gith](https://github.com/polar-gith). All credit for the original integration goes to alternize and its contributors. This fork exists to make two currently open, not-yet-merged pull requests against the upstream project usable right away:
+>
+> *   [#19 - fix: use res_type when registering the Lovelace card resource](https://github.com/alternize/ha-zeptrion-air-integration/pull/19)
+> *   [#20 - feat: add light platform for Zeptrion Air switches and dimmers](https://github.com/alternize/ha-zeptrion-air-integration/pull/20)
+>
+> Once these are merged upstream, this fork will be retired in favor of the original repository again. See [Credits & Upstream](#credits--upstream) below for details.
+
 ## Description
 
 This is a custom integration for Home Assistant that allows you to control [Zeptrion Air](https://www.feller.ch/de/Produkte/Gebaeudeautomation/Zeptrion-Systeme/Zeptrion-Air) devices locally over your WLAN. Zeptrion Air hubs connect to your network and expose a REST API for controlling attached lights, blinds, and other devices. This integration aims to bring these devices into Home Assistant for automation and UI control.
@@ -33,7 +40,13 @@ This is a custom integration for Home Assistant that allows you to control [Zept
 
 ## Installation
 
-[Add repository to HACS](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&repository=ha-zeptrion-air-integration&owner=alternize)
+This fork is not (and is not meant to become) a separate listing in the official HACS store - add it as a **custom repository** instead:
+
+1.  In Home Assistant, open **HACS**, then **Integrations**, then the three-dot menu (top right), then **Custom repositories**.
+2.  Add `https://github.com/polar-gith/ha-zeptrion-air-integration` with category **Integration**.
+3.  Install "Zeptrion Air Integration" from HACS as usual.
+
+Once PRs [#19](https://github.com/alternize/ha-zeptrion-air-integration/pull/19) and [#20](https://github.com/alternize/ha-zeptrion-air-integration/pull/20) are merged upstream, switch back to the official repository: [Add repository to HACS](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&repository=ha-zeptrion-air-integration&owner=alternize).
 
 ## Technical Details: API Usage
 
@@ -48,7 +61,7 @@ This integration interacts with the Zeptrion Air hub's local REST API using the 
     *   `cmd=move_open_{time_ms}`: Moves the cover up for a specified duration in milliseconds.
     *   `cmd=move_close_{time_ms}`: Moves the cover down for a specified duration in milliseconds.
     *   `cmd=recall_s1` / `recall_s2` / `recall_s3` / `recall_s4`: Recalls a pre-programmed scene (position) for the cover.
-    *   *(Note: The API also supports `cmd=on`, `cmd=off`, and `cmd=dim val={Y}` for light channels, which are parsed but not yet fully implemented as HA light entities).*
+    *   *(The API also supports `cmd=on`, `cmd=off`, and `cmd=dim val={Y}` for light channels; these are used by the `Light` entities described above.)*
 *   **GET `/zrap/chscan` / `/zrap/chscan/ch{X}`**: While available, this endpoint was found to return `-1` (unknown state) for cover channels and is therefore not currently used for determining cover state.
 
 ## Contributing
@@ -60,10 +73,14 @@ Contributions to this integration are very welcome! If you have ideas for improv
 
 Please try to follow Home Assistant's development guidelines and ensure code is well-tested and documented.
 
+## Credits & Upstream
+
+This project is based entirely on the original work by [**alternize**](https://github.com/alternize) at [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration). This fork, maintained by [**polar-gith**](https://github.com/polar-gith), only adds the contents of two pull requests opened against that upstream repository ([#19](https://github.com/alternize/ha-zeptrion-air-integration/pull/19), [#20](https://github.com/alternize/ha-zeptrion-air-integration/pull/20)) so they can be used while they await review. Please direct general feedback and feature requests to the upstream project; issues specific to this fork's unmerged changes can be filed here.
+
 ## Disclaimer & License
 
 "Home Assistant" is a project of the Open Home Foundation. This project is not affiliated with nor endorsed by the Open Home Foundation. 
 
-"Zeptrion", "Zeptrion Air" and the Zeptrion Air logo are property of & © by Feller AG 2016. This project is not affiliated with nor endorsed by Feller AG.
+"Zeptrion", "Zeptrion Air" and the Zeptrion Air logo are property of & (c) by Feller AG 2016. This project is not affiliated with nor endorsed by Feller AG.
 
 All other files in this project are licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
