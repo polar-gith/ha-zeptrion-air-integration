@@ -51,9 +51,10 @@ Channels with category 1 (on/off) or category 3 (dimmer) are exposed as Home Ass
 
 **State updates are optimistic**
 
-*   The hub does not reliably report a dimmer's actual brightness, so Home Assistant keeps the last brightness value it set rather than reading it back.
+*   The hub reports `100` for a dimmer that is on, whatever its actual level, so Home Assistant keeps the last brightness value it set. Should a hub ever report an intermediate value (1-99), it is taken over as brightness; `0` means off.
 *   After every command, the entity polls the channel's scan endpoint (`/zrap/chscan/ch{X}`) to refresh on/off state. For dimmers this poll is delayed (0.35 s plus a term proportional to how far the dimmer has to travel) to give the hub time to finish moving.
-*   The integration also listens to the hub's websocket push events and applies on/off changes reported from there in real time. Brightness changes made directly on the hub are not reflected, for the same reason brightness isn't polled.
+*   In addition, every light is polled every 60 s (`SCAN_INTERVAL`), with at most one request per hub at a time (`PARALLEL_UPDATES = 1`). This corrects on/off states that were missed on the websocket, e.g. after a reconnect.
+*   The integration also listens to the hub's websocket push events and applies on/off changes reported from there in real time. Brightness changes made directly on the hub are not reflected, because the hub does not report them.
 
 **Devices**
 

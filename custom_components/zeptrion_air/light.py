@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.components.light import (
@@ -26,6 +27,11 @@ from .const import DOMAIN, ZEPTRION_AIR_WEBSOCKET_MESSAGE
 _LOGGER = logging.getLogger(__name__)
 
 DIMMER_FULL_TRAVEL_MS = 3400
+
+# Poll every light channel periodically so that state changes missed on the
+# websocket (e.g. after a reconnect) are corrected. One request per hub at a time.
+SCAN_INTERVAL = timedelta(seconds=60)
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
@@ -140,23 +146,37 @@ class ZeptrionAirLight(LightEntity):
             self._attr_supported_color_modes = {ColorMode.ONOFF}
             self._attr_color_mode = ColorMode.ONOFF
 
-    def _set_state_from_api_percent(self, value_0_100: int) -> None:
-        """Apply a Zeptrion value (0-100) to the HA entity state.
+    def _set_state_from_api_percent(self, value_0_100: int) -> bool:
+        """Apply a Zeptrion channel value to the HA entity state.
 
-        Important:
-        - For dimmers, the Zeptrion API does not provide reliable current brightness.
-          Therefore we only use this value to determine ON/OFF and keep HA brightness optimistic.
-        - For switches, ON/OFF is enough anyway.
+        - 0: off
+        - 1-99 (dimmers): on, brightness taken from the value. Current hubs do
+          not report intermediate values for dimmers, but if one does, it is used.
+        - 100: on; for dimmers the last known brightness is kept, because the
+          hub reports 100 for any dimmed level.
+        - negative values (unused channel) are ignored.
+
+        Returns True if the entity state was updated.
         """
-        value_0_100 = max(0, min(100, int(value_0_100)))
+        value = int(value_0_100)
+        if value < 0:
+            return False
+        value = min(100, value)
 
-        if self._is_dimmer:
-            self._attr_is_on = value_0_100 > 0
-            return
+        if value == 0:
+            self._attr_is_on = False
+            return True
 
-        self._attr_is_on = value_0_100 > 0
+        self._attr_is_on = True
+        if self._is_dimmer and value < 100:
+            brightness = max(1, round(value * 255 / 100))
+            self._attr_brightness = brightness
+            self._last_nonzero_brightness = brightness
+        return True
 
-    async def _async_refresh_from_scan(self, delay: float = 0.0) -> None:
+    async def _async_refresh_from_scan(
+        self, delay: float = 0.0, write_state: bool = True
+    ) -> None:
         """Refresh current state from /zrap/chscan/chX after an optional delay."""
         if delay > 0:
             await asyncio.sleep(delay)
@@ -183,8 +203,8 @@ class ZeptrionAirLight(LightEntity):
                 )
                 return
 
-            self._set_state_from_api_percent(int(raw_value))
-            self.async_write_ha_state()
+            if self._set_state_from_api_percent(int(raw_value)) and write_state:
+                self.async_write_ha_state()
 
         except Exception as e:
             _LOGGER.debug(
@@ -205,6 +225,13 @@ class ZeptrionAirLight(LightEntity):
         self._pending_refresh_task = self.hass.async_create_task(
             self._async_refresh_from_scan(delay)
         )
+
+    async def async_update(self) -> None:
+        """Poll the channel state (called by Home Assistant every SCAN_INTERVAL)."""
+        if self._pending_refresh_task and not self._pending_refresh_task.done():
+            # A refresh after a command is pending; let it set the state.
+            return
+        await self._async_refresh_from_scan(write_state=False)
 
     async def async_added_to_hass(self) -> None:
         """Handle entity added to HA."""
@@ -237,10 +264,9 @@ class ZeptrionAirLight(LightEntity):
             return
 
         try:
-            # Intentionally only update ON/OFF from websocket.
-            # Do not overwrite brightness for dimmers.
-            self._set_state_from_api_percent(int(raw_value))
-            self.async_write_ha_state()
+            # 0 = off, 100 = on (dimmer brightness kept), 1-99 = brightness.
+            if self._set_state_from_api_percent(int(raw_value)):
+                self.async_write_ha_state()
         except (ValueError, TypeError):
             _LOGGER.debug(
                 "Ignoring non-integer websocket value for light %s (Channel %s): %s",
