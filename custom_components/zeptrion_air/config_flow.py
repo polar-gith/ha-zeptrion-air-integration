@@ -46,7 +46,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow: 
         """Get the options flow for this handler."""
-        return ZeptrionAirOptionsFlowHandler(config_entry)
+        return ZeptrionAirOptionsFlowHandler()
 
     discovery_info: dict[str, Any]
 
@@ -235,10 +235,8 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class ZeptrionAirOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle Zeptrion Air options."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry: config_entries.ConfigEntry = config_entry
-        self.options: dict[str, Any] = dict(config_entry.options)
+    # Home Assistant sets self.config_entry itself (read-only property in
+    # current releases); assigning it in __init__ raises AttributeError.
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -247,8 +245,9 @@ class ZeptrionAirOptionsFlowHandler(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            self.options.update(user_input)
-            return self.async_create_entry(title="", data=self.options)
+            options: dict[str, Any] = dict(self.config_entry.options)
+            options.update(user_input)
+            return self.async_create_entry(title="", data=options)
 
         current_duration: int = self.config_entry.options.get(
             CONF_STEP_DURATION_MS,
