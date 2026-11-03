@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "confirm": {
+        "description": "Möchtest du {hostname} (`{ip_address}`) zu Home Assistant hinzufügen?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen"
+    },
+    "abort": {
+      "already_configured": "Gerät ist bereits eingerichtet",
+      "cannot_connect": "Verbindung fehlgeschlagen"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zeptrion Air Optionen",
+        "data": {
+          "step_duration_ms": "Schrittdauer Storen (ms)",
+          "light_polling": "Lichtzustände alle 60 s abfragen"
+        },
+        "data_description": {
+          "step_duration_ms": "Dauer eines einzelnen Auf-/Ab-Schritts der Storen (100-32000 ms).",
+          "light_polling": "Standardmässig aus. Wenn eingeschaltet, wird jeder Licht-Kanal dieses Hubs alle 60 s abgefragt, um über den Websocket verpasste Ein/Aus-Zustände zu korrigieren. Die Dimmer-Helligkeit kann vom Hub nicht gelesen werden."
+        }
+      }
+    }
+  }
+}

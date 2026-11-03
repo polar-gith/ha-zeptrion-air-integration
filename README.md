@@ -28,6 +28,7 @@ This is a custom integration for Home Assistant that allows you to control [Zept
 *   **Button Entities:** Provides button entities in Home Assistant for each of the custom cover services (Step Up/Down, S1-S4 scenes), making them easily accessible from the UI.
 *   **Sensor Entities:** Exposes channel name, group, and Zeptrion icon ID as sensor entities (disabled by default). These can be enabled by the user if desired.
 *   **Configurable Step Duration:** The duration (in milliseconds) for the "up step" and "down step" services can be configured via the integration's options flow.
+*   **Optional Light Polling:** Lights can additionally be polled every 60 s to correct on/off states missed on the websocket. Off by default; see [Options](#options).
 
 ## Light Entities (Switches & Dimmers)
 
@@ -53,12 +54,23 @@ Channels with category 1 (on/off) or category 3 (dimmer) are exposed as Home Ass
 
 *   The hub reports `100` for a dimmer that is on, whatever its actual level, so Home Assistant keeps the last brightness value it set. Should a hub ever report an intermediate value (1-99), it is taken over as brightness; `0` means off.
 *   After every command, the entity polls the channel's scan endpoint (`/zrap/chscan/ch{X}`) to refresh on/off state. For dimmers this poll is delayed (0.35 s plus a term proportional to how far the dimmer has to travel) to give the hub time to finish moving.
-*   In addition, every light is polled every 60 s (`SCAN_INTERVAL`), with at most one request per hub at a time (`PARALLEL_UPDATES = 1`). This corrects on/off states that were missed on the websocket, e.g. after a reconnect.
+*   Optionally, every light can be polled every 60 s (`SCAN_INTERVAL`), with at most one request per hub at a time (`PARALLEL_UPDATES = 1`). This corrects on/off states that were missed on the websocket, e.g. after a reconnect. Polling is **off by default** and is enabled per hub via the option "Poll light states every 60 s" (see [Options](#options)).
 *   The integration also listens to the hub's websocket push events and applies on/off changes reported from there in real time. Brightness changes made directly on the hub are not reflected, because the hub does not report them.
 
 **Devices**
 
 *   Each light channel is registered as its own Home Assistant device, linked to the parent hub via `via_device_id` (the hub's device-registry ID, replacing the deprecated `via_device` identifier tuple), with the device model shown as "Switch" or "Dimmer" depending on category.
+
+## Options
+
+Each hub (config entry) has its own options: **Settings > Devices & services > Zeptrion Air > (hub) > Configure**. Saving the options reloads that hub.
+
+| Option | Key | Default | Description |
+|---|---|---|---|
+| Blind step duration (ms) | `step_duration_ms` | 250 | Duration of a single up/down step for blinds (100-32000 ms). |
+| Poll light states every 60 s | `light_polling` | off | When on, every light channel of this hub is read from `/zrap/chscan/ch{X}` every 60 s to correct on/off states missed on the websocket. Dimmers keep their last brightness, because the hub reports `100` for any dimmed level. Load is small: one short HTTP request per light channel and minute. |
+
+Light polling usually isn't needed: the hub pushes on/off changes over the websocket, and the state is re-read after every command. Turn it on for hubs whose websocket connection drops regularly.
 
 ## Current Limitations
 

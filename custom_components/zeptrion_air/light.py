@@ -22,13 +22,19 @@ from .api import (
     ZeptrionAirApiClientCommunicationError,
     ZeptrionAirApiClientError,
 )
-from .const import DOMAIN, ZEPTRION_AIR_WEBSOCKET_MESSAGE
+from .const import (
+    CONF_LIGHT_POLLING,
+    DEFAULT_LIGHT_POLLING,
+    DOMAIN,
+    ZEPTRION_AIR_WEBSOCKET_MESSAGE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 DIMMER_FULL_TRAVEL_MS = 3400
 
-# Poll every light channel periodically so that state changes missed on the
+# Optional polling (option "light_polling", off by default): when enabled, every
+# light channel is polled periodically so that state changes missed on the
 # websocket (e.g. after a reconnect) are corrected. One request per hub at a time.
 SCAN_INTERVAL = timedelta(seconds=60)
 PARALLEL_UPDATES = 1
@@ -138,6 +144,12 @@ class ZeptrionAirLight(LightEntity):
         self._attr_brightness = 255 if is_dimmer else None
         self._last_nonzero_brightness = 255
         self._pending_refresh_task: asyncio.Task | None = None
+
+        # Home Assistant only calls async_update when polling is enabled.
+        # Changing the option reloads the config entry, so this is re-read.
+        self._attr_should_poll = bool(
+            config_entry.options.get(CONF_LIGHT_POLLING, DEFAULT_LIGHT_POLLING)
+        )
 
         if is_dimmer:
             self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
