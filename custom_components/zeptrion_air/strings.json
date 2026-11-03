@@ -1,16 +1,31 @@
 {
-  "config":{
-     "step":{
-        "confirm":{
-           "description":"Do you want to add {hostname} (`{ip}`) to Home Assistant?"
+  "config": {
+    "step": {
+      "confirm": {
+        "description": "Do you want to add {hostname} (`{ip_address}`) to Home Assistant?"
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zeptrion Air options",
+        "data": {
+          "step_duration_ms": "Blind step duration (ms)",
+          "light_polling": "Poll light states every 60 s"
+        },
+        "data_description": {
+          "step_duration_ms": "Duration of a single up/down step for blinds (100-32000 ms).",
+          "light_polling": "Off by default. When on, every light channel of this hub is read every 60 s to correct on/off states missed on the websocket. Dimmer brightness cannot be read from the hub."
         }
-     },
-     "error":{
-        "cannot_connect":"[%key:common::config_flow::error::cannot_connect%]"
-     },
-     "abort":{
-        "already_configured":"[%key:common::config_flow::abort::already_configured_device%]",
-        "cannot_connect":"[%key:common::config_flow::error::cannot_connect%]"
-     }
+      }
+    }
   }
 }

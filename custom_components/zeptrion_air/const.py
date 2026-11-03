@@ -17,6 +17,7 @@ CONF_HOSTNAME: str = "hostname"
 CONF_TYPE: str = "type"
 CONF_FIRMWARE: str = "firmware"
 CONF_STEP_DURATION_MS: str = "step_duration_ms"
+CONF_LIGHT_POLLING: str = "light_polling"
 
 # Services
 SERVICE_BLIND_RECALL_S1: str = "blind_recall_s1"
@@ -26,6 +27,7 @@ SERVICE_BLIND_RECALL_S4: str = "blind_recall_s4"
 
 # Default values
 DEFAULT_STEP_DURATION_MS: int = 250
+DEFAULT_LIGHT_POLLING: bool = False
 
 # Validation values
 MIN_STEP_DURATION_MS: int = 100

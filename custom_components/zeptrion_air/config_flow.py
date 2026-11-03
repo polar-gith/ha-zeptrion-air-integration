@@ -27,6 +27,8 @@ from .const import (
     CONF_IP_ADDRESS,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS,
+    CONF_LIGHT_POLLING,
+    DEFAULT_LIGHT_POLLING,
     MIN_STEP_DURATION_MS,
     MAX_STEP_DURATION_MS,
 )
@@ -253,12 +255,20 @@ class ZeptrionAirOptionsFlowHandler(config_entries.OptionsFlow):
             self.config_entry.data.get(CONF_STEP_DURATION_MS, DEFAULT_STEP_DURATION_MS)
         )
 
+        current_light_polling: bool = bool(
+            self.config_entry.options.get(CONF_LIGHT_POLLING, DEFAULT_LIGHT_POLLING)
+        )
+
         options_schema: vol.Schema = vol.Schema(
             {
                 vol.Optional(
                     CONF_STEP_DURATION_MS,
                     default=current_duration,
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_STEP_DURATION_MS, max=MAX_STEP_DURATION_MS)),
+                vol.Optional(
+                    CONF_LIGHT_POLLING,
+                    default=current_light_polling,
+                ): bool,
             }
         )
 
