@@ -274,8 +274,14 @@ class ZeptrionAirBlindsCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('zeptrion-air-blinds-card', ZeptrionAirBlindsCard);
-customElements.define('zeptrion-air-blinds-card-editor', ZeptrionAirBlindsCardEditor);
+// The card can be loaded twice (extra_module_url and Lovelace resource);
+// guard against a second define, which would throw.
+if (!customElements.get('zeptrion-air-blinds-card')) {
+  customElements.define('zeptrion-air-blinds-card', ZeptrionAirBlindsCard);
+}
+if (!customElements.get('zeptrion-air-blinds-card-editor')) {
+  customElements.define('zeptrion-air-blinds-card-editor', ZeptrionAirBlindsCardEditor);
+}
 
 // Register the card
 window.customCards = window.customCards || [];
