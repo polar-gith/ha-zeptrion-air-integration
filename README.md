@@ -2,9 +2,7 @@
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=polar-gith&repository=ha-zeptrion-air-integration&category=integration)
 
-> **This is a maintained fork** of [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration) by [@alternize](https://github.com/alternize), published by [@polar-gith](https://github.com/polar-gith). All credit for the original integration goes to alternize and its contributors. This fork adds a Lovelace card resource fix and a light platform for switches/dimmers that are not yet in the upstream release.
->
-> Once those changes land upstream, this fork will be retired in favor of the original repository again. See [Credits & Upstream](#credits--upstream) below for details.
+> **This is an independently maintained continuation** of [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration) by [@alternize](https://github.com/alternize), published by [@polar-gith](https://github.com/polar-gith). All credit for the original integration goes to alternize and its contributors. This repository has since diverged substantially (light platform, Lovelace card resource fixes, device structure and more) and is developed on its own from here on. See [Credits](#credits) below.
 
 ## Description
 
@@ -59,7 +57,18 @@ Channels with category 1 (on/off) or category 3 (dimmer) are exposed as Home Ass
 
 **Devices**
 
-*   Each light channel is registered as its own Home Assistant device, linked to the parent hub via `via_device_id` (the hub's device-registry ID, replacing the deprecated `via_device` identifier tuple), with the device model shown as "Switch" or "Dimmer" depending on category.
+*   On hubs with more than one usable channel, each light channel is registered as its own Home Assistant device, linked to the parent hub via `via_device_id` (the hub's device-registry ID, replacing the deprecated `via_device` identifier tuple), with the device model shown as "Switch" or "Dimmer" depending on category.
+*   See [Device structure](#device-structure) for single-channel hubs.
+
+## Device structure
+
+*   **Hubs with several usable channels** (e.g. a 2- or 3-channel zApp): one device for the hub (wall device) plus one sub-device per channel, linked via `via_device_id`. Cover, light, button and channel sensor entities belong to the channel's sub-device.
+*   **Hubs with a single usable channel:** no separate channel sub-device. All entities of that channel (cover or light, scene buttons, channel sensors) belong directly to the hub device, so the device list does not show the same switch twice.
+*   **Migration:** when updating from an earlier version, an existing channel sub-device of a single-channel hub is folded into the hub device on the next start. Entity IDs and unique IDs stay the same. If the hub device has no area or custom name yet, the sub-device's area and custom name are taken over; if both had different areas, the moved entities keep the sub-device's area as entity area. The empty sub-device is then removed.
+
+## Dashboard card resource
+
+The integration serves its blinds card at `/api/zeptrion_air/zeptrion-air-blinds-card.js` and registers it once as a Lovelace resource (storage mode only). Earlier versions could add the resource again on every Home Assistant start, because the resource list had not been loaded yet when it was checked. The resource list is now loaded first, the resource is added only when missing, and duplicates left behind by earlier versions are removed automatically on the next start.
 
 ## Options
 
@@ -82,13 +91,11 @@ Light polling usually isn't needed: the hub pushes on/off changes over the webso
 
 **Requirements:** Home Assistant 2026.8.0 or newer (needed for `via_device_id`, which is used to link light and cover devices to their hub).
 
-This fork is not (and is not meant to become) a separate listing in the official HACS store - add it as a **custom repository** instead:
+This repository is not listed in the default HACS store - add it as a **custom repository**:
 
 1.  In Home Assistant, open **HACS**, then **Integrations**, then the three-dot menu (top right), then **Custom repositories**.
 2.  Add `https://github.com/polar-gith/ha-zeptrion-air-integration` with category **Integration**.
 3.  Install "Zeptrion Air Integration" from HACS as usual.
-
-Once this fork's changes have landed upstream, switch back to the official repository: [Add repository to HACS](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&repository=ha-zeptrion-air-integration&owner=alternize).
 
 ## Technical Details: API Usage
 
@@ -115,9 +122,9 @@ Contributions to this integration are very welcome! If you have ideas for improv
 
 Please try to follow Home Assistant's development guidelines and ensure code is well-tested and documented.
 
-## Credits & Upstream
+## Credits
 
-This project is based entirely on the original work by [**alternize**](https://github.com/alternize) at [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration). This fork, maintained by [**polar-gith**](https://github.com/polar-gith), adds a small number of fixes and features on top of that work so they can be used before they land in the upstream release. Please direct general feedback and feature requests to the upstream project; issues specific to this fork's changes can be filed here.
+This project is based on the original work by [**alternize**](https://github.com/alternize) at [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration). It is maintained by [**polar-gith**](https://github.com/polar-gith) and has since grown well beyond the original, so it is developed independently from here on. Please file issues and feature requests for this version here.
 
 ## Disclaimer & License
 
