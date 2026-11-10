@@ -17,6 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration, Integration
 from homeassistant.helpers import device_registry
+from homeassistant.helpers import entity_registry
 from homeassistant.helpers.event import async_track_time_interval
 from datetime import timedelta
 
@@ -281,8 +282,17 @@ async def async_setup_entry(
     LOGGER.info(f"Final identified usable channels for {hub_name}: {identified_channels}")
 
     integration_obj: Integration = async_get_loaded_integration(hass, entry.domain)
-    
+
+    # On a device with a single usable channel the per-channel sub-device would
+    # only duplicate the wall device, so its entities go on the wall device.
+    single_channel: bool = len(identified_channels) == 1
+    if single_channel:
+        _async_migrate_single_channel_device(
+            hass, entry, serial_number, identified_channels[0]["id"]
+        )
+
     platform_setup_data: dict[str, Any] = {
+        "single_channel": single_channel,
         "hub_device_info": hub_device_info, 
         "identified_channels": identified_channels, 
         "entry_title": hub_name, 
@@ -307,6 +317,64 @@ async def async_setup_entry(
     LOGGER.info("Zeptrion Air integration setup successfully completed for %s.", entry.title)
     return True
 
+
+
+def _async_migrate_single_channel_device(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    hub_serial: str,
+    channel_id: int,
+) -> None:
+    """Fold a former per-channel sub-device into the wall device.
+
+    Earlier versions created a sub-device ``<serial>_ch<n>`` even when the
+    zApp has only one usable channel. Its entities are moved to the wall
+    device, user customisations that would otherwise be lost (area, name)
+    are carried over, and the then empty sub-device is removed. Entity IDs
+    and unique IDs do not change.
+    """
+    dev_reg = device_registry.async_get(hass)
+    ent_reg = entity_registry.async_get(hass)
+
+    hub_device = dev_reg.async_get_device(identifiers={(DOMAIN, hub_serial)})
+    channel_device = dev_reg.async_get_device(
+        identifiers={(DOMAIN, f"{hub_serial}_ch{channel_id}")}
+    )
+    if hub_device is None or channel_device is None:
+        return
+    if entry.entry_id not in channel_device.config_entries:
+        return
+
+    LOGGER.info(
+        "[%s] Single-channel device: moving entities of channel sub-device '%s' to the wall device.",
+        hub_serial, channel_device.name_by_user or channel_device.name,
+    )
+
+    hub_updates: dict[str, Any] = {}
+    if hub_device.area_id is None and channel_device.area_id is not None:
+        hub_updates["area_id"] = channel_device.area_id
+    if hub_device.name_by_user is None and channel_device.name_by_user is not None:
+        hub_updates["name_by_user"] = channel_device.name_by_user
+    if hub_updates:
+        dev_reg.async_update_device(hub_device.id, **hub_updates)
+
+    effective_hub_area = hub_updates.get("area_id", hub_device.area_id)
+    keep_area_on_entity = (
+        channel_device.area_id is not None
+        and channel_device.area_id != effective_hub_area
+    )
+
+    for ent in entity_registry.async_entries_for_device(
+        ent_reg, channel_device.id, include_disabled_entities=True
+    ):
+        ent_updates: dict[str, Any] = {"device_id": hub_device.id}
+        if keep_area_on_entity and ent.area_id is None:
+            # Keep the entity in the area it was in via its old device.
+            ent_updates["area_id"] = channel_device.area_id
+        ent_reg.async_update_entity(ent.entity_id, **ent_updates)
+
+    # The sub-device has no entities left; remove it from the registry.
+    dev_reg.async_remove_device(channel_device.id)
 
 async def async_unload_entry(
     hass: HomeAssistant,
