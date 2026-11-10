@@ -9,6 +9,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.components.button import ButtonEntity
 
+from .entity import channel_device_identifier
 from .const import (
     DOMAIN, 
     SERVICE_BLIND_RECALL_S1, 
@@ -52,6 +53,7 @@ async def async_setup_entry(
         return
     hub_serial: str = hub_serial_maybe
 
+    single_channel: bool = bool(platform_data.get("single_channel", False))
     new_entities: list[ZeptrionAirActionButton] = []
     for channel_info_dict in identified_channels_list:
         device_type: str | None = channel_info_dict.get('device_type')
@@ -86,7 +88,8 @@ async def async_setup_entry(
                         action_type=action_def["service"], 
                         action_label=action_def["label"],
                         action_type_slug=action_def["type"],
-                        icon=action_def["icon"]
+                        icon=action_def["icon"],
+                        single_channel=single_channel,
                     )
                 )
         else:
@@ -115,6 +118,7 @@ class ZeptrionAirActionButton(ButtonEntity):
         action_label: str,
         action_type_slug: str,
         icon: str, 
+        single_channel: bool = False,
     ) -> None:
         """Initialize the Zeptrion Air action button."""
         self.config_entry: ConfigEntry = config_entry
@@ -137,7 +141,7 @@ class ZeptrionAirActionButton(ButtonEntity):
 
         # Link this button to the specific cover channel's device entry in HA
         self._attr_device_info: dict[str, set[tuple[str, str]]] = {
-            "identifiers": {(DOMAIN, f"{hub_serial}_ch{channel_id}")},
+            "identifiers": {channel_device_identifier(hub_serial, channel_id, single_channel)},
         }
 
     async def async_press(self) -> None:

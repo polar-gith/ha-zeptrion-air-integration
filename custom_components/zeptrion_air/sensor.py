@@ -10,6 +10,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+from .entity import channel_device_identifier as make_channel_device_identifier
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ async def async_setup_entry(
     # Ensure the list type can accommodate both ZeptrionAirChannelSensor and ZeptrionAirRssiSensor.
     # Using SensorEntity as a common base type for the list.
     new_entities: list[SensorEntity] = []
+    single_channel: bool = bool(platform_data.get("single_channel", False))
 
     for channel_info_dict in identified_channels_list:
         channel_id: int | None = channel_info_dict.get('id')
@@ -57,7 +59,9 @@ async def async_setup_entry(
         # Get the base device info for the channel (created by cover.py or light.py etc.)
         # This assumes that other platforms (like cover) have already created a device for the channel.
         # The device_info for the channel itself.
-        channel_device_identifier: tuple[str, str] = (DOMAIN, f"{hub_serial}_ch{channel_id}")
+        channel_device_identifier: tuple[str, str] = make_channel_device_identifier(
+            hub_serial, channel_id, single_channel
+        )
 
         # Channel details from the API
         channel_api_name: str = channel_info_dict.get("name", "")

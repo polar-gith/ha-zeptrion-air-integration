@@ -17,6 +17,7 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import ZeptrionAirApiClient, ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError
+from .entity import channel_device_identifier
 from .const import (
     DOMAIN,
     SERVICE_BLIND_RECALL_S1,
@@ -53,6 +54,7 @@ async def async_setup_entry(
         _LOGGER.error("Hub serial not found in platform_data.")
         return False
     hub_serial_for_blinds: str = hub_serial_for_blinds_maybe
+    single_channel: bool = bool(platform_data.get("single_channel", False))
 
     # The hub device itself is registered in __init__.py before platform setup
     # is forwarded, so we can resolve its registry device_id here and link
@@ -107,15 +109,22 @@ async def async_setup_entry(
             hub_manufacturer: str = main_hub_device_info.get("manufacturer", "Feller AG")
             hub_sw_version: str | None = main_hub_device_info.get("sw_version")
 
-            blind_device_info: dict[str, Any] = {
-                "identifiers": {(DOMAIN, f"{hub_serial_for_blinds}_ch{channel_id}")},
-                "name": desired_name,
-                "via_device_id": hub_device_id,
-                "manufacturer": hub_manufacturer,
-                "sw_version": hub_sw_version,
-            }
-            panel_type_string: str = panel_type_mapping.get(channel_cat, "Unknown Panel")
-            blind_device_info["model"] = f"Zeptrion Air Channel {channel_id} - {panel_type_string}"
+            blind_device_info: dict[str, Any]
+            if single_channel:
+                # Single-channel device: attach the entity to the wall device.
+                blind_device_info = {
+                    "identifiers": {channel_device_identifier(hub_serial_for_blinds, channel_id, True)},
+                }
+            else:
+                blind_device_info = {
+                    "identifiers": {channel_device_identifier(hub_serial_for_blinds, channel_id, False)},
+                    "name": desired_name,
+                    "via_device_id": hub_device_id,
+                    "manufacturer": hub_manufacturer,
+                    "sw_version": hub_sw_version,
+                }
+                panel_type_string: str = panel_type_mapping.get(channel_cat, "Unknown Panel")
+                blind_device_info["model"] = f"Zeptrion Air Channel {channel_id} - {panel_type_string}"
 
             new_entities.append(
                 ZeptrionAirBlind(
@@ -124,7 +133,8 @@ async def async_setup_entry(
                     channel_id=channel_id,
                     hub_serial=hub_serial_for_blinds,
                     entry_title=hub_entry_title,
-                    entity_base_slug=entity_base_slug
+                    entity_base_slug=entity_base_slug,
+                    entity_name=desired_name,
                 )
             )
 
@@ -151,6 +161,7 @@ class ZeptrionAirBlind(CoverEntity):
         hub_serial: str,
         entry_title: str,
         entity_base_slug: str,
+        entity_name: str | None = None,
     ) -> None:
         """Initialize the Zeptrion Air blind."""
         self.config_entry: ConfigEntry = config_entry
@@ -158,7 +169,7 @@ class ZeptrionAirBlind(CoverEntity):
 
         self._attr_device_info: dict[str, Any] = device_info_for_blind_entity
 
-        name_val = device_info_for_blind_entity.get("name")
+        name_val = entity_name or device_info_for_blind_entity.get("name")
         self._attr_name: str = str(name_val) if name_val is not None else f"Channel {channel_id}"
         self._attr_unique_id = f"zapp_{hub_serial}_ch{self._channel_id}"
 
