@@ -113,6 +113,10 @@ This integration interacts with the Zeptrion Air hub's local REST API using the 
     *   *(The API also supports `cmd=on`, `cmd=off`, and `cmd=dim val={Y}` for light channels; these are used by the `Light` entities described above.)*
 *   **GET `/zrap/chscan` / `/zrap/chscan/ch{X}`**: While available, this endpoint was found to return `-1` (unknown state) for cover channels and is therefore not currently used for determining cover state.
 
+## Versioning
+
+Starting with 2026.11.0, versions follow the Home Assistant scheme `YEAR.MONTH.PATCH`: the first release in a month is `YYYY.M.0`, fixes in the same month count up the last number. Releases are tagged `vYYYY.M.PATCH`; HACS installs from these releases.
+
 ## Contributing
 
 Contributions to this integration are very welcome! If you have ideas for improvements, new features, or bug fixes, please feel free to:
