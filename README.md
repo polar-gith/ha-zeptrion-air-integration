@@ -108,7 +108,7 @@ This integration interacts with the Zeptrion Air hub's local REST API using the 
 
 ## Icon
 
-The integration ships its own brand images in `custom_components/zeptrion_air/brand/` (`icon.png` and `logo.png`). Home Assistant 2026.3 and newer shows them for the integration. The Feller logo is a trademark of Feller AG and is used only to identify the supported devices.
+The integration ships its own brand images in `custom_components/zeptrion_air/brand/` (`icon.png`, `logo.png` and their `@2x` variants). Home Assistant 2026.3 and newer shows them for the integration. The Feller logo is a trademark of Feller AG and is used only to identify the supported devices.
 
 ## Versioning
 
