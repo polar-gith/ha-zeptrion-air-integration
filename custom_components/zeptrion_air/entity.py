@@ -5,23 +5,7 @@ from __future__ import annotations
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
 from .coordinator import ZeptrionAirDataUpdateCoordinator
-
-
-def channel_device_identifier(
-    hub_serial: str, channel_id: int, single_channel: bool
-) -> tuple[str, str]:
-    """Return the device registry identifier for a channel's entities.
-
-    Devices with more than one usable channel get one sub-device per channel,
-    linked to the wall device via ``via_device_id``. On single-channel devices
-    such a sub-device only duplicates the wall device, so the channel's
-    entities are attached to the wall (hub) device directly.
-    """
-    if single_channel:
-        return (DOMAIN, hub_serial)
-    return (DOMAIN, f"{hub_serial}_ch{channel_id}")
 
 
 class ZeptrionAirEntity(CoordinatorEntity[ZeptrionAirDataUpdateCoordinator]):

@@ -38,7 +38,6 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Zeptrion Air."""
 
     VERSION: int = 1
-    CONNECTION_CLASS: str = config_entries.CONN_CLASS_LOCAL_POLL 
 
     @staticmethod
     @callback

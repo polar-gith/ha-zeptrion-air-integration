@@ -22,7 +22,6 @@ from .api import (
     ZeptrionAirApiClientCommunicationError,
     ZeptrionAirApiClientError,
 )
-from .entity import channel_device_identifier
 from .const import (
     CONF_LIGHT_POLLING,
     DEFAULT_LIGHT_POLLING,
@@ -78,7 +77,6 @@ async def async_setup_entry(
             hub_serial,
         )
 
-    single_channel: bool = bool(platform_data.get("single_channel", False))
     new_entities: list[ZeptrionAirLight] = []
 
     for channel_info_dict in identified_channels_list:
@@ -94,21 +92,14 @@ async def async_setup_entry(
         hub_manufacturer: str = main_hub_device_info.get("manufacturer", "Feller AG")
         hub_sw_version: str | None = main_hub_device_info.get("sw_version")
 
-        light_device_info: dict[str, Any]
-        if single_channel:
-            # Single-channel device: attach the entity to the wall device.
-            light_device_info = {
-                "identifiers": {channel_device_identifier(hub_serial, channel_id, True)},
-            }
-        else:
-            light_device_info = {
-                "identifiers": {channel_device_identifier(hub_serial, channel_id, False)},
-                "name": desired_name,
-                "via_device_id": hub_device_id,
-                "manufacturer": hub_manufacturer,
-                "sw_version": hub_sw_version,
-                "model": f"Zeptrion Air Channel {channel_id} - {'Dimmer' if is_dimmer else 'Switch'}",
-            }
+        light_device_info: dict[str, Any] = {
+            "identifiers": {(DOMAIN, f"{hub_serial}_ch{channel_id}")},
+            "name": desired_name,
+            "via_device_id": hub_device_id,
+            "manufacturer": hub_manufacturer,
+            "sw_version": hub_sw_version,
+            "model": f"Zeptrion Air Channel {channel_id} - {'Dimmer' if is_dimmer else 'Switch'}",
+        }
 
         new_entities.append(
             ZeptrionAirLight(
@@ -117,7 +108,6 @@ async def async_setup_entry(
                 channel_id=channel_id,
                 hub_serial=hub_serial,
                 is_dimmer=is_dimmer,
-                entity_name=desired_name,
             )
         )
 
@@ -140,7 +130,6 @@ class ZeptrionAirLight(LightEntity):
         channel_id: int,
         hub_serial: str,
         is_dimmer: bool,
-        entity_name: str | None = None,
     ) -> None:
         """Initialize the light."""
         self.config_entry = config_entry
@@ -148,9 +137,7 @@ class ZeptrionAirLight(LightEntity):
         self._is_dimmer = is_dimmer
 
         self._attr_device_info = device_info_for_light_entity
-        self._attr_name = str(
-            entity_name or device_info_for_light_entity.get("name") or f"Channel {channel_id}"
-        )
+        self._attr_name = str(device_info_for_light_entity.get("name") or f"Channel {channel_id}")
         self._attr_unique_id = f"zapp_{hub_serial}_ch{channel_id}_light"
 
         self._attr_is_on = False
