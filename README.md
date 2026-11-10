@@ -2,7 +2,7 @@
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=polar-gith&repository=ha-zeptrion-air-integration&category=integration)
 
-> **This is an independently maintained continuation** of [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration) by [@alternize](https://github.com/alternize), published by [@polar-gith](https://github.com/polar-gith). All credit for the original integration goes to alternize and its contributors. This repository has since diverged substantially (light platform, Lovelace card resource fixes, device structure and more) and is developed on its own from here on. See [Credits](#credits) below.
+> **This is an independently maintained continuation** of [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration) by [@alternize](https://github.com/alternize), published by [@polar-gith](https://github.com/polar-gith). All credit for the original integration goes to alternize and its contributors. This repository has since diverged substantially (light platform, Lovelace card resource fixes and more) and is developed on its own from here on. See [Credits](#credits) below.
 
 ## Description
 
@@ -57,14 +57,7 @@ Channels with category 1 (on/off) or category 3 (dimmer) are exposed as Home Ass
 
 **Devices**
 
-*   On hubs with more than one usable channel, each light channel is registered as its own Home Assistant device, linked to the parent hub via `via_device_id` (the hub's device-registry ID, replacing the deprecated `via_device` identifier tuple), with the device model shown as "Switch" or "Dimmer" depending on category.
-*   See [Device structure](#device-structure) for single-channel hubs.
-
-## Device structure
-
-*   **Hubs with several usable channels** (e.g. a 2- or 3-channel zApp): one device for the hub (wall device) plus one sub-device per channel, linked via `via_device_id`. Cover, light, button and channel sensor entities belong to the channel's sub-device.
-*   **Hubs with a single usable channel:** no separate channel sub-device. All entities of that channel (cover or light, scene buttons, channel sensors) belong directly to the hub device, so the device list does not show the same switch twice.
-*   **Migration:** when updating from an earlier version, an existing channel sub-device of a single-channel hub is folded into the hub device on the next start. Entity IDs and unique IDs stay the same. If the hub device has no area or custom name yet, the sub-device's area and custom name are taken over; if both had different areas, the moved entities keep the sub-device's area as entity area. The empty sub-device is then removed.
+*   Each light channel is registered as its own Home Assistant device, linked to the parent hub via `via_device_id` (the hub's device-registry ID, replacing the deprecated `via_device` identifier tuple), with the device model shown as "Switch" or "Dimmer" depending on category. This also applies to hubs with a single channel.
 
 ## Dashboard card resource
 
@@ -112,6 +105,10 @@ This integration interacts with the Zeptrion Air hub's local REST API using the 
     *   `cmd=recall_s1` / `recall_s2` / `recall_s3` / `recall_s4`: Recalls a pre-programmed scene (position) for the cover.
     *   *(The API also supports `cmd=on`, `cmd=off`, and `cmd=dim val={Y}` for light channels; these are used by the `Light` entities described above.)*
 *   **GET `/zrap/chscan` / `/zrap/chscan/ch{X}`**: While available, this endpoint was found to return `-1` (unknown state) for cover channels and is therefore not currently used for determining cover state.
+
+## Icon
+
+The integration ships its own brand images in `custom_components/zeptrion_air/brand/` (`icon.png` and `logo.png`). Home Assistant 2026.3 and newer shows them for the integration. The Feller logo is a trademark of Feller AG and is used only to identify the supported devices.
 
 ## Versioning
 
