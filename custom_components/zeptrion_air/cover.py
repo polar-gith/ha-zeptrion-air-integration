@@ -34,11 +34,16 @@ from .const import (
     DEFAULT_STEP_DURATION_MS,
     SIGNAL_AVAILABILITY,
     SIGNAL_KEY_EVENT,
+    SIGNAL_TRAVEL_TIMES,
     ZEPTRION_AIR_WEBSOCKET_MESSAGE,
+    CONF_AUTO_TRAVEL_TIMES,
+    DEFAULT_AUTO_TRAVEL_TIMES,
     travel_option_key,
 )
-from .cover_motion import CoverMotion, Run, TravelTimes
-from .learning import async_get_learning_manager
+from .cover_motion import CoverMotion, Run, TravelTimes, TravelTimeSamples
+from .learning import async_get_learning_manager, async_store_travel_times
+
+AUTO_SAMPLES_KEPT = 5
 from .smartfront import KeyEvent
 
 # Timed commands move_open_<ms> / move_close_<ms> accept 100-32000 ms.
@@ -196,6 +201,10 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         self._stop_timer_cancel: CALLBACK_TYPE | None = None
         self._last_run: dict[str, Any] | None = None
 
+        self._auto_samples: dict[str, list[float]] = {}
+        self._attr_supported_features = self._features()
+
+    def _features(self) -> CoverEntityFeature:
         features = (
             CoverEntityFeature.OPEN
             | CoverEntityFeature.CLOSE
@@ -205,7 +214,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         )
         if self._travel.complete:
             features |= CoverEntityFeature.SET_POSITION
-        self._attr_supported_features = features
+        return features
 
     # ------------------------------------------------------------- state
 
@@ -299,6 +308,13 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         )
         self.async_on_remove(
             async_get_learning_manager(self.hass).async_add_listener(self.async_write_ha_state)
+        )
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                SIGNAL_TRAVEL_TIMES.format(self.config_entry.entry_id),
+                self._reload_travel_times,
+            )
         )
         self.async_on_remove(self._cancel_timers)
 
@@ -421,10 +437,11 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             return
         now = time.monotonic()
         if self._motion.moving:
-            # a key press while the motor runs stops it
+            # A key press while the motor runs ends the current run. With the
+            # opposite key the zApp may start the other direction right away
+            # (seen on 01.08.28): keep the key's direction as hint for that start.
             self._motion.stop_requested(now)
-        else:
-            self._motion.hint(function.direction, now)
+        self._motion.hint(function.direction, now)
 
     async def async_handle_websocket_message(self, event: Event) -> None:
         """Handle channel values of this blind (100 = motor runs, 0 = stands)."""
@@ -472,6 +489,56 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             # In learning mode a measurement is stopped exactly at the other end
             # stop, so the next run starts from a known end.
             self._motion.mark_end_stop("top" if run.direction == "up" else "bottom")
+        elif run.is_auto_sample and run.direction is not None and self._auto_travel_times():
+            self._auto_learn(run.direction, run.duration)
+        self.async_write_ha_state()
+
+    # ------------------------------------------------- automatic travel times
+
+    def _auto_travel_times(self) -> bool:
+        return bool(
+            self.config_entry.options.get(CONF_AUTO_TRAVEL_TIMES, DEFAULT_AUTO_TRAVEL_TIMES)
+        )
+
+    @callback
+    def _auto_learn(self, direction: str, duration: float) -> None:
+        """Take over the travel time the zApp ran a full run with.
+
+        The first full run sets an unknown travel time; a known one is only
+        changed when two of the last runs agree within 1 s and differ from it
+        by more than 0.5 s.
+        """
+        samples = self._auto_samples.setdefault(direction, [])
+        samples.append(round(duration, 2))
+        del samples[:-AUTO_SAMPLES_KEPT]
+        current = self._travel.for_direction(direction)  # type: ignore[arg-type]
+        if current is None:
+            value = round(duration, 1)
+        else:
+            pool = TravelTimeSamples()
+            (pool.up if direction == "up" else pool.down).extend(samples)
+            value = pool.result(direction)  # type: ignore[arg-type]
+            if value is None or abs(value - current) <= 0.5:
+                return
+        _LOGGER.info(
+            "Blind %s: travel time %s learned from the zApp: %.1f s (was %s)",
+            self._attr_name, direction, value, current,
+        )
+        async_store_travel_times(
+            self.hass,
+            self.config_entry,
+            {travel_option_key(direction, self._channel_id): value},
+        )
+
+    @callback
+    def _reload_travel_times(self) -> None:
+        options = self.config_entry.options
+        self._travel = TravelTimes(
+            up=_positive(options.get(travel_option_key("up", self._channel_id))),
+            down=_positive(options.get(travel_option_key("down", self._channel_id))),
+        )
+        self._motion.travel = self._travel
+        self._attr_supported_features = self._features()
         self.async_write_ha_state()
 
     # ------------------------------------------------- live position updates

@@ -32,6 +32,8 @@ class ZeptrionAirData:
     stream_down_since: float | None = None
     short_outages: int = 0
     unavailable_cancel_callback: Callable[[], None] | None = None
+    # options without the travel times (to tell a travel time update from a real change)
+    base_options: dict[str, Any] | None = None
 
 @dataclass
 class ZeptrionAirConfigEntry(ConfigEntry):

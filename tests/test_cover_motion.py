@@ -106,3 +106,11 @@ def test_timed_move_is_neither_full_run_nor_sample() -> None:
     run = motion.on_value(0, 25.0)  # stops by itself
     assert motion.position == 50.0
     assert not samples.add(run)
+
+
+def test_reached_end_only_at_the_end_it_moves_to() -> None:
+    motion = CoverMotion(TRAVEL, position=0.0)
+    motion.hint("up", 0.0)
+    motion.on_value(100, 0.0)
+    assert not motion.reached_end(0.1)  # starts at the bottom, moving up
+    assert motion.reached_end(49.0)

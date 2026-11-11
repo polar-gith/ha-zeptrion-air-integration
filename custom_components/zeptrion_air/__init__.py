@@ -42,7 +42,9 @@ from .const import (
     PLATFORMS as ZEPTRION_PLATFORMS,
     SIGNAL_AVAILABILITY,
     SIGNAL_KEY_EVENT,
+    SIGNAL_TRAVEL_TIMES,
     UNAVAILABLE_GRACE_S,
+    is_travel_option,
     ZEPTRION_AIR_WEBSOCKET_MESSAGE,
 )
 
@@ -152,6 +154,9 @@ async def async_setup_entry(
     )
 
     runtime_data: ZeptrionAirData = entry.runtime_data
+    runtime_data.base_options = {
+        k: v for k, v in entry.options.items() if not is_travel_option(k)
+    }
 
     # Smartfront (wall keys and sensors) is optional; 404 means none is fitted.
     try:
@@ -326,7 +331,12 @@ async def async_reload_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> None:
-    """Reload config entry."""
+    """Options changed: blind travel times are taken over live, anything else reloads."""
+    runtime_data = entry.runtime_data
+    current = {k: v for k, v in entry.options.items() if not is_travel_option(k)}
+    if isinstance(runtime_data, ZeptrionAirData) and runtime_data.base_options == current:
+        async_dispatcher_send(hass, SIGNAL_TRAVEL_TIMES.format(entry.entry_id))
+        return
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
 

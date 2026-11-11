@@ -18,6 +18,7 @@ CONF_TYPE: str = "type"
 CONF_FIRMWARE: str = "firmware"
 CONF_STEP_DURATION_MS: str = "step_duration_ms"
 CONF_LIGHT_POLLING: str = "light_polling"
+CONF_AUTO_TRAVEL_TIMES: str = "auto_travel_times"
 
 # Services
 SERVICE_BLIND_RECALL_S1: str = "blind_recall_s1"
@@ -28,6 +29,7 @@ SERVICE_BLIND_RECALL_S4: str = "blind_recall_s4"
 # Default values
 DEFAULT_STEP_DURATION_MS: int = 250
 DEFAULT_LIGHT_POLLING: bool = False
+DEFAULT_AUTO_TRAVEL_TIMES: bool = True
 
 # Validation values
 MIN_STEP_DURATION_MS: int = 100
@@ -61,6 +63,7 @@ MAX_PARALLEL_REQUESTS: int = 2
 # Dispatcher signals (formatted with the config entry id)
 SIGNAL_AVAILABILITY: str = "zeptrion_air_availability_{}"
 SIGNAL_KEY_EVENT: str = "zeptrion_air_key_event_{}"
+SIGNAL_TRAVEL_TIMES: str = "zeptrion_air_travel_times_{}"
 
 # Smartfront key events
 EVENT_PRESS: str = "press"
@@ -74,3 +77,8 @@ MAX_CHANNELS: int = 4
 def travel_option_key(direction: str, channel: int) -> str:
     """Option key of a blind's travel time, e.g. ``travel_up_ch1``."""
     return f"travel_{direction}_ch{channel}"
+
+
+def is_travel_option(key: str) -> bool:
+    """True for the per-blind travel time options (changed without a reload)."""
+    return key.startswith("travel_up_ch") or key.startswith("travel_down_ch")

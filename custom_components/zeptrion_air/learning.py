@@ -173,10 +173,8 @@ class LearningManager:
 
         for entry_id, values in by_entry.items():
             entry = self.hass.config_entries.async_get_entry(entry_id)
-            if entry is None:
-                continue
-            options = {**entry.options, **values}
-            self.hass.config_entries.async_update_entry(entry, options=options)
+            if entry is not None:
+                async_store_travel_times(self.hass, entry, values)
 
         missing = [
             name
@@ -301,3 +299,13 @@ def async_get_learning_manager(hass: HomeAssistant) -> LearningManager:
         manager = LearningManager(hass)
         domain_data[_DATA_KEY] = manager
     return manager
+
+
+@callback
+def async_store_travel_times(
+    hass: HomeAssistant, entry: Any, values: dict[str, float]
+) -> None:
+    """Merge travel times into a hub's options (blinds take them over without a reload)."""
+    if all(entry.options.get(key) == value for key, value in values.items()):
+        return
+    hass.config_entries.async_update_entry(entry, options={**entry.options, **values})

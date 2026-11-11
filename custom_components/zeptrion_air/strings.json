@@ -20,7 +20,6 @@
         "title": "Zeptrion Air options",
         "data": {
           "step_duration_ms": "Blind step duration (ms)",
-          "light_polling": "Poll light states every 60 s",
           "travel_up_ch1": "Channel 1: travel time up (s)",
           "travel_down_ch1": "Channel 1: travel time down (s)",
           "travel_up_ch2": "Channel 2: travel time up (s)",
@@ -28,19 +27,20 @@
           "travel_up_ch3": "Channel 3: travel time up (s)",
           "travel_down_ch3": "Channel 3: travel time down (s)",
           "travel_up_ch4": "Channel 4: travel time up (s)",
-          "travel_down_ch4": "Channel 4: travel time down (s)"
+          "travel_down_ch4": "Channel 4: travel time down (s)",
+          "auto_travel_times": "Take over blind travel times from the zApp"
         },
         "data_description": {
           "step_duration_ms": "Duration of a single up/down step for blinds (100-32000 ms).",
-          "light_polling": "Off by default. When on, every light channel of this hub is read every 60 s to correct on/off states missed on the websocket. Dimmer brightness cannot be read from the hub.",
-          "travel_up_ch1": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
-          "travel_down_ch1": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
-          "travel_up_ch2": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
-          "travel_down_ch2": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
-          "travel_up_ch3": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
-          "travel_down_ch3": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
-          "travel_up_ch4": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
-          "travel_down_ch4": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch."
+          "travel_up_ch1": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
+          "travel_down_ch1": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
+          "travel_up_ch2": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
+          "travel_down_ch2": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
+          "travel_up_ch3": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
+          "travel_down_ch3": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
+          "travel_up_ch4": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
+          "travel_down_ch4": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
+          "auto_travel_times": "The zApp switches a blind off when it reaches its end stop. A full run from one end to the other that nobody stopped therefore lasted exactly the travel time; it is taken over automatically."
         }
       }
     }
