@@ -28,8 +28,8 @@ from .const import (
     CONF_IP_ADDRESS,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS,
-    CONF_LIGHT_POLLING,
-    DEFAULT_LIGHT_POLLING,
+    CONF_AUTO_TRAVEL_TIMES,
+    DEFAULT_AUTO_TRAVEL_TIMES,
     MIN_STEP_DURATION_MS,
     MAX_STEP_DURATION_MS,
     travel_option_key,
@@ -291,20 +291,12 @@ class ZeptrionAirOptionsFlowHandler(config_entries.OptionsFlow):
             self.config_entry.data.get(CONF_STEP_DURATION_MS, DEFAULT_STEP_DURATION_MS)
         )
 
-        current_light_polling: bool = bool(
-            self.config_entry.options.get(CONF_LIGHT_POLLING, DEFAULT_LIGHT_POLLING)
-        )
-
         options_schema: vol.Schema = vol.Schema(
             {
                 vol.Optional(
                     CONF_STEP_DURATION_MS,
                     default=current_duration,
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_STEP_DURATION_MS, max=MAX_STEP_DURATION_MS)),
-                vol.Optional(
-                    CONF_LIGHT_POLLING,
-                    default=current_light_polling,
-                ): bool,
             }
         )
 
@@ -321,7 +313,10 @@ class ZeptrionAirOptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Coerce(float), vol.Range(min=0, max=300)
                 )
         if travel_fields:
-            options_schema = options_schema.extend(travel_fields)
+            auto = bool(self.config_entry.options.get(CONF_AUTO_TRAVEL_TIMES, DEFAULT_AUTO_TRAVEL_TIMES))
+            options_schema = options_schema.extend(
+                {vol.Optional(CONF_AUTO_TRAVEL_TIMES, default=auto): bool, **travel_fields}
+            )
 
         return self.async_show_form(
             step_id="init",

@@ -146,7 +146,8 @@ async def test_learning_mode_stores_travel_time(hass: HomeAssistant, fake_zapp, 
     await hass.services.async_call("switch", "turn_off", {"entity_id": switch}, blocking=True)
     await hass.async_block_till_done()
     assert entry.options["travel_up_ch1"] == pytest.approx(48.4, abs=0.05)
-    assert "travel_down_ch1" not in entry.options
+    # the unstopped full runs down were taken over from the zApp automatically
+    assert entry.options["travel_down_ch1"] == 60.0
 
     await _wait_for(lambda: entry.runtime_data is not None and entry.runtime_data.websocket_listener)
     assert await hass.config_entries.async_unload(entry.entry_id)
@@ -206,6 +207,47 @@ async def test_reversing_with_opposite_key_keeps_direction(hass: HomeAssistant, 
     assert hass.states.get(cover).state == "opening"
     await _value(hass, device, clock, 7120.0, 0)  # ends by itself
     assert hass.states.get(cover).attributes["end_stop"] == "top"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_travel_times_taken_over_from_full_runs(hass: HomeAssistant, fake_zapp, clock) -> None:
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host)
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    runtime = entry.runtime_data
+
+    # full run down (start unknown): end stop bottom, no sample yet
+    await _key(hass, device, clock, 8000.0, 6)
+    await _value(hass, device, clock, 8000.2, 100)
+    await _value(hass, device, clock, 8059.2, 0)
+    assert "travel_down_ch1" not in entry.options
+    # full run up from the bottom, ended by the zApp: travel time up taken over
+    await _key(hass, device, clock, 8100.0, 5)
+    await _value(hass, device, clock, 8100.2, 100)
+    await _value(hass, device, clock, 8161.2, 0)
+    await hass.async_block_till_done()
+    assert entry.options["travel_up_ch1"] == 61.0
+    # and down
+    await _key(hass, device, clock, 8200.0, 6)
+    await _value(hass, device, clock, 8200.2, 100)
+    await _value(hass, device, clock, 8259.3, 0)
+    await hass.async_block_till_done()
+    assert entry.options["travel_down_ch1"] == 59.1
+
+    # taken over live, without reloading the hub
+    assert entry.runtime_data is runtime
+    state = hass.states.get(cover)
+    assert state.attributes["travel_time_up"] == 61.0
+    assert state.attributes["current_position"] == 0
+
+    # a single deviating run does not change a known value
+    await _key(hass, device, clock, 8300.0, 5)
+    await _value(hass, device, clock, 8300.2, 100)
+    await _value(hass, device, clock, 8363.2, 0)
+    await hass.async_block_till_done()
+    assert entry.options["travel_up_ch1"] == 61.0
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

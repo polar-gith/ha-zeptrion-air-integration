@@ -76,6 +76,20 @@ class Run:
         return self.start_end == expected_start
 
 
+    @property
+    def is_auto_sample(self) -> bool:
+        """True if the zApp ended this run by itself after a full travel.
+
+        The zApp switches a blind's relay off when the blind arrives at its end
+        stop (its run time is learned by the device), so a run from one end stop
+        to the other that nobody stopped lasted the full travel time.
+        """
+        if self.direction is None or self.stopped_by_hand or self.timed or self.duration < MIN_SAMPLE_S:
+            return False
+        expected_start: EndStop = "bottom" if self.direction == "up" else "top"
+        return self.start_end == expected_start
+
+
 @dataclass
 class _Hint:
     direction: Direction | None
@@ -156,7 +170,8 @@ class CoverMotion:
         if travel is None or self._start_position is None:
             return False
         position = self._estimate(self._elapsed(now))
-        return position is not None and position in (0.0, 100.0)
+        target_end = 100.0 if self.direction == "up" else 0.0
+        return position == target_end
 
     def seconds_for(self, target: float) -> tuple[Direction, float] | None:
         """Direction and motor time to move from the current position to target."""
@@ -258,12 +273,16 @@ class TravelTimeSamples:
         return True
 
     def result(self, direction: Direction) -> float | None:
-        """Agreed travel time: at least MIN_SAMPLES values within SAMPLE_AGREEMENT_S of the median."""
-        values = self.up if direction == "up" else self.down
-        if len(values) < MIN_SAMPLES:
+        """Agreed travel time: the largest group of at least MIN_SAMPLES values that
+        lie within SAMPLE_AGREEMENT_S of each other, averaged."""
+        values = sorted(self.up if direction == "up" else self.down)
+        best: list[float] = []
+        start = 0
+        for end in range(len(values)):
+            while values[end] - values[start] > SAMPLE_AGREEMENT_S:
+                start += 1
+            if end - start + 1 > len(best):
+                best = values[start : end + 1]
+        if len(best) < MIN_SAMPLES:
             return None
-        median = statistics.median(values)
-        close = [value for value in values if abs(value - median) <= SAMPLE_AGREEMENT_S]
-        if len(close) < MIN_SAMPLES:
-            return None
-        return round(statistics.mean(close), 1)
+        return round(statistics.mean(best), 1)

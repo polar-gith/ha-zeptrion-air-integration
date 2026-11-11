@@ -30,7 +30,6 @@ This is a custom integration for Home Assistant that allows you to control [Zept
 *   **Robust connection:** Push updates over the zApp's WebSocket with an HTTP liveness check, a resync after every reconnect and a grace period before entities turn unavailable. See [Connection handling](#connection-handling).
 *   **DHCP discovery:** zApps are also found by their DHCP host name `zapp-*` (mDNS does not answer reliably on every device); a changed IP address is taken over automatically.
 *   **Diagnostics:** "Download diagnostics" on a zApp gives connection statistics and device data with host, serial number and names redacted.
-*   **Optional Light Polling:** Lights can additionally be polled every 60 s to correct on/off states missed on the websocket. Off by default; see [Options](#options).
 
 ## Light Entities (Switches & Dimmers)
 
@@ -56,7 +55,7 @@ Channels with category 1 (on/off) or category 3 (dimmer) are exposed as Home Ass
 
 *   The hub reports `100` for a dimmer that is on, whatever its actual level, so Home Assistant keeps the last brightness value it set. Should a hub ever report an intermediate value (1-99), it is taken over as brightness; `0` means off.
 *   After every command, the entity polls the channel's scan endpoint (`/zrap/chscan/ch{X}`) to refresh on/off state. For dimmers this poll is delayed (0.35 s plus a term proportional to how far the dimmer has to travel) to give the hub time to finish moving.
-*   Optionally, every light can be polled every 60 s (`SCAN_INTERVAL`), with at most one request per hub at a time (`PARALLEL_UPDATES = 1`). This corrects on/off states that were missed on the websocket, e.g. after a reconnect. Polling is **off by default** and is enabled per hub via the option "Poll light states every 60 s" (see [Options](#options)).
+*   Lights are not polled. After every reconnect of the event stream all channel states are read once, so changes made during a gap are corrected (this replaces the former option "Poll light states every 60 s", removed in 2026.11.5).
 *   The integration also listens to the hub's websocket push events and applies on/off changes reported from there in real time. Brightness changes made directly on the hub are not reflected, because the hub does not report them.
 
 **Devices**
@@ -95,7 +94,9 @@ The Smartfront temperature measures the module itself and therefore reads severa
 
 **Position (optional).** With the full travel time up and down configured for a blind, the integration estimates its position from the motor time, shows it while moving and supports "set position" (`move_open_<ms>` / `move_close_<ms>`; above 32 s it starts the movement and sends a stop). A movement reaching 95 % of the travel time snaps to the end. After a movement with unknown direction the position is unknown until the next full run. The last position survives a restart.
 
-**Travel times** are set per blind in the hub's options ("Channel n: travel time up / down (s)"), or measured with the **learning mode**:
+**Travel times are taken over from the zApp automatically.** The zApp learns a blind's run time itself (it does a few learning runs after installation) and switches the motor off when the blind arrives at its end stop. A full run from one end stop to the other that nobody stopped therefore lasted exactly the travel time: the first such run sets an unknown travel time, and a known one is updated when two of the last five runs agree within 1 s and differ from it by more than 0.5 s. This needs no action; switch it off with the option "Take over blind travel times from the zApp".
+
+Travel times can also be entered per blind in the hub's options ("Channel n: travel time up / down (s)"), or measured by hand with the **learning mode**, e.g. for devices whose run time is set longer than the travel:
 
 1.  Switch on "Blind learning mode" on any zApp with blinds. The switches of all zApps are coupled; the mode switches itself off after 60 min.
 2.  For every blind: close it fully and let it stop by itself; move it up and press stop the moment it arrives at the top; move it down and press stop when it arrives at the bottom. Do this twice. Wall keys and Home Assistant both work, in any order and across blinds.
@@ -122,14 +123,13 @@ The integration serves its blinds card at `/api/zeptrion_air/zeptrion-air-blinds
 
 ## Options
 
-Each hub (config entry) has its own options: **Settings > Devices & services > Zeptrion Air > (hub) > Configure**. Saving the options reloads that hub.
+Each hub (config entry) has its own options: **Settings > Devices & services > Zeptrion Air > (hub) > Configure**. Saving the options reloads that hub; changed travel times are taken over without a reload.
 
 | Option | Key | Default | Description |
 |---|---|---|---|
 | Blind step duration (ms) | `step_duration_ms` | 250 | Duration of a single up/down step for blinds (100-32000 ms). |
-| Poll light states every 60 s | `light_polling` | off | When on, every light channel of this hub is read from `/zrap/chscan/ch{X}` every 60 s to correct on/off states missed on the websocket. Dimmers keep their last brightness, because the hub reports `100` for any dimmed level. Load is small: one short HTTP request per light channel and minute. |
-
-Light polling usually isn't needed: the hub pushes on/off changes over the websocket, and the state is re-read after every command. Turn it on for hubs whose websocket connection drops regularly.
+| Take over blind travel times from the zApp | `auto_travel_times` | on | Only on hubs with blinds. See [Blinds](#blinds-direction-position-and-learning-mode). |
+| Channel n: travel time up / down (s) | `travel_up_chN`, `travel_down_chN` | 0 | Full travel time per blind; 0 = unknown (no position). |
 
 ## Current Limitations
 
