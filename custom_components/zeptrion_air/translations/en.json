@@ -87,6 +87,9 @@
     "switch": {
       "blind_learning": {
         "name": "Blind learning mode"
+      },
+      "blind_learning_apply_all": {
+        "name": "Blind learning: apply to all blinds"
       }
     }
   }

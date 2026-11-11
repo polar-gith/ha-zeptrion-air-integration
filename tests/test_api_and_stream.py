@@ -40,7 +40,7 @@ async def test_command_not_retried_on_timeout(fake_zapp) -> None:
     assert device.commands == [(1, "move_open_5000")]
 
 
-async def test_read_retried_on_timeout(fake_zapp) -> None:
+async def test_read_retried_on_server_error(fake_zapp) -> None:
     device, host = fake_zapp
     device.http_down = True
     async with aiohttp.ClientSession() as session:

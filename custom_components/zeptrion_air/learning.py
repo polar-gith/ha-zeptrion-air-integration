@@ -45,6 +45,9 @@ class LearningManager:
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
         self.active = False
+        # Transfer the learned times to all blinds without an own result
+        # (for installations where all blinds are the same). Set by a coupled switch.
+        self.apply_to_all = False
         self.started_at = None
         self._blinds: dict[tuple[str, int], _Blind] = {}
         self._listeners: list[Callable[[], None]] = []
@@ -62,6 +65,11 @@ class LearningManager:
                 self._listeners.remove(listener)
 
         return remove
+
+    @callback
+    def notify(self) -> None:
+        """Tell all switches and blinds that the learning state changed."""
+        self._notify()
 
     @callback
     def _notify(self) -> None:
@@ -157,6 +165,12 @@ class LearningManager:
                 )
             )
 
+        if self.apply_to_all:
+            transferred = self._transfer_to_all(by_entry)
+            if transferred:
+                lines.append("")
+                lines.append(_text(self.hass, "transferred") + transferred)
+
         for entry_id, values in by_entry.items():
             entry = self.hass.config_entries.async_get_entry(entry_id)
             if entry is None:
@@ -164,7 +178,14 @@ class LearningManager:
             options = {**entry.options, **values}
             self.hass.config_entries.async_update_entry(entry, options=options)
 
-        missing = self._blinds_without_result()
+        missing = [
+            name
+            for (entry_id, channel), name in _all_blinds(self.hass).items()
+            if not any(
+                travel_option_key(direction, channel) in by_entry.get(entry_id, {})
+                for direction in ("up", "down")
+            )
+        ]
         if missing:
             lines.append("")
             lines.append(_text(self.hass, "missing") + ", ".join(sorted(missing)))
@@ -177,15 +198,28 @@ class LearningManager:
         )
         _LOGGER.info("Blind learning mode finished: %s", message.replace("\n", "; "))
 
-    def _blinds_without_result(self) -> list[str]:
-        names: list[str] = []
-        for (entry_id, channel), name in _all_blinds(self.hass).items():
-            blind = self._blinds.get((entry_id, channel))
-            if blind is None or (
-                blind.samples.result("up") is None and blind.samples.result("down") is None
-            ):
-                names.append(name)
-        return names
+    def _transfer_to_all(self, by_entry: dict[str, dict[str, float]]) -> str:
+        """Pool all measurements and give the agreed time to every blind without its own."""
+        pooled = TravelTimeSamples()
+        for blind in self._blinds.values():
+            pooled.up.extend(blind.samples.up)
+            pooled.down.extend(blind.samples.down)
+        results = {direction: pooled.result(direction) for direction in ("up", "down")}
+        count = 0
+        for (entry_id, channel), _name in _all_blinds(self.hass).items():
+            own = by_entry.setdefault(entry_id, {})
+            for direction, value in results.items():
+                key = travel_option_key(direction, channel)
+                if value is not None and key not in own:
+                    own[key] = value
+                    count += 1
+        if not count:
+            return ""
+        return _text(self.hass, "transferred_values").format(
+            up=_fmt(self.hass, results["up"], pooled.up),
+            down=_fmt(self.hass, results["down"], pooled.down),
+            count=count,
+        )
 
 
 _TEXTS: dict[str, dict[str, str]] = {
@@ -207,6 +241,8 @@ _TEXTS: dict[str, dict[str, str]] = {
         "missing": "No usable measurement: ",
         "none": "No measurements were recorded.",
         "not_agreed": "not agreed",
+        "transferred": "Transferred to all blinds without their own result: ",
+        "transferred_values": "up {up}, down {down} ({count} values)",
     },
     "de": {
         "start_title": "Zeptrion Air: Fahrzeiten einmessen",
@@ -226,6 +262,8 @@ _TEXTS: dict[str, dict[str, str]] = {
         "missing": "Keine brauchbare Messung: ",
         "none": "Es wurden keine Messungen aufgezeichnet.",
         "not_agreed": "nicht übereinstimmend",
+        "transferred": "Auf alle Storen ohne eigenes Ergebnis übertragen: ",
+        "transferred_values": "auf {up}, ab {down} ({count} Werte)",
     },
 }
 

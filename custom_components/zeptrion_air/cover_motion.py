@@ -133,6 +133,13 @@ class CoverMotion:
             return self._finish(now)
         return None
 
+    def mark_end_stop(self, end_stop: EndStop) -> None:
+        """The blind is known to be at this end stop (e.g. stopped there in learning mode)."""
+        if self.moving:
+            return
+        self.end_stop = end_stop
+        self.position = 100.0 if end_stop == "top" else 0.0
+
     # ---------------------------------------------------------------- output
 
     def current_position(self, now: float) -> float | None:

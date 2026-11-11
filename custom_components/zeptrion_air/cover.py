@@ -466,9 +466,12 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             "duration": round(run.duration, 1),
             "stopped_by_hand": run.stopped_by_hand,
         }
-        async_get_learning_manager(self.hass).async_record(
+        if async_get_learning_manager(self.hass).async_record(
             self.config_entry.entry_id, self._channel_id, self._attr_name, run
-        )
+        ):
+            # In learning mode a measurement is stopped exactly at the other end
+            # stop, so the next run starts from a known end.
+            self._motion.mark_end_stop("top" if run.direction == "up" else "bottom")
         self.async_write_ha_state()
 
     # ------------------------------------------------- live position updates

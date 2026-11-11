@@ -103,6 +103,8 @@ The Smartfront temperature measures the module itself and therefore reads severa
 2.  For every blind: close it fully and let it stop by itself; move it up and press stop the moment it arrives at the top; move it down and press stop when it arrives at the bottom. Do this twice. Wall keys and Home Assistant both work, in any order and across blinds.
 3.  Switch learning mode off. A time is saved when at least two measurements agree within 1 s; a notification lists the results and blinds without a usable measurement.
 
+If all blinds are the same (height, drive), switch on **"Blind learning: apply to all blinds"** (also coupled across zApps) before switching learning mode off: all measurements are then pooled and the agreed times are given to every blind without its own result, so measuring one blind twice is enough.
+
 A measurement is a movement that started at a known end stop, went towards the other end and was stopped by hand; timed moves (steps, set position) never count. During learning, each blind shows its measurements in the `learning` attribute; `last_run` shows direction, duration and whether it was stopped by hand.
 
 ## Connection handling

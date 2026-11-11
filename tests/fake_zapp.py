@@ -66,9 +66,9 @@ class FakeZapp:
         path = request.path
         self.requests.append(f"{request.method} {path}")
         if self.http_down:
-            if path == "/zrap/ws":
-                raise web.HTTPServiceUnavailable()
-            await asyncio.sleep(30)
+            # device unreachable: fail fast (a long sleep here would hold the
+            # client's request slots and make tests timing-dependent)
+            raise web.HTTPServiceUnavailable()
         if path == "/zrap/ws":
             return await self._websocket(request)
         self.in_flight += 1

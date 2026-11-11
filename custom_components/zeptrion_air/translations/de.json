@@ -87,6 +87,9 @@
     "switch": {
       "blind_learning": {
         "name": "Storen-Lernmodus"
+      },
+      "blind_learning_apply_all": {
+        "name": "Storen-Lernmodus: auf alle Storen übertragen"
       }
     }
   }

@@ -151,3 +151,42 @@ async def test_learning_mode_stores_travel_time(hass: HomeAssistant, fake_zapp, 
     await _wait_for(lambda: entry.runtime_data is not None and entry.runtime_data.websocket_listener)
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_learning_result_transferred_to_all_blinds(hass: HomeAssistant, fake_zapp, clock) -> None:
+    device, host = fake_zapp
+    device.channels[2] = {"name": "Blind 2", "group": "Living", "icon": "1443", "type": "00", "cat": "5"}
+    entry = await _setup(hass, device, host)
+    learning = _eid(hass, "switch", f"zapp_{device.serial}_blind_learning")
+    apply_all = _eid(hass, "switch", f"zapp_{device.serial}_blind_learning_apply_all")
+
+    await hass.services.async_call("switch", "turn_on", {"entity_id": apply_all}, blocking=True)
+    await hass.services.async_call("switch", "turn_on", {"entity_id": learning}, blocking=True)
+
+    # only blind 1 is measured: down full run, then up/down stopped by hand, twice
+    t = 5000.0
+    await _key(hass, device, clock, t, 6)
+    await _value(hass, device, clock, t + 0.2, 100)
+    await _value(hass, device, clock, t + 60.2, 0)
+    for up_s, down_s in ((48.2, 41.0), (48.6, 41.4)):
+        t += 100
+        await _key(hass, device, clock, t, 5)
+        await _value(hass, device, clock, t + 0.2, 100)
+        await _key(hass, device, clock, t + 0.2 + up_s, 5)
+        await _value(hass, device, clock, t + 0.2 + up_s, 0)
+        t += 100
+        await _key(hass, device, clock, t, 6)
+        await _value(hass, device, clock, t + 0.2, 100)
+        await _key(hass, device, clock, t + 0.2 + down_s, 6)
+        await _value(hass, device, clock, t + 0.2 + down_s, 0)
+
+    await hass.services.async_call("switch", "turn_off", {"entity_id": learning}, blocking=True)
+    await hass.async_block_till_done()
+    assert entry.options["travel_up_ch1"] == pytest.approx(48.4, abs=0.05)
+    assert entry.options["travel_down_ch1"] == pytest.approx(41.2, abs=0.05)
+    assert entry.options["travel_up_ch2"] == pytest.approx(48.4, abs=0.05)
+    assert entry.options["travel_down_ch2"] == pytest.approx(41.2, abs=0.05)
+
+    await _wait_for(lambda: entry.runtime_data is not None and entry.runtime_data.websocket_listener)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
