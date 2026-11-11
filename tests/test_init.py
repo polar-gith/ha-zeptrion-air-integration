@@ -115,6 +115,8 @@ async def test_long_outage_makes_entities_unavailable(hass: HomeAssistant, fake_
     await _wait_for(lambda: listener.connected)
     cover = _entity_id(hass, f"zapp_{device.serial}_ch1", "cover")
     light = _entity_id(hass, f"zapp_{device.serial}_ch2_light", "light")
+    # keep reconnect attempts short so the test does not depend on backoff growth
+    listener._backoff_min, listener._backoff_max = 0.1, 0.5
 
     device.http_down = True
     await device.drop_websockets()

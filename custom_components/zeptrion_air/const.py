@@ -40,6 +40,7 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.LIGHT,
     Platform.EVENT,
+    Platform.SWITCH,
 ]
 
 # Events
@@ -65,3 +66,11 @@ SIGNAL_KEY_EVENT: str = "zeptrion_air_key_event_{}"
 EVENT_PRESS: str = "press"
 EVENT_RELEASE: str = "release"
 MAX_SMARTFRONT_KEYS: int = 8
+
+# Blind travel times (options, seconds; 0 / missing = unknown)
+MAX_CHANNELS: int = 4
+
+
+def travel_option_key(direction: str, channel: int) -> str:
+    """Option key of a blind's travel time, e.g. ``travel_up_ch1``."""
+    return f"travel_{direction}_ch{channel}"
