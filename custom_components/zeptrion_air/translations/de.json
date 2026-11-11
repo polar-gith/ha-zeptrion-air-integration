@@ -10,7 +10,8 @@
     },
     "abort": {
       "already_configured": "Gerät ist bereits eingerichtet",
-      "cannot_connect": "Verbindung fehlgeschlagen"
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "not_zeptrion_device": "Kein Zeptrion-Air-Gerät"
     }
   },
   "options": {
@@ -25,6 +26,46 @@
           "step_duration_ms": "Dauer eines einzelnen Auf-/Ab-Schritts der Storen (100-32000 ms).",
           "light_polling": "Standardmässig aus. Wenn eingeschaltet, wird jeder Licht-Kanal dieses Hubs alle 60 s abgefragt, um über den Websocket verpasste Ein/Aus-Zustände zu korrigieren. Die Dimmer-Helligkeit kann vom Hub nicht gelesen werden."
         }
+      }
+    }
+  },
+  "entity": {
+    "event": {
+      "wall_keys": {
+        "name": "Wandtasten",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "key_1_press": "Taste 1 gedrückt",
+              "key_1_release": "Taste 1 losgelassen",
+              "key_2_press": "Taste 2 gedrückt",
+              "key_2_release": "Taste 2 losgelassen",
+              "key_3_press": "Taste 3 gedrückt",
+              "key_3_release": "Taste 3 losgelassen",
+              "key_4_press": "Taste 4 gedrückt",
+              "key_4_release": "Taste 4 losgelassen",
+              "key_5_press": "Taste 5 gedrückt",
+              "key_5_release": "Taste 5 losgelassen",
+              "key_6_press": "Taste 6 gedrückt",
+              "key_6_release": "Taste 6 losgelassen",
+              "key_7_press": "Taste 7 gedrückt",
+              "key_7_release": "Taste 7 losgelassen",
+              "key_8_press": "Taste 8 gedrückt",
+              "key_8_release": "Taste 8 losgelassen"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "smartfront_temperature": {
+        "name": "Smartfront-Temperatur"
+      },
+      "smartfront_illuminance": {
+        "name": "Smartfront-Helligkeit"
+      },
+      "smartfront_humidity": {
+        "name": "Smartfront-Feuchte"
       }
     }
   }

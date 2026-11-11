@@ -6,11 +6,23 @@
     "@polar-gith"
   ],
   "config_flow": true,
-  "dependencies": ["http", "lovelace"],
+  "dependencies": [
+    "http",
+    "lovelace"
+  ],
+  "dhcp": [
+    {
+      "hostname": "zapp-*"
+    }
+  ],
   "documentation": "https://github.com/polar-gith/ha-zeptrion-air-integration",
-  "iot_class": "local_polling",
+  "iot_class": "local_push",
   "issue_tracker": "https://github.com/polar-gith/ha-zeptrion-air-integration/issues",
-  "requirements": ["websockets>=10.0"],
-  "version": "2026.11.2",
-  "zeroconf": ["_zapp._tcp.local."]
+  "requirements": [
+    "xmltodict>=0.13.0"
+  ],
+  "version": "2026.11.3",
+  "zeroconf": [
+    "_zapp._tcp.local."
+  ]
 }

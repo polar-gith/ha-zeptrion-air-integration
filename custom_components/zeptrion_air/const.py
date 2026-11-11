@@ -34,7 +34,34 @@ MIN_STEP_DURATION_MS: int = 100
 MAX_STEP_DURATION_MS: int = 32000
 
 # Platforms
-PLATFORMS: list[Platform] = [Platform.COVER, Platform.BUTTON, Platform.SENSOR, Platform.LIGHT]
+PLATFORMS: list[Platform] = [
+    Platform.COVER,
+    Platform.BUTTON,
+    Platform.SENSOR,
+    Platform.LIGHT,
+    Platform.EVENT,
+]
 
 # Events
 ZEPTRION_AIR_WEBSOCKET_MESSAGE: str = "zeptrion_air_websocket_message"
+
+# Connection handling (see docs/protocol.md of diaznet/zeptrionair-api, section 5):
+# the zApp sends nothing while idle and does not answer WebSocket pings, so a
+# cheap HTTP request checks that it is still there after this much silence.
+LIVENESS_INTERVAL_S: float = 60.0
+# Entities only become unavailable after the event stream has been down this long.
+UNAVAILABLE_GRACE_S: float = 60.0
+# Reconnect backoff with +/-20 % jitter, so 17 zApps do not reconnect in lockstep.
+RECONNECT_BACKOFF_MIN_S: float = 1.0
+RECONNECT_BACKOFF_MAX_S: float = 60.0
+# The zApp web server is small: at most this many HTTP requests per device at once.
+MAX_PARALLEL_REQUESTS: int = 2
+
+# Dispatcher signals (formatted with the config entry id)
+SIGNAL_AVAILABILITY: str = "zeptrion_air_availability_{}"
+SIGNAL_KEY_EVENT: str = "zeptrion_air_key_event_{}"
+
+# Smartfront key events
+EVENT_PRESS: str = "press"
+EVENT_RELEASE: str = "release"
+MAX_SMARTFRONT_KEYS: int = 8

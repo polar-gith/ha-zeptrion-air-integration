@@ -10,7 +10,7 @@ This is a custom integration for Home Assistant that allows you to control [Zept
 
 ## Features
 
-*   **mDNS Discovery:** Automatically discovers Zeptrion Air hubs (devices with hostnames starting `zapp-`) on your local network.
+*   **mDNS and DHCP Discovery:** Automatically discovers Zeptrion Air hubs (devices with hostnames starting `zapp-`) on your local network.
 *   **Configuration Flow:** Allows setting up discovered devices and configuring options like step duration for blinds.
 *   **Cover Control (Blinds/Markise):**
     *   Full support for Zeptrion channels controlling blinds/shutters (Category 5) and awnings/markise (Category 6).
@@ -26,6 +26,11 @@ This is a custom integration for Home Assistant that allows you to control [Zept
 *   **Button Entities:** Provides button entities in Home Assistant for each of the custom cover services (Step Up/Down, S1-S4 scenes), making them easily accessible from the UI.
 *   **Sensor Entities:** Exposes channel name, group, and Zeptrion icon ID as sensor entities (disabled by default). These can be enabled by the user if desired.
 *   **Configurable Step Duration:** The duration (in milliseconds) for the "up step" and "down step" services can be configured via the integration's options flow.
+*   **Wall keys as events (Smartfront):** If a Smartfront is fitted, the zApp gets one event entity "Wall keys" with an event type per key and action (`key_5_press`, `key_5_release`, ...), including Smartbuttons. See [Wall keys and Smartfront sensors](#wall-keys-and-smartfront-sensors).
+*   **Smartfront sensors:** Temperature, and illuminance / humidity where the Smartfront has them, read every 60 s.
+*   **Robust connection:** Push updates over the zApp's WebSocket with an HTTP liveness check, a resync after every reconnect and a grace period before entities turn unavailable. See [Connection handling](#connection-handling).
+*   **DHCP discovery:** zApps are also found by their DHCP host name `zapp-*` (mDNS does not answer reliably on every device); a changed IP address is taken over automatically.
+*   **Diagnostics:** "Download diagnostics" on a zApp gives connection statistics and device data with host, serial number and names redacted.
 *   **Optional Light Polling:** Lights can additionally be polled every 60 s to correct on/off states missed on the websocket. Off by default; see [Options](#options).
 
 ## Light Entities (Switches & Dimmers)
@@ -59,6 +64,41 @@ Channels with category 1 (on/off) or category 3 (dimmer) are exposed as Home Ass
 
 *   Each light channel is registered as its own Home Assistant device, linked to the parent hub via `via_device_id` (the hub's device-registry ID, replacing the deprecated `via_device` identifier tuple), with the device model shown as "Switch" or "Dimmer" depending on category. This also applies to hubs with a single channel.
 
+## Wall keys and Smartfront sensors
+
+A zApp with a Smartfront reports key presses on its WebSocket. The integration creates **one** event entity per zApp ("Wall keys"), not one per key, to keep the number of entities small:
+
+*   Event types: `key_<n>_press` and `key_<n>_release` for every key in use (n = 1-8). Unused keys are left out.
+*   Every event carries `key`, `function` (`channel`, `smartbutton` or `unknown`) and `code`; channel keys also `channels` and `direction` (`up` / `down`).
+*   The key functions come from the Smartfront's `btfu` list (`/zapi/smartfront/id`). Smartbuttons (code `1000`) can trigger Home Assistant automations this way instead of only sending fixed HTTP requests.
+
+Example trigger for key 5 being pressed:
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: event.zapp_21510211_wall_keys
+    not_from: unavailable
+conditions:
+  - condition: state
+    entity_id: event.zapp_21510211_wall_keys
+    attribute: event_type
+    state: key_5_press
+```
+
+The Smartfront temperature measures the module itself and therefore reads several degrees above room temperature.
+
+## Connection handling
+
+The zApp pushes channel changes over the WebSocket `ws://<host>/zrap/ws`. It sends nothing while idle and does not answer WebSocket pings, so:
+
+*   After 60 s without a message, a cheap `GET /zrap/rssi` checks that the zApp still answers. If it does not, the connection is dropped and rebuilt.
+*   Reconnects use exponential backoff from 1 s to 60 s with +/-20 % jitter.
+*   After every (re)connect all channel states are read once (`/zrap/chscan`), so a change made during the gap is not lost.
+*   Entities only become unavailable after 60 s without a connection. Short drops are logged at debug level; a longer outage logs one warning and one info message when the zApp is back.
+
+HTTP requests follow the device's rules: reads are retried, commands are sent exactly once (a repeated `move_open_<ms>` or `dim_down_<ms>` would act twice), the 302 answer to a command is not followed, and at most two requests run against a zApp at a time.
+
 ## Dashboard card resource
 
 The integration serves its blinds card at `/api/zeptrion_air/zeptrion-air-blinds-card.js` and registers it once as a Lovelace resource (storage mode only). Earlier versions could add the resource again on every Home Assistant start, because the resource list had not been loaded yet when it was checked. The resource list is now loaded first, the resource is added only when missing, and duplicates left behind by earlier versions are removed automatically on the next start.
@@ -78,6 +118,7 @@ Light polling usually isn't needed: the hub pushes on/off changes over the webso
 
 *   **Dimmer Brightness is Optimistic:** see [Light Entities (Switches & Dimmers)](#light-entities-switches--dimmers) above.
 *   **No Position Feedback for Covers:** The Zeptrion Air API does not provide real-time position feedback for blinds/covers. Therefore, the Home Assistant cover entities will not display the current position (e.g., 50% open). Status updates are optimistic based on commands sent.
+*   **Wall keys need a Smartfront:** Without a Smartfront the zApp reports no key presses.
 *   **Sensors are Static:** The sensor entities for channel name, group, and icon ID are populated once during setup and do not update dynamically if changed on the Zeptrion device itself (though these are typically static).
 
 ## Installation
@@ -104,7 +145,13 @@ This integration interacts with the Zeptrion Air hub's local REST API using the 
     *   `cmd=move_close_{time_ms}`: Moves the cover down for a specified duration in milliseconds.
     *   `cmd=recall_s1` / `recall_s2` / `recall_s3` / `recall_s4`: Recalls a pre-programmed scene (position) for the cover.
     *   *(The API also supports `cmd=on`, `cmd=off`, and `cmd=dim val={Y}` for light channels; these are used by the `Light` entities described above.)*
-*   **GET `/zrap/chscan` / `/zrap/chscan/ch{X}`**: While available, this endpoint was found to return `-1` (unknown state) for cover channels and is therefore not currently used for determining cover state.
+*   **GET `/zrap/chscan` / `/zrap/chscan/ch{X}`**: Channel states. Lights report `0` / `100`; covers report `100` while the motor runs and `0` when it stands (firmware 01.08.28), never a position. Read after every reconnect and, for lights, after commands.
+*   **GET `/zrap/rssi`**: Wi-Fi signal, also used as liveness check.
+*   **GET `/zapi/smartfront/id`** and **`/zapi/smartfront/sensors`**: Smartfront key functions (`btfu`) and sensor values; `404` when no Smartfront is fitted.
+*   **WebSocket `/zrap/ws`**: `eid1` frames for channel changes, `eid2` frames for key states.
+*   `/zrap/net` is never read as a whole: in access-point mode it contains the Wi-Fi password.
+
+The protocol notes in [diaznet/zeptrionair-api, `docs/protocol.md`](https://github.com/diaznet/zeptrionair-api/blob/main/docs/protocol.md) are the most complete description of these interfaces.
 
 ## Icon
 
@@ -124,6 +171,8 @@ Contributions to this integration are very welcome! If you have ideas for improv
 Please try to follow Home Assistant's development guidelines and ensure code is well-tested and documented.
 
 ## Credits
+
+Thanks to [**Jeremy Diaz (diaznet)**](https://github.com/diaznet) for [zeptrionair-api](https://github.com/diaznet/zeptrionair-api) and [ha-zeptrionair](https://github.com/diaznet/ha-zeptrionair) (MIT). His measurements on real zApps (3340-2-B, firmware 01.08.28) and his protocol documentation are the basis of the connection handling, the safe HTTP command rules, the Smartfront key decoding (`btfu`, `eid2`), the Smartfront sensors and DHCP discovery in this integration since 2026.11.3. Ideas and code adapted from his work are marked in the source.
 
 This project is based on the original work by [**alternize**](https://github.com/alternize) at [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration). It is maintained by [**polar-gith**](https://github.com/polar-gith) and has since grown well beyond the original, so it is developed independently from here on. Please file issues and feature requests for this version here.
 

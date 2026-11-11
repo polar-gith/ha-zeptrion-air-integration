@@ -2,22 +2,25 @@
 Custom integration to integrate Zeptrion Air devices with Home Assistant.
 
 For more details about this integration, please refer to
-https://github.com/alternize/ha-zeptrion-air-integration
+https://github.com/polar-gith/ha-zeptrion-air-integration
 """
 
 from __future__ import annotations
 
 import logging
-import re 
+import re
+import time
 from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration, Integration
 from homeassistant.helpers import device_registry
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from datetime import timedelta
 
 from .api import (
@@ -27,11 +30,21 @@ from .api import (
 )
 from .coordinator import ZeptrionAirDataUpdateCoordinator
 from .data import ZeptrionAirData
+from .smartfront import KeyEvent, parse_btfu
 from .websocket_listener import ZeptrionAirWebsocketListener
 
 from .frontend import async_setup_frontend
 
-from .const import DOMAIN, LOGGER, CONF_HOSTNAME, PLATFORMS as ZEPTRION_PLATFORMS
+from .const import (
+    CONF_HOSTNAME,
+    DOMAIN,
+    LOGGER,
+    PLATFORMS as ZEPTRION_PLATFORMS,
+    SIGNAL_AVAILABILITY,
+    SIGNAL_KEY_EVENT,
+    UNAVAILABLE_GRACE_S,
+    ZEPTRION_AIR_WEBSOCKET_MESSAGE,
+)
 
 if TYPE_CHECKING:
     pass
@@ -87,9 +100,9 @@ async def async_setup_entry(
         LOGGER.debug(f"Full /zrap/chdes response for {hostname}: {channel_des_data}")
 
     except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-        LOGGER.error(f"Failed to communicate with Zeptrion Air device {hostname} during setup: {e}")
+        # Let Home Assistant retry the setup later (device offline or busy at start).
         entry.runtime_data = None
-        return False
+        raise ConfigEntryNotReady(f"Zeptrion Air device {hostname} not reachable: {e}") from e
     except Exception as e:
         LOGGER.error(f"Unexpected error setting up Zeptrion Air device {hostname}: {e}")
         entry.runtime_data = None
@@ -138,57 +151,24 @@ async def async_setup_entry(
         **hub_device_info 
     )
 
-    current_runtime_data = entry.runtime_data
-    if isinstance(current_runtime_data, ZeptrionAirData):
-        if entry.unique_id:
-            websocket_listener = ZeptrionAirWebsocketListener(hostname=hostname, hass_instance=hass, hub_unique_id=entry.unique_id)
-            await websocket_listener.start()
-            current_runtime_data.websocket_listener = websocket_listener
-        else:
-            LOGGER.error(f"[{hostname}] Cannot start WebSocket listener: entry.unique_id is not set. This is unexpected.")
-            # Optionally, set current_runtime_data.websocket_listener to None or handle error
-            current_runtime_data.websocket_listener = None # Ensure it's None if not started
-        if current_runtime_data.websocket_listener: # Only proceed if listener was successfully created and started
-            LOGGER.info(f"[{hostname}] WebSocket listener started and attached to runtime_data.")
+    runtime_data: ZeptrionAirData = entry.runtime_data
 
-            # Define and schedule the watchdog
-            async def async_websocket_watchdog(now=None):
-                """Check the websocket listener and restart if necessary."""
-                # Ensure websocket_listener is not None before using it
-                if current_runtime_data.websocket_listener:
-                    LOGGER.debug(f"[{hostname}] Watchdog: Checking WebSocket listener status.")
-                    if not current_runtime_data.websocket_listener.is_alive():
-                        LOGGER.warning(f"[{hostname}] Watchdog: WebSocket listener found inactive. Attempting restart.")
-                        try:
-                            await current_runtime_data.websocket_listener.start()
-                            LOGGER.info(f"[{hostname}] Watchdog: WebSocket listener restarted successfully.")
-                        except Exception as e:
-                            LOGGER.error(f"[{hostname}] Watchdog: Error restarting WebSocket listener: {e}")
-                    else:
-                        LOGGER.debug(f"[{hostname}] Watchdog: WebSocket listener is alive.")
-                else:
-                    LOGGER.debug(f"[{hostname}] Watchdog: WebSocket listener is None, skipping check.")
-
-
-            # Schedule the watchdog to run every 5 minutes
-            cancel_watchdog_callback = async_track_time_interval(
-                hass,
-                async_websocket_watchdog,
-                timedelta(minutes=5)
-            )
-            current_runtime_data.websocket_watchdog_cancel_callback = cancel_watchdog_callback
-            LOGGER.info(f"[{hostname}] WebSocket listener watchdog scheduled every 5 minutes.")
-        else:
-            LOGGER.info(f"[{hostname}] WebSocket listener was not started (e.g. missing unique_id). Watchdog not scheduled.")
-
-    else:
-        # This block handles the case where current_runtime_data is not a ZeptrionAirData instance.
-        # It's less likely to have a 'websocket_listener' local variable here that needs stopping
-        # because the listener's lifecycle is tied to current_runtime_data being the correct type.
-        LOGGER.error(f"[{hostname}] Cannot start WebSocket listener or watchdog: runtime_data is not a ZeptrionAirData instance.")
-        # For now, we log the error and proceed without WS, as core functionality might still work.
-        # Consider returning False if WS is essential:
-        # return False
+    # Smartfront (wall keys and sensors) is optional; 404 means none is fitted.
+    try:
+        runtime_data.smartfront = await api_client.async_get_smartfront_info()
+    except ZeptrionAirApiClientError as e:
+        LOGGER.info("[%s] Could not read Smartfront information: %s", hostname, e)
+        runtime_data.smartfront = None
+    if runtime_data.smartfront:
+        runtime_data.keys = parse_btfu(runtime_data.smartfront.get("btfu"))
+        LOGGER.debug("[%s] Smartfront %s, keys: %s", hostname, runtime_data.smartfront, runtime_data.keys)
+        try:
+            sensors = await api_client.async_get_smartfront_sensors()
+        except ZeptrionAirApiClientError as e:
+            LOGGER.debug("[%s] Could not read Smartfront sensors: %s", hostname, e)
+            sensors = None
+        if coordinator.data is not None:
+            coordinator.data["smartfront_sensors"] = sensors
 
     identified_channels: list[dict[str, Any]] = []
     
@@ -303,6 +283,8 @@ async def async_setup_entry(
     LOGGER.debug("Successfully forwarded entry setups for %s.", entry.entry_id)
     
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+
+    _async_start_event_stream(hass, entry, api_client, serial_number)
     
     LOGGER.info("Zeptrion Air integration setup successfully completed for %s.", entry.title)
     return True
@@ -313,19 +295,18 @@ async def async_unload_entry(
     entry: ConfigEntry,
 ) -> bool:
     """Handle removal of an entry."""
-    # Stop the websocket listener if it exists
+    # Stop the event stream, its watchdog and a pending unavailability timer
     if entry.runtime_data and isinstance(entry.runtime_data, ZeptrionAirData):
-        # Stop the watchdog first
-        if entry.runtime_data.websocket_watchdog_cancel_callback:
-            LOGGER.debug(f"[{entry.data.get(CONF_HOSTNAME, 'Unknown Host')}] Unloading: Cancelling websocket watchdog.")
-            entry.runtime_data.websocket_watchdog_cancel_callback()
-            entry.runtime_data.websocket_watchdog_cancel_callback = None # Clear the stored callback
-
-        # Then stop the websocket listener
-        if entry.runtime_data.websocket_listener:
-            LOGGER.debug(f"[{entry.data.get(CONF_HOSTNAME, 'Unknown Host')}] Unloading: Stopping websocket listener.")
-            await entry.runtime_data.websocket_listener.stop()
-            entry.runtime_data.websocket_listener = None
+        runtime_data = entry.runtime_data
+        if runtime_data.websocket_watchdog_cancel_callback:
+            runtime_data.websocket_watchdog_cancel_callback()
+            runtime_data.websocket_watchdog_cancel_callback = None
+        if runtime_data.unavailable_cancel_callback:
+            runtime_data.unavailable_cancel_callback()
+            runtime_data.unavailable_cancel_callback = None
+        if runtime_data.websocket_listener:
+            await runtime_data.websocket_listener.stop()
+            runtime_data.websocket_listener = None
 
     unload_ok: bool = await hass.config_entries.async_unload_platforms(entry, ZEPTRION_PLATFORMS)
     if unload_ok:
@@ -349,3 +330,103 @@ async def async_reload_entry(
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
 
+
+
+def _async_start_event_stream(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    api_client: ZeptrionAirApiClient,
+    serial_number: str,
+) -> None:
+    """Start the WebSocket event stream of one zApp and its watchdog."""
+    runtime_data: ZeptrionAirData = entry.runtime_data
+    hostname = api_client.hostname
+    hub_unique_id = entry.unique_id or serial_number
+
+    @callback
+    def _on_channel_update(channel: int, value: int, snapshot: bool) -> None:
+        # Same event as before (entities and possibly user automations listen to it);
+        # "snapshot" marks values read after a (re)connect rather than pushed live.
+        hass.bus.async_fire(
+            ZEPTRION_AIR_WEBSOCKET_MESSAGE,
+            {
+                "ip": hostname,
+                "status_time": time.time(),
+                "raw_message": {"eid1": {"ch": channel, "val": value}},
+                "type": "value_update",
+                "channel": channel,
+                "value": value,
+                "source": "eid1",
+                "snapshot": snapshot,
+                "hub_unique_id": hub_unique_id,
+            },
+        )
+
+    @callback
+    def _on_key_event(event: KeyEvent) -> None:
+        async_dispatcher_send(hass, SIGNAL_KEY_EVENT.format(entry.entry_id), event)
+
+    @callback
+    def _mark_unavailable(_now: Any) -> None:
+        runtime_data.unavailable_cancel_callback = None
+        if runtime_data.stream_down and runtime_data.available:
+            runtime_data.available = False
+            LOGGER.warning(
+                "[%s] No connection for %.0f s, entities unavailable until it is back: %s",
+                hostname,
+                UNAVAILABLE_GRACE_S,
+                runtime_data.websocket_listener.last_error if runtime_data.websocket_listener else "-",
+            )
+            async_dispatcher_send(hass, SIGNAL_AVAILABILITY.format(entry.entry_id))
+
+    @callback
+    def _on_connection(connected: bool, error: str | None) -> None:
+        if connected:
+            if runtime_data.unavailable_cancel_callback:
+                runtime_data.unavailable_cancel_callback()
+                runtime_data.unavailable_cancel_callback = None
+            if runtime_data.stream_down:
+                down_for = time.time() - (runtime_data.stream_down_since or time.time())
+                if runtime_data.available:
+                    runtime_data.short_outages += 1
+                    LOGGER.debug("[%s] Event stream back after %.1f s", hostname, down_for)
+                else:
+                    LOGGER.info("[%s] Connection back after %.0f s", hostname, down_for)
+            runtime_data.stream_down = False
+            runtime_data.stream_down_since = None
+            if not runtime_data.available:
+                runtime_data.available = True
+                async_dispatcher_send(hass, SIGNAL_AVAILABILITY.format(entry.entry_id))
+            return
+
+        if not runtime_data.stream_down:
+            LOGGER.debug("[%s] Event stream lost: %s", hostname, error)
+            runtime_data.stream_down = True
+            runtime_data.stream_down_since = time.time()
+        if runtime_data.available and runtime_data.unavailable_cancel_callback is None:
+            runtime_data.unavailable_cancel_callback = async_call_later(
+                hass, UNAVAILABLE_GRACE_S, _mark_unavailable
+            )
+
+    listener = ZeptrionAirWebsocketListener(
+        api_client,
+        on_channel_update=_on_channel_update,
+        on_key_event=_on_key_event,
+        on_connection=_on_connection,
+        keys=runtime_data.keys,
+        create_task=lambda coro: entry.async_create_background_task(
+            hass, coro, name=f"{DOMAIN} event stream {hostname}"
+        ),
+    )
+    runtime_data.websocket_listener = listener
+    hass.async_create_task(listener.start())
+
+    async def _async_watchdog(_now: Any = None) -> None:
+        """Restart the listener task should it ever have ended."""
+        if runtime_data.websocket_listener and not runtime_data.websocket_listener.is_alive():
+            LOGGER.warning("[%s] Event stream task not running, restarting it", hostname)
+            await runtime_data.websocket_listener.start()
+
+    runtime_data.websocket_watchdog_cancel_callback = async_track_time_interval(
+        hass, _async_watchdog, timedelta(minutes=5)
+    )

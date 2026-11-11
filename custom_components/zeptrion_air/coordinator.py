@@ -61,10 +61,17 @@ class ZeptrionAirDataUpdateCoordinator(DataUpdateCoordinator):
             # Add RSSI to the data dictionary
             # Storing None if RSSI could not be fetched/parsed, allows entities to handle it.
             data['rssi_dbm'] = rssi_value
-            
-            LOGGER.info("Coordinator full data update (with RSSI): %s", data)
+
+            # Smartfront sensors (temperature, light, humidity) if a Smartfront is fitted
+            if self.config_entry.runtime_data.smartfront:
+                try:
+                    data['smartfront_sensors'] = await self.client.async_get_smartfront_sensors()
+                except ZeptrionAirApiClientError as err:
+                    LOGGER.debug("Coordinator: Smartfront sensors not readable: %s", err)
+                    data['smartfront_sensors'] = None
+
+            LOGGER.debug("Coordinator data update: %s", data)
             return data
         except ZeptrionAirApiClientError as exception:
             # This will catch errors from both async_get_device_identification and async_get_rssi
-            LOGGER.error("Coordinator: Error updating data: %s", exception)
             raise UpdateFailed(f"Error communicating with API: {exception}") from exception
