@@ -2,7 +2,6 @@
   "domain": "zeptrion_air",
   "name": "Zeptrion Air",
   "codeowners": [
-    "@alternize",
     "@polar-gith"
   ],
   "config_flow": true,
@@ -21,7 +20,7 @@
   "requirements": [
     "xmltodict>=0.13.0"
   ],
-  "version": "2026.11.7",
+  "version": "2026.11.8",
   "zeroconf": [
     "_zapp._tcp.local."
   ]
