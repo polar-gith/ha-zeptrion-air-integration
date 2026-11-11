@@ -21,7 +21,7 @@
   "requirements": [
     "xmltodict>=0.13.0"
   ],
-  "version": "2026.11.4",
+  "version": "2026.11.5",
   "zeroconf": [
     "_zapp._tcp.local."
   ]

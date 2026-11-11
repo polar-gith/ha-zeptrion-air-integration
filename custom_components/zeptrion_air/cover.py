@@ -421,10 +421,11 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             return
         now = time.monotonic()
         if self._motion.moving:
-            # a key press while the motor runs stops it
+            # A key press while the motor runs ends the current run. With the
+            # opposite key the zApp may start the other direction right away
+            # (seen on 01.08.28): keep the key's direction as hint for that start.
             self._motion.stop_requested(now)
-        else:
-            self._motion.hint(function.direction, now)
+        self._motion.hint(function.direction, now)
 
     async def async_handle_websocket_message(self, event: Event) -> None:
         """Handle channel values of this blind (100 = motor runs, 0 = stands)."""

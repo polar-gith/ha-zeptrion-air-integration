@@ -190,3 +190,22 @@ async def test_learning_result_transferred_to_all_blinds(hass: HomeAssistant, fa
     await _wait_for(lambda: entry.runtime_data is not None and entry.runtime_data.websocket_listener)
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_reversing_with_opposite_key_keeps_direction(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """Seen on a real zApp: key up while moving down -> 0, then 100 for the up run."""
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host)
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+
+    await _key(hass, device, clock, 7000.0, 6)
+    await _value(hass, device, clock, 7000.2, 100)
+    await _key(hass, device, clock, 7059.0, 5)  # reverse
+    await _value(hass, device, clock, 7059.2, 0)
+    await _value(hass, device, clock, 7059.4, 100)
+    assert hass.states.get(cover).state == "opening"
+    await _value(hass, device, clock, 7120.0, 0)  # ends by itself
+    assert hass.states.get(cover).attributes["end_stop"] == "top"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
