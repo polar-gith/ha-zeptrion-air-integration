@@ -269,9 +269,26 @@ async def test_tilt_time_option(hass: HomeAssistant, fake_zapp, clock) -> None:
     assert state.attributes["current_position"] == 0
     assert state.attributes["current_tilt_position"] == 0
 
-    # open the slats: a timed move of 1.2 s up, height unchanged
-    clock.now = 9100.0
+    # tilt button: one step (default step duration 250 ms) up
+    clock.now = 9090.0
     await hass.services.async_call("cover", "open_cover_tilt", {"entity_id": cover}, blocking=True)
+    assert device.commands[-1] == (1, "move_open_250")
+    await _value(hass, device, clock, 9090.1, 100)
+    await _value(hass, device, clock, 9090.4, 0)
+    state = hass.states.get(cover)
+    assert 0 < state.attributes["current_tilt_position"] < 100
+    assert state.attributes["current_position"] == 0
+
+    # step back down, then open the slats fully: tilt position 100
+    clock.now = 9095.0
+    await hass.services.async_call("cover", "close_cover_tilt", {"entity_id": cover}, blocking=True)
+    assert device.commands[-1] == (1, "move_close_250")
+    await _value(hass, device, clock, 9095.1, 100)
+    await _value(hass, device, clock, 9095.4, 0)
+    clock.now = 9100.0
+    await hass.services.async_call(
+        "cover", "set_cover_tilt_position", {"entity_id": cover, "tilt_position": 100}, blocking=True
+    )
     assert device.commands[-1] == (1, "move_open_1200")
     await _value(hass, device, clock, 9100.1, 100)
     await _value(hass, device, clock, 9101.3, 0)

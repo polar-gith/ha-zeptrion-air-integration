@@ -431,20 +431,20 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         self._stop_timer_cancel = async_call_later(self.hass, seconds, _stop)
 
     async def async_open_cover_tilt(self, **kwargs: Any) -> None:
-        """Open the slats fully (with a tilt time), otherwise a step up."""
-        if self._motion.tilt_time:
-            await self.async_set_cover_tilt_position(**{ATTR_TILT_POSITION: 100})
-            return
+        """Turn the slats one step up (option "step duration").
+
+        Full open/close of the slats: set_cover_tilt_position.
+        """
         self._motion.hint("up", time.monotonic(), timed=True)
         step_duration_ms = self._step_duration_ms()
         client = self.config_entry.runtime_data.client
         await self._send("tilting open", lambda: client.async_channel_move_open(self._channel_id, time_ms=step_duration_ms))
 
     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
-        """Close the slats fully (with a tilt time), otherwise a step down."""
-        if self._motion.tilt_time:
-            await self.async_set_cover_tilt_position(**{ATTR_TILT_POSITION: 0})
-            return
+        """Turn the slats one step down (option "step duration").
+
+        Full open/close of the slats: set_cover_tilt_position.
+        """
         self._motion.hint("down", time.monotonic(), timed=True)
         step_duration_ms = self._step_duration_ms()
         client = self.config_entry.runtime_data.client
