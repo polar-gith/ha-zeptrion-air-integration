@@ -51,6 +51,10 @@ from .smartfront import KeyEvent
 
 # Timed commands move_open_<ms> / move_close_<ms> accept 100-32000 ms.
 MAX_TIMED_MOVE_MS = 32000
+# Safety net for a missed "motor stopped": re-read the channel after the
+# longest travel time (or this default) plus a margin.
+MOVING_CHECK_DEFAULT_S = 120.0
+MOVING_CHECK_MARGIN_S = 15.0
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -201,6 +205,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         )
         self._motion = CoverMotion(self._travel, tilt_time=self._tilt_time_option())
         self._tick_cancel: CALLBACK_TYPE | None = None
+        self._moving_check_cancel: CALLBACK_TYPE | None = None
         self._stop_timer_cancel: CALLBACK_TYPE | None = None
         self._last_run: dict[str, Any] | None = None
 
@@ -345,6 +350,9 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
 
     @callback
     def _cancel_timers(self) -> None:
+        if self._moving_check_cancel:
+            self._moving_check_cancel()
+            self._moving_check_cancel = None
         if self._tick_cancel:
             self._tick_cancel()
             self._tick_cancel = None
@@ -502,6 +510,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             if self._motion.direction is None:
                 _LOGGER.debug("Blind %s moves, direction unknown (scene or other device)", self._attr_name)
             self._start_tick()
+            self._arm_moving_check()
         elif value == 0:
             self._finish_run(self._motion.on_value(0, now))
         else:
@@ -596,6 +605,51 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         if self._tick_cancel:
             self._tick_cancel()
             self._tick_cancel = None
+        if self._moving_check_cancel:
+            self._moving_check_cancel()
+            self._moving_check_cancel = None
+
+    # ------------------------------------- safety net for a missed "stopped"
+
+    @callback
+    def _arm_moving_check(self, delay: float | None = None) -> None:
+        """Re-read the channel if no "motor stopped" arrives in the expected time.
+
+        A run never lasts longer than the relay timer (about the travel time);
+        if the 0 was missed (lost frame, two values in one burst), the blind
+        would otherwise show "opening"/"closing" until its next movement.
+        """
+        if self._moving_check_cancel:
+            self._moving_check_cancel()
+        if delay is None:
+            longest = max(
+                [t for t in (self._travel.up, self._travel.down) if t] or [MOVING_CHECK_DEFAULT_S]
+            )
+            delay = longest + MOVING_CHECK_MARGIN_S
+        self._moving_check_cancel = async_call_later(self.hass, delay, self._moving_check)
+
+    @callback
+    def _moving_check(self, _now: Any) -> None:
+        self._moving_check_cancel = None
+        if self._motion.moving:
+            self.hass.async_create_task(self._async_moving_check())
+
+    async def _async_moving_check(self) -> None:
+        client = self.config_entry.runtime_data.client if self.config_entry.runtime_data else None
+        value = None
+        if client is not None:
+            try:
+                data = await client.async_get_channel_scan_info(self._channel_id)
+                value = int(data["chscan"][f"ch{self._channel_id}"]["val"])
+            except (ZeptrionAirApiClientError, KeyError, TypeError, ValueError) as err:
+                _LOGGER.debug("Blind %s: channel check failed: %s", self._attr_name, err)
+        if not self._motion.moving:
+            return
+        if value == 0:
+            _LOGGER.debug("Blind %s: missed the stop, the channel stands; ending the run", self._attr_name)
+            self._finish_run(self._motion.on_value(0, time.monotonic()))
+            return
+        self._arm_moving_check(MOVING_CHECK_MARGIN_S)
 
     @callback
     def _tick(self, _now: Any) -> None:

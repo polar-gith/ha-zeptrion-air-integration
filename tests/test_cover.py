@@ -288,3 +288,28 @@ async def test_tilt_time_option(hass: HomeAssistant, fake_zapp, clock) -> None:
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_missed_stop_is_recovered(hass: HomeAssistant, fake_zapp, clock) -> None:
+    from datetime import timedelta
+
+    from homeassistant.util import dt as dt_util
+    from pytest_homeassistant_custom_component.common import async_fire_time_changed
+
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 61.0, "travel_down_ch1": 59.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+
+    await _key(hass, device, clock, 10000.0, 5)
+    await _value(hass, device, clock, 10000.2, 100)
+    assert hass.states.get(cover).state == "opening"
+    # the "0" never arrives; the channel stands
+    device.values[1] = 0
+    clock.now = 10080.0
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=80))
+    await hass.async_block_till_done()
+    await _wait_for(lambda: hass.states.get(cover).state != "opening")
+    assert hass.states.get(cover).state == "open"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
