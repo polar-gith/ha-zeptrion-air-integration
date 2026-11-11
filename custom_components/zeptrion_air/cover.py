@@ -309,6 +309,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             tilt = last_state.attributes.get(ATTR_CURRENT_TILT_POSITION)
             if self._motion.tilt_time and isinstance(tilt, (int, float)):
                 self._motion.tilt = float(tilt)
+            self._motion.tilt_from_end_stop()
 
         self.async_on_remove(
             self.hass.bus.async_listen(
@@ -587,6 +588,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         if tilt_time != self._motion.tilt_time:
             self._motion.tilt_time = tilt_time
             self._motion.tilt = None
+            self._motion.tilt_from_end_stop()
         self._attr_supported_features = self._features()
         self.async_write_ha_state()
 

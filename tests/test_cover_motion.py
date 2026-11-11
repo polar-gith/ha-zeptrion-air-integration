@@ -152,3 +152,16 @@ def test_without_tilt_time_nothing_changes() -> None:
     motion = CoverMotion(TILT_TRAVEL, position=0.0)
     assert motion.current_tilt(0.0) is None
     assert motion.seconds_for(50.0) == ("up", 30.5)
+
+
+def test_tilt_follows_known_end_stop() -> None:
+    motion = CoverMotion(TILT_TRAVEL, position=100.0, tilt_time=1.2)
+    assert motion.tilt is None
+    motion.tilt_from_end_stop()
+    assert motion.tilt == 100.0
+    bottom = CoverMotion(TILT_TRAVEL, position=0.0, tilt_time=1.2)
+    bottom.tilt_from_end_stop()
+    assert bottom.tilt == 0.0
+    middle = CoverMotion(TILT_TRAVEL, position=50.0, tilt_time=1.2)
+    middle.tilt_from_end_stop()
+    assert middle.tilt is None
