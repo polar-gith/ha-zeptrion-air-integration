@@ -1,0 +1,57 @@
+name: "Publish release"
+
+# Creates the tag vX.Y.Z and the GitHub release for the version in
+# custom_components/zeptrion_air/manifest.json (HACS installs from releases).
+# Started by hand (Actions > Publish release > Run workflow) or via the API.
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "Release notes (Markdown); empty = generated from commits"
+        required: false
+        default: ""
+
+permissions: {}
+
+jobs:
+  publish:
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
+    steps:
+      - uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Read version"
+        id: version
+        run: |
+          version=$(python3 -c "import json;print(json.load(open('custom_components/zeptrion_air/manifest.json'))['version'])")
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+
+      - name: "Stop if the release exists"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Release ${{ steps.version.outputs.tag }} already exists" >&2
+            exit 1
+          fi
+
+      - name: "ZIP the integration directory"
+        run: |
+          cd custom_components/zeptrion_air
+          zip -r ../../zeptrion_air.zip ./
+
+      - name: "Create tag and release"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          if [ -n "$NOTES" ]; then
+            gh release create "$tag" zeptrion_air.zip --target "$GITHUB_SHA" --title "$tag" --notes "$NOTES" --latest
+          else
+            gh release create "$tag" zeptrion_air.zip --target "$GITHUB_SHA" --title "$tag" --generate-notes --latest
+          fi
