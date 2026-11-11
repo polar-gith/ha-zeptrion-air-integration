@@ -168,6 +168,17 @@ class CoverMotion:
         if self.tilt_time:
             self.tilt = 100.0 if end_stop == "top" else 0.0
 
+    def tilt_from_end_stop(self) -> None:
+        """Derive an unknown slat position from a known end stop.
+
+        Arriving at the top the slats are open, at the bottom closed. Used after
+        a restart or when a tilt time is set while the blind stands at an end.
+        """
+        if self.moving or self.tilt_time is None or self.tilt is not None:
+            return
+        if self.end_stop is not None:
+            self.tilt = 100.0 if self.end_stop == "top" else 0.0
+
     # ---------------------------------------------------------------- output
 
     def current_position(self, now: float) -> float | None:
