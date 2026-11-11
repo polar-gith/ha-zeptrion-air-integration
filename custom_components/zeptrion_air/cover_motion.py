@@ -9,7 +9,8 @@ and a position can only be estimated from the time the motor ran.
 Rules:
 * A direction hint (command or wall key) is valid for HINT_VALID_S seconds; a
   movement that starts without one has an unknown direction (scene, Smartbutton
-  of another device, ...) and makes the position unknown.
+  of another device, ...) and makes the position unknown, unless the blind
+  stands at a known end stop: then it can only move away from it.
 * A movement that ends without a stop request (HA stop, wall key) ran into the
   relay timer, so the blind is at its end stop: position 0 or 100.
 * A movement that reaches FULL_RUN_FRACTION of the travel time also snaps to the end.
@@ -242,13 +243,20 @@ class CoverMotion:
         hint = self._hint
         self._hint = None
         direction = hint.direction if hint and now - hint.at <= HINT_VALID_S else None
+        timed = bool(hint and direction is not None and hint.timed)
+        if direction is None and self.end_stop is not None:
+            # Scene or other device, but the blind stands at an end stop: it can
+            # only move away from it. Such a run stops by itself (zApp scene
+            # timing), so it counts as timed, not as a run into the end stop.
+            direction = "up" if self.end_stop == "bottom" else "down"
+            timed = True
         self.moving = True
         self.direction = direction
         self._started_at = now
         self._start_end = self.end_stop if direction is not None else None
         self._start_position = self.position if direction is not None else None
         self._start_tilt = self.tilt if direction is not None else None
-        self._timed = bool(hint and direction is not None and hint.timed)
+        self._timed = timed
         self._stop_requested = self._timed
         if direction is None:
             self.position = None
