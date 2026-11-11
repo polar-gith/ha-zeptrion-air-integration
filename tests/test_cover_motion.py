@@ -23,7 +23,7 @@ def test_full_run_snaps_to_end_stop_without_travel_times() -> None:
 
 
 def test_unknown_direction_makes_position_unknown() -> None:
-    motion = CoverMotion(TRAVEL, position=100.0)
+    motion = CoverMotion(TRAVEL, position=50.0)
     motion.on_value(100, 0.0)  # scene / other device: no hint
     assert motion.direction is None
     motion.on_value(0, 60.0)
@@ -31,7 +31,7 @@ def test_unknown_direction_makes_position_unknown() -> None:
 
 
 def test_stale_hint_is_ignored() -> None:
-    motion = CoverMotion(TRAVEL, position=0.0)
+    motion = CoverMotion(TRAVEL, position=50.0)
     motion.hint("up", 0.0)
     motion.on_value(100, 10.0)
     assert motion.direction is None
@@ -165,3 +165,21 @@ def test_tilt_follows_known_end_stop() -> None:
     middle = CoverMotion(TILT_TRAVEL, position=50.0, tilt_time=1.2)
     middle.tilt_from_end_stop()
     assert middle.tilt is None
+
+
+def test_scene_from_an_end_stop_moves_away_from_it() -> None:
+    motion = CoverMotion(TILT_TRAVEL, position=0.0, tilt_time=1.2, tilt=0.0)
+    motion.hint(None, 0.0)  # scene S1
+    motion.on_value(100, 0.1)
+    assert motion.direction == "up"
+    run = motion.on_value(0, 0.4)  # 0.3 s: only the slats turn
+    assert not run.is_travel_sample and not run.is_auto_sample
+    assert motion.position == 0.0
+    assert motion.tilt == 25.0
+    assert motion.end_stop == "bottom"
+
+    # a scene that drives the whole way snaps to the other end
+    motion = CoverMotion(TILT_TRAVEL, position=100.0, tilt_time=1.2, tilt=100.0)
+    motion.on_value(100, 0.0)
+    motion.on_value(0, 58.0)
+    assert motion.position == 0.0 and motion.end_stop == "bottom"

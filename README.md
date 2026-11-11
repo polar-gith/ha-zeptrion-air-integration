@@ -88,7 +88,7 @@ The Smartfront temperature measures the module itself and therefore reads severa
 
 ## Blinds: direction, position and learning mode
 
-**Direction.** The zApp reports `100` while a blind's motor runs and `0` when it stands, without a direction. The direction comes from what started the movement: an open/close/step/position command from Home Assistant, or a Smartfront wall key (its function from `btfu`). A movement started by a scene or by another device has an unknown direction.
+**Direction.** The zApp reports `100` while a blind's motor runs and `0` when it stands, without a direction. The direction comes from what started the movement: an open/close/step/position command from Home Assistant, or a Smartfront wall key (its function from `btfu`). A movement started by a scene or by another device has an unknown direction, unless the blind stands at a known end stop: then it can only move away from it (e.g. a scene recalled from fully closed moves up).
 
 **End stops.** The relay of a blind channel stays on for its configured run time (about 60 s), also after the blind has stopped at its end. A movement that is not stopped by hand (Home Assistant stop, a wall key while moving) therefore ends at the end stop: the blind is shown as fully open or closed.
 
