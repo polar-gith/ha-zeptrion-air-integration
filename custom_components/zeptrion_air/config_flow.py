@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 from typing import Any
 import zeroconf
 
@@ -162,6 +163,34 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return await self.async_step_confirm()
 
+    async def async_step_dhcp(self, discovery_info: Any) -> data_entry_flow.FlowResult:
+        """Handle a zApp seen by DHCP (host name ``zapp-<serial>``).
+
+        mDNS is unreliable on some zApps; DHCP also keeps the IP address of an
+        already configured zApp up to date.
+        """
+        hostname: str = str(discovery_info.hostname).lower()
+        ip_address: str = str(discovery_info.ip)
+        serial = hostname.split(".")[0].removeprefix("zapp-")
+        if not serial or serial == hostname:
+            return self.async_abort(reason="not_zeptrion_device")
+
+        await self.async_set_unique_id(serial)
+        updates: dict[str, Any] = {CONF_IP_ADDRESS: ip_address}
+        existing = self.hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, serial)
+        if existing is not None and _looks_like_ip(str(existing.data.get(CONF_HOSTNAME, ""))):
+            # Configured by IP address: follow the new address.
+            updates[CONF_HOSTNAME] = ip_address
+        self._abort_if_unique_id_configured(updates=updates)
+
+        self.discovery_info = {
+            CONF_NAME: f"zapp-{serial}",
+            CONF_HOSTNAME: ip_address,
+            CONF_IP_ADDRESS: ip_address,
+        }
+        self.context.update({"title_placeholders": {CONF_NAME: f"zapp-{serial}"}})
+        return await self.async_step_confirm()
+
     async def async_step_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> data_entry_flow.FlowResult: 
@@ -206,7 +235,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_STEP_DURATION_MS: user_input[CONF_STEP_DURATION_MS],
                 }
                 return self.async_create_entry(
-                    title=str(self.discovery_info[CONF_HOSTNAME]).replace('.local', ''),
+                    title=str(self.discovery_info.get(CONF_NAME) if _looks_like_ip(str(self.discovery_info[CONF_HOSTNAME])) else self.discovery_info[CONF_HOSTNAME]).replace('.local', ''),
                     data=data_to_store,
                 )
 
@@ -229,6 +258,14 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
             errors=errors,
         )
+
+def _looks_like_ip(host: str) -> bool:
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return True
+
 
 # Options Flow Handler
 class ZeptrionAirOptionsFlowHandler(config_entries.OptionsFlow):

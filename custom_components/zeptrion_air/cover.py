@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_platform
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import ZeptrionAirApiClient, ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError
@@ -25,6 +26,7 @@ from .const import (
     SERVICE_BLIND_RECALL_S4,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS,
+    SIGNAL_AVAILABILITY,
     ZEPTRION_AIR_WEBSOCKET_MESSAGE,
 )
 
@@ -193,6 +195,12 @@ class ZeptrionAirBlind(CoverEntity):
         return None
 
     @property
+    def available(self) -> bool:
+        """Unavailable only after the event stream has been down for the grace period."""
+        runtime_data = self.config_entry.runtime_data
+        return runtime_data is not None and getattr(runtime_data, "available", True)
+
+    @property
     def is_opening(self) -> bool:
         """Return if the cover is currently opening."""
         return self._attr_is_opening
@@ -290,6 +298,13 @@ class ZeptrionAirBlind(CoverEntity):
                 ZEPTRION_AIR_WEBSOCKET_MESSAGE, self.async_handle_websocket_message
             )
         )
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                SIGNAL_AVAILABILITY.format(self.config_entry.entry_id),
+                self.async_write_ha_state,
+            )
+        )
 
         platform: entity_platform.EntityPlatform | None = entity_platform.async_get_current_platform()
 
@@ -328,6 +343,17 @@ class ZeptrionAirBlind(CoverEntity):
 
             message_value = message_data.get("value")
 
+            if message_data.get("snapshot"):
+                # State read after a (re)connect. Only use it to end a movement
+                # whose stop was missed during the gap; a running motor without a
+                # known direction tells us nothing.
+                if message_value == 0 and (self._attr_is_opening or self._attr_is_closing):
+                    self._attr_is_opening = False
+                    self._attr_is_closing = False
+                    self._active_action = None
+                    self.async_write_ha_state()
+                return
+
             _LOGGER.debug("Handling WS for %s: val=%s, cmd_action=%s, active_action=%s, is_closed=%s",
                           self._attr_name, message_value, self._commanded_action, self._active_action, self._attr_is_closed)
 
@@ -337,7 +363,8 @@ class ZeptrionAirBlind(CoverEntity):
                 elif self._commanded_action == "closing" or self._commanded_action == "tilt_closing":
                     self._active_action = "closing"
                 else:
-                    _LOGGER.warning("Blind %s received val=100 (movement started) but current commanded_action is '%s'. "
+                    # Normal when the blind is moved at the wall or by a scene: the direction is unknown.
+                    _LOGGER.debug("Blind %s received val=100 (movement started) but current commanded_action is '%s'. "
                                     "_active_action will remain '%s'. This may indicate a desync or delayed message.",
                                     self._attr_name, self._commanded_action, self._active_action)
 

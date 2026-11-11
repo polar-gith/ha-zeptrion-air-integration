@@ -16,6 +16,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import (
@@ -26,6 +27,7 @@ from .const import (
     CONF_LIGHT_POLLING,
     DEFAULT_LIGHT_POLLING,
     DOMAIN,
+    SIGNAL_AVAILABILITY,
     ZEPTRION_AIR_WEBSOCKET_MESSAGE,
 )
 
@@ -158,6 +160,12 @@ class ZeptrionAirLight(LightEntity):
             self._attr_supported_color_modes = {ColorMode.ONOFF}
             self._attr_color_mode = ColorMode.ONOFF
 
+    @property
+    def available(self) -> bool:
+        """Unavailable only after the event stream has been down for the grace period."""
+        runtime_data = self.config_entry.runtime_data
+        return runtime_data is not None and getattr(runtime_data, "available", True)
+
     def _set_state_from_api_percent(self, value_0_100: int) -> bool:
         """Apply a Zeptrion channel value to the HA entity state.
 
@@ -253,6 +261,13 @@ class ZeptrionAirLight(LightEntity):
             self.hass.bus.async_listen(
                 ZEPTRION_AIR_WEBSOCKET_MESSAGE,
                 self.async_handle_websocket_message,
+            )
+        )
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                SIGNAL_AVAILABILITY.format(self.config_entry.entry_id),
+                self.async_write_ha_state,
             )
         )
 

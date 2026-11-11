@@ -131,6 +131,17 @@ async def async_setup_entry(
             f"Could not create RSSI sensor for hub {hub_serial} due to missing data: {', '.join(missing_data_elements)}."
         )
 
+    # --- Smartfront sensors (temperature, illuminance, humidity) ---
+    runtime_data = entry.runtime_data
+    if coordinator and hub_serial and runtime_data is not None and runtime_data.smartfront:
+        sensor_values = (coordinator.data or {}).get("smartfront_sensors") or {}
+        for description in SMARTFRONT_SENSORS:
+            if parse_sensor_value(sensor_values.get(description.key)) is None:
+                continue  # "none": sensor not present on this Smartfront
+            new_entities.append(
+                ZeptrionAirSmartfrontSensor(coordinator, hub_serial, description)
+            )
+
     if new_entities:
         _LOGGER.info(f"Adding {len(new_entities)} Zeptrion Air sensor entities in total.")
         async_add_entities(new_entities)
@@ -266,3 +277,59 @@ class ZeptrionAirRssiSensor(ZeptrionAirEntity, SensorEntity):
         if self.hass:
             self.async_write_ha_state()
 
+
+
+from homeassistant.components.sensor import SensorEntityDescription
+from homeassistant.const import LIGHT_LUX, PERCENTAGE, UnitOfTemperature
+
+from .smartfront import parse_sensor_value
+
+SMARTFRONT_SENSORS: tuple[SensorEntityDescription, ...] = (
+    SensorEntityDescription(
+        key="temp",
+        translation_key="smartfront_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
+    SensorEntityDescription(
+        key="lux",
+        translation_key="smartfront_illuminance",
+        device_class=SensorDeviceClass.ILLUMINANCE,
+        native_unit_of_measurement=LIGHT_LUX,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="hum",
+        translation_key="smartfront_humidity",
+        device_class=SensorDeviceClass.HUMIDITY,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+)
+
+
+class ZeptrionAirSmartfrontSensor(ZeptrionAirEntity, SensorEntity):
+    """A sensor of the Smartfront, read every 60 s with the hub data."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: ZeptrionAirDataUpdateCoordinator,
+        hub_serial: str,
+        description: SensorEntityDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._attr_unique_id = f"zapp_{hub_serial}_smartfront_{description.key}"
+
+    @property
+    def native_value(self) -> float | None:
+        values = (self.coordinator.data or {}).get("smartfront_sensors") or {}
+        return parse_sensor_value(values.get(self.entity_description.key))
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.native_value is not None

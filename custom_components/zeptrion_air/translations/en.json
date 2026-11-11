@@ -10,7 +10,8 @@
     },
     "abort": {
       "already_configured": "Device is already configured",
-      "cannot_connect": "Failed to connect"
+      "cannot_connect": "Failed to connect",
+      "not_zeptrion_device": "Not a Zeptrion Air device"
     }
   },
   "options": {
@@ -25,6 +26,46 @@
           "step_duration_ms": "Duration of a single up/down step for blinds (100-32000 ms).",
           "light_polling": "Off by default. When on, every light channel of this hub is read every 60 s to correct on/off states missed on the websocket. Dimmer brightness cannot be read from the hub."
         }
+      }
+    }
+  },
+  "entity": {
+    "event": {
+      "wall_keys": {
+        "name": "Wall keys",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "key_1_press": "Key 1 pressed",
+              "key_1_release": "Key 1 released",
+              "key_2_press": "Key 2 pressed",
+              "key_2_release": "Key 2 released",
+              "key_3_press": "Key 3 pressed",
+              "key_3_release": "Key 3 released",
+              "key_4_press": "Key 4 pressed",
+              "key_4_release": "Key 4 released",
+              "key_5_press": "Key 5 pressed",
+              "key_5_release": "Key 5 released",
+              "key_6_press": "Key 6 pressed",
+              "key_6_release": "Key 6 released",
+              "key_7_press": "Key 7 pressed",
+              "key_7_release": "Key 7 released",
+              "key_8_press": "Key 8 pressed",
+              "key_8_release": "Key 8 released"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "smartfront_temperature": {
+        "name": "Smartfront temperature"
+      },
+      "smartfront_illuminance": {
+        "name": "Smartfront illuminance"
+      },
+      "smartfront_humidity": {
+        "name": "Smartfront humidity"
       }
     }
   }
