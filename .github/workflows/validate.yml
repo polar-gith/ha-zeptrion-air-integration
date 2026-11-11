@@ -29,5 +29,7 @@ jobs:
           uses: "hacs/action@main"
           with:
             category: "integration"
-            # Remove this 'ignore' key when you have added brand images for your integration to https://github.com/home-assistant/brands
-            ignore: "brands"
+            # brands: the integration ships its own brand images (custom_components/zeptrion_air/brand).
+            # issues/topics: repository settings, only required for the default HACS store;
+            # this repository is installed as a custom repository.
+            ignore: "brands issues topics"

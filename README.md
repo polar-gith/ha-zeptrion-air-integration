@@ -28,6 +28,7 @@ This is a custom integration for Home Assistant that allows you to control [Zept
 *   **Configurable Step Duration:** The duration (in milliseconds) for the "up step" and "down step" services can be configured via the integration's options flow.
 *   **Wall keys as events (Smartfront):** If a Smartfront is fitted, the zApp gets one event entity "Wall keys" with an event type per key and action (`key_5_press`, `key_5_release`, ...), including Smartbuttons. See [Wall keys and Smartfront sensors](#wall-keys-and-smartfront-sensors).
 *   **Smartfront sensors:** Temperature, and illuminance / humidity where the Smartfront has them, read every 60 s.
+*   **Blinds with direction and position:** Opening/closing is shown live, also when moved at the wall; with travel times (entered or learned with the learning mode switch) the position is estimated and "set position" works.
 *   **Robust connection:** Push updates over the zApp's WebSocket with an HTTP liveness check, a resync after every reconnect and a grace period before entities turn unavailable. See [Connection handling](#connection-handling).
 *   **DHCP discovery:** zApps are also found by their DHCP host name `zapp-*` (mDNS does not answer reliably on every device); a changed IP address is taken over automatically.
 *   **Diagnostics:** "Download diagnostics" on a zApp gives connection statistics and device data with host, serial number and names redacted.
@@ -88,11 +89,29 @@ conditions:
 
 The Smartfront temperature measures the module itself and therefore reads several degrees above room temperature.
 
+## Blinds: direction, position and learning mode
+
+**Direction.** The zApp reports `100` while a blind's motor runs and `0` when it stands, without a direction. The direction comes from what started the movement: an open/close/step/position command from Home Assistant, or a Smartfront wall key (its function from `btfu`). A movement started by a scene or by another device has an unknown direction.
+
+**End stops.** The relay of a blind channel stays on for its configured run time (about 60 s), also after the blind has stopped at its end. A movement that is not stopped by hand (Home Assistant stop, a wall key while moving) therefore ends at the end stop: the blind is shown as fully open or closed.
+
+**Position (optional).** With the full travel time up and down configured for a blind, the integration estimates its position from the motor time, shows it while moving and supports "set position" (`move_open_<ms>` / `move_close_<ms>`; above 32 s it starts the movement and sends a stop). A movement reaching 95 % of the travel time snaps to the end. After a movement with unknown direction the position is unknown until the next full run. The last position survives a restart.
+
+**Travel times** are set per blind in the hub's options ("Channel n: travel time up / down (s)"), or measured with the **learning mode**:
+
+1.  Switch on "Blind learning mode" on any zApp with blinds. The switches of all zApps are coupled; the mode switches itself off after 60 min.
+2.  For every blind: close it fully and let it stop by itself; move it up and press stop the moment it arrives at the top; move it down and press stop when it arrives at the bottom. Do this twice. Wall keys and Home Assistant both work, in any order and across blinds.
+3.  Switch learning mode off. A time is saved when at least two measurements agree within 1 s; a notification lists the results and blinds without a usable measurement.
+
+If all blinds are the same (height, drive), switch on **"Blind learning: apply to all blinds"** (also coupled across zApps) before switching learning mode off: all measurements are then pooled and the agreed times are given to every blind without its own result, so measuring one blind twice is enough.
+
+A measurement is a movement that started at a known end stop, went towards the other end and was stopped by hand; timed moves (steps, set position) never count. During learning, each blind shows its measurements in the `learning` attribute; `last_run` shows direction, duration and whether it was stopped by hand.
+
 ## Connection handling
 
-The zApp pushes channel changes over the WebSocket `ws://<host>/zrap/ws`. It sends nothing while idle and does not answer WebSocket pings, so:
+The zApp pushes channel changes over the WebSocket `ws://<host>/zrap/ws`. It sends no data frames while idle and does not answer client pings, so no client heartbeat is used. (It appears to send WebSocket pings of its own, which the client answers automatically; they keep the connection visibly alive.) In addition:
 
-*   After 60 s without a message, a cheap `GET /zrap/rssi` checks that the zApp still answers. If it does not, the connection is dropped and rebuilt.
+*   After 60 s without any frame, a cheap `GET /zrap/rssi` checks that the zApp still answers. If it does not, the connection is dropped and rebuilt.
 *   Reconnects use exponential backoff from 1 s to 60 s with +/-20 % jitter.
 *   After every (re)connect all channel states are read once (`/zrap/chscan`), so a change made during the gap is not lost.
 *   Entities only become unavailable after 60 s without a connection. Short drops are logged at debug level; a longer outage logs one warning and one info message when the zApp is back.
@@ -117,7 +136,7 @@ Light polling usually isn't needed: the hub pushes on/off changes over the webso
 ## Current Limitations
 
 *   **Dimmer Brightness is Optimistic:** see [Light Entities (Switches & Dimmers)](#light-entities-switches--dimmers) above.
-*   **No Position Feedback for Covers:** The Zeptrion Air API does not provide real-time position feedback for blinds/covers. Therefore, the Home Assistant cover entities will not display the current position (e.g., 50% open). Status updates are optimistic based on commands sent.
+*   **Cover positions are estimated:** The zApp reports only "motor runs" / "motor stands" for a blind, never a position. With travel times configured, the position is estimated from the motor time (see [Blinds: direction, position and learning mode](#blinds-direction-position-and-learning-mode)); a blind moved by a scene or another device's Smartbutton has an unknown position until its next full run.
 *   **Wall keys need a Smartfront:** Without a Smartfront the zApp reports no key presses.
 *   **Sensors are Static:** The sensor entities for channel name, group, and icon ID are populated once during setup and do not update dynamically if changed on the Zeptrion device itself (though these are typically static).
 

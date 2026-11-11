@@ -20,11 +20,27 @@
         "title": "Zeptrion Air Optionen",
         "data": {
           "step_duration_ms": "Schrittdauer Storen (ms)",
-          "light_polling": "Lichtzustände alle 60 s abfragen"
+          "light_polling": "Lichtzustände alle 60 s abfragen",
+          "travel_up_ch1": "Kanal 1: Fahrzeit auf (s)",
+          "travel_down_ch1": "Kanal 1: Fahrzeit ab (s)",
+          "travel_up_ch2": "Kanal 2: Fahrzeit auf (s)",
+          "travel_down_ch2": "Kanal 2: Fahrzeit ab (s)",
+          "travel_up_ch3": "Kanal 3: Fahrzeit auf (s)",
+          "travel_down_ch3": "Kanal 3: Fahrzeit ab (s)",
+          "travel_up_ch4": "Kanal 4: Fahrzeit auf (s)",
+          "travel_down_ch4": "Kanal 4: Fahrzeit ab (s)"
         },
         "data_description": {
           "step_duration_ms": "Dauer eines einzelnen Auf-/Ab-Schritts der Storen (100-32000 ms).",
-          "light_polling": "Standardmässig aus. Wenn eingeschaltet, wird jeder Licht-Kanal dieses Hubs alle 60 s abgefragt, um über den Websocket verpasste Ein/Aus-Zustände zu korrigieren. Die Dimmer-Helligkeit kann vom Hub nicht gelesen werden."
+          "light_polling": "Standardmässig aus. Wenn eingeschaltet, wird jeder Licht-Kanal dieses Hubs alle 60 s abgefragt, um über den Websocket verpasste Ein/Aus-Zustände zu korrigieren. Die Dimmer-Helligkeit kann vom Hub nicht gelesen werden.",
+          "travel_up_ch1": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Lässt sich mit dem Lernmodus-Schalter einmessen.",
+          "travel_down_ch1": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Lässt sich mit dem Lernmodus-Schalter einmessen.",
+          "travel_up_ch2": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Lässt sich mit dem Lernmodus-Schalter einmessen.",
+          "travel_down_ch2": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Lässt sich mit dem Lernmodus-Schalter einmessen.",
+          "travel_up_ch3": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Lässt sich mit dem Lernmodus-Schalter einmessen.",
+          "travel_down_ch3": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Lässt sich mit dem Lernmodus-Schalter einmessen.",
+          "travel_up_ch4": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Lässt sich mit dem Lernmodus-Schalter einmessen.",
+          "travel_down_ch4": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Lässt sich mit dem Lernmodus-Schalter einmessen."
         }
       }
     }
@@ -66,6 +82,14 @@
       },
       "smartfront_humidity": {
         "name": "Smartfront-Feuchte"
+      }
+    },
+    "switch": {
+      "blind_learning": {
+        "name": "Storen-Lernmodus"
+      },
+      "blind_learning_apply_all": {
+        "name": "Storen-Lernmodus: auf alle Storen übertragen"
       }
     }
   }

@@ -32,6 +32,7 @@ from .const import (
     DEFAULT_LIGHT_POLLING,
     MIN_STEP_DURATION_MS,
     MAX_STEP_DURATION_MS,
+    travel_option_key,
 )
 
 
@@ -306,6 +307,21 @@ class ZeptrionAirOptionsFlowHandler(config_entries.OptionsFlow):
                 ): bool,
             }
         )
+
+        # Travel times of the blind channels (seconds; 0 = unknown, no position)
+        platform_data = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id, {})
+        travel_fields: dict[Any, Any] = {}
+        for channel in platform_data.get("identified_channels", []):
+            if channel.get("device_type") != "cover":
+                continue
+            for direction in ("up", "down"):
+                key = travel_option_key(direction, int(channel["id"]))
+                current = self.config_entry.options.get(key, 0) or 0
+                travel_fields[vol.Optional(key, default=float(current))] = vol.All(
+                    vol.Coerce(float), vol.Range(min=0, max=300)
+                )
+        if travel_fields:
+            options_schema = options_schema.extend(travel_fields)
 
         return self.async_show_form(
             step_id="init",

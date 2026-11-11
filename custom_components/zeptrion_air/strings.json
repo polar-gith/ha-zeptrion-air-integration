@@ -20,11 +20,27 @@
         "title": "Zeptrion Air options",
         "data": {
           "step_duration_ms": "Blind step duration (ms)",
-          "light_polling": "Poll light states every 60 s"
+          "light_polling": "Poll light states every 60 s",
+          "travel_up_ch1": "Channel 1: travel time up (s)",
+          "travel_down_ch1": "Channel 1: travel time down (s)",
+          "travel_up_ch2": "Channel 2: travel time up (s)",
+          "travel_down_ch2": "Channel 2: travel time down (s)",
+          "travel_up_ch3": "Channel 3: travel time up (s)",
+          "travel_down_ch3": "Channel 3: travel time down (s)",
+          "travel_up_ch4": "Channel 4: travel time up (s)",
+          "travel_down_ch4": "Channel 4: travel time down (s)"
         },
         "data_description": {
           "step_duration_ms": "Duration of a single up/down step for blinds (100-32000 ms).",
-          "light_polling": "Off by default. When on, every light channel of this hub is read every 60 s to correct on/off states missed on the websocket. Dimmer brightness cannot be read from the hub."
+          "light_polling": "Off by default. When on, every light channel of this hub is read every 60 s to correct on/off states missed on the websocket. Dimmer brightness cannot be read from the hub.",
+          "travel_up_ch1": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
+          "travel_down_ch1": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
+          "travel_up_ch2": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
+          "travel_down_ch2": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
+          "travel_up_ch3": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
+          "travel_down_ch3": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
+          "travel_up_ch4": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch.",
+          "travel_down_ch4": "Full travel time of the blind; 0 = unknown (no position). Can be measured with the learning mode switch."
         }
       }
     }
@@ -66,6 +82,14 @@
       },
       "smartfront_humidity": {
         "name": "Smartfront humidity"
+      }
+    },
+    "switch": {
+      "blind_learning": {
+        "name": "Blind learning mode"
+      },
+      "blind_learning_apply_all": {
+        "name": "Blind learning: apply to all blinds"
       }
     }
   }
