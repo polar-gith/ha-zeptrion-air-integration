@@ -28,7 +28,11 @@
           "travel_down_ch3": "Kanal 3: Fahrzeit ab (s)",
           "travel_up_ch4": "Kanal 4: Fahrzeit auf (s)",
           "travel_down_ch4": "Kanal 4: Fahrzeit ab (s)",
-          "auto_travel_times": "Fahrzeiten der Storen von der zApp übernehmen"
+          "auto_travel_times": "Fahrzeiten der Storen von der zApp übernehmen",
+          "tilt_time_ch1": "Kanal 1: Wendezeit Lamellen (s)",
+          "tilt_time_ch2": "Kanal 2: Wendezeit Lamellen (s)",
+          "tilt_time_ch3": "Kanal 3: Wendezeit Lamellen (s)",
+          "tilt_time_ch4": "Kanal 4: Wendezeit Lamellen (s)"
         },
         "data_description": {
           "step_duration_ms": "Dauer eines einzelnen Auf-/Ab-Schritts der Storen (100-32000 ms).",
@@ -40,7 +44,11 @@
           "travel_down_ch3": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Wird aus vollen Fahrten automatisch übernommen oder mit dem Lernmodus-Schalter eingemessen.",
           "travel_up_ch4": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Wird aus vollen Fahrten automatisch übernommen oder mit dem Lernmodus-Schalter eingemessen.",
           "travel_down_ch4": "Volle Fahrzeit der Store; 0 = unbekannt (keine Position). Wird aus vollen Fahrten automatisch übernommen oder mit dem Lernmodus-Schalter eingemessen.",
-          "auto_travel_times": "Die zApp schaltet eine Store ab, wenn sie am Endanschlag ankommt. Eine ungestoppte Fahrt von einem Ende zum anderen dauert deshalb genau die Fahrzeit; sie wird automatisch übernommen."
+          "auto_travel_times": "Die zApp schaltet eine Store ab, wenn sie am Endanschlag ankommt. Eine ungestoppte Fahrt von einem Ende zum anderen dauert deshalb genau die Fahrzeit; sie wird automatisch übernommen.",
+          "tilt_time_ch1": "Zeit, in der die Lamellen beim Richtungswechsel drehen, bevor sich die Höhe ändert; 0 = keine Lamellen (wird ignoriert).",
+          "tilt_time_ch2": "Zeit, in der die Lamellen beim Richtungswechsel drehen, bevor sich die Höhe ändert; 0 = keine Lamellen (wird ignoriert).",
+          "tilt_time_ch3": "Zeit, in der die Lamellen beim Richtungswechsel drehen, bevor sich die Höhe ändert; 0 = keine Lamellen (wird ignoriert).",
+          "tilt_time_ch4": "Zeit, in der die Lamellen beim Richtungswechsel drehen, bevor sich die Höhe ändert; 0 = keine Lamellen (wird ignoriert)."
         }
       }
     }

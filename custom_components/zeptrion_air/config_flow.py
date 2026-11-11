@@ -32,6 +32,7 @@ from .const import (
     DEFAULT_AUTO_TRAVEL_TIMES,
     MIN_STEP_DURATION_MS,
     MAX_STEP_DURATION_MS,
+    tilt_option_key,
     travel_option_key,
 )
 
@@ -312,6 +313,11 @@ class ZeptrionAirOptionsFlowHandler(config_entries.OptionsFlow):
                 travel_fields[vol.Optional(key, default=float(current))] = vol.All(
                     vol.Coerce(float), vol.Range(min=0, max=300)
                 )
+            tilt_key = tilt_option_key(int(channel["id"]))
+            tilt_current = self.config_entry.options.get(tilt_key, 0) or 0
+            travel_fields[vol.Optional(tilt_key, default=float(tilt_current))] = vol.All(
+                vol.Coerce(float), vol.Range(min=0, max=10)
+            )
         if travel_fields:
             auto = bool(self.config_entry.options.get(CONF_AUTO_TRAVEL_TIMES, DEFAULT_AUTO_TRAVEL_TIMES))
             options_schema = options_schema.extend(

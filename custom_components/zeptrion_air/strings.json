@@ -28,7 +28,11 @@
           "travel_down_ch3": "Channel 3: travel time down (s)",
           "travel_up_ch4": "Channel 4: travel time up (s)",
           "travel_down_ch4": "Channel 4: travel time down (s)",
-          "auto_travel_times": "Take over blind travel times from the zApp"
+          "auto_travel_times": "Take over blind travel times from the zApp",
+          "tilt_time_ch1": "Channel 1: slat tilt time (s)",
+          "tilt_time_ch2": "Channel 2: slat tilt time (s)",
+          "tilt_time_ch3": "Channel 3: slat tilt time (s)",
+          "tilt_time_ch4": "Channel 4: slat tilt time (s)"
         },
         "data_description": {
           "step_duration_ms": "Duration of a single up/down step for blinds (100-32000 ms).",
@@ -40,7 +44,11 @@
           "travel_down_ch3": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
           "travel_up_ch4": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
           "travel_down_ch4": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
-          "auto_travel_times": "The zApp switches a blind off when it reaches its end stop. A full run from one end to the other that nobody stopped therefore lasted exactly the travel time; it is taken over automatically."
+          "auto_travel_times": "The zApp switches a blind off when it reaches its end stop. A full run from one end to the other that nobody stopped therefore lasted exactly the travel time; it is taken over automatically.",
+          "tilt_time_ch1": "Time the slats of a venetian blind turn on a change of direction before the height changes; 0 = no slats (ignored).",
+          "tilt_time_ch2": "Time the slats of a venetian blind turn on a change of direction before the height changes; 0 = no slats (ignored).",
+          "tilt_time_ch3": "Time the slats of a venetian blind turn on a change of direction before the height changes; 0 = no slats (ignored).",
+          "tilt_time_ch4": "Time the slats of a venetian blind turn on a change of direction before the height changes; 0 = no slats (ignored)."
         }
       }
     }

@@ -8,7 +8,9 @@ from typing import Any
 
 from homeassistant.components.cover import (
     ATTR_CURRENT_POSITION,
+    ATTR_CURRENT_TILT_POSITION,
     ATTR_POSITION,
+    ATTR_TILT_POSITION,
     CoverDeviceClass,
     CoverEntity,
     CoverEntityFeature,
@@ -38,6 +40,7 @@ from .const import (
     ZEPTRION_AIR_WEBSOCKET_MESSAGE,
     CONF_AUTO_TRAVEL_TIMES,
     DEFAULT_AUTO_TRAVEL_TIMES,
+    tilt_option_key,
     travel_option_key,
 )
 from .cover_motion import CoverMotion, Run, TravelTimes, TravelTimeSamples
@@ -196,7 +199,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             up=_positive(options.get(travel_option_key("up", channel_id))),
             down=_positive(options.get(travel_option_key("down", channel_id))),
         )
-        self._motion = CoverMotion(self._travel)
+        self._motion = CoverMotion(self._travel, tilt_time=self._tilt_time_option())
         self._tick_cancel: CALLBACK_TYPE | None = None
         self._stop_timer_cancel: CALLBACK_TYPE | None = None
         self._last_run: dict[str, Any] | None = None
@@ -214,7 +217,12 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         )
         if self._travel.complete:
             features |= CoverEntityFeature.SET_POSITION
+        if self._motion.tilt_time:
+            features |= CoverEntityFeature.SET_TILT_POSITION
         return features
+
+    def _tilt_time_option(self) -> float | None:
+        return _positive(self.config_entry.options.get(tilt_option_key(self._channel_id)))
 
     # ------------------------------------------------------------- state
 
@@ -231,6 +239,11 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
     @property
     def is_closing(self) -> bool:
         return self._motion.moving and self._motion.direction == "down" and not self._at_end_now()
+
+    @property
+    def current_cover_tilt_position(self) -> int | None:
+        tilt = self._motion.current_tilt(time.monotonic())
+        return None if tilt is None else int(round(tilt))
 
     @property
     def current_cover_position(self) -> int | None:
@@ -259,6 +272,8 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             "travel_time_down": self._travel.down,
             "end_stop": self._motion.end_stop,
         }
+        if self._motion.tilt_time:
+            attributes["tilt_time"] = self._motion.tilt_time
         if self._last_run:
             attributes["last_run"] = self._last_run
         learning = async_get_learning_manager(self.hass).status(
@@ -286,6 +301,9 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             if end_stop in ("top", "bottom"):
                 self._motion.end_stop = end_stop
                 self._motion.position = 100.0 if end_stop == "top" else 0.0
+            tilt = last_state.attributes.get(ATTR_CURRENT_TILT_POSITION)
+            if self._motion.tilt_time and isinstance(tilt, (int, float)):
+                self._motion.tilt = float(tilt)
 
         self.async_on_remove(
             self.hass.bus.async_listen(
@@ -404,18 +422,36 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         self._stop_timer_cancel = async_call_later(self.hass, seconds, _stop)
 
     async def async_open_cover_tilt(self, **kwargs: Any) -> None:
-        """Step up (timed move)."""
+        """Open the slats fully (with a tilt time), otherwise a step up."""
+        if self._motion.tilt_time:
+            await self.async_set_cover_tilt_position(**{ATTR_TILT_POSITION: 100})
+            return
         self._motion.hint("up", time.monotonic(), timed=True)
         step_duration_ms = self._step_duration_ms()
         client = self.config_entry.runtime_data.client
         await self._send("tilting open", lambda: client.async_channel_move_open(self._channel_id, time_ms=step_duration_ms))
 
     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
-        """Step down (timed move)."""
+        """Close the slats fully (with a tilt time), otherwise a step down."""
+        if self._motion.tilt_time:
+            await self.async_set_cover_tilt_position(**{ATTR_TILT_POSITION: 0})
+            return
         self._motion.hint("down", time.monotonic(), timed=True)
         step_duration_ms = self._step_duration_ms()
         client = self.config_entry.runtime_data.client
         await self._send("tilting close", lambda: client.async_channel_move_close(self._channel_id, time_ms=step_duration_ms))
+
+    async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
+        """Turn the slats to a tilt position (needs a tilt time)."""
+        plan = self._motion.seconds_for_tilt(float(kwargs[ATTR_TILT_POSITION]))
+        if plan is None:
+            return
+        direction, seconds = plan
+        milliseconds = max(100, min(MAX_TIMED_MOVE_MS, int(round(seconds * 1000))))
+        self._motion.hint(direction, time.monotonic(), timed=True)
+        client = self.config_entry.runtime_data.client
+        command = client.async_channel_move_open if direction == "up" else client.async_channel_move_close
+        await self._send("tilting", lambda: command(self._channel_id, milliseconds))
 
     def _step_duration_ms(self) -> int:
         return int(
@@ -538,6 +574,10 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             down=_positive(options.get(travel_option_key("down", self._channel_id))),
         )
         self._motion.travel = self._travel
+        tilt_time = self._tilt_time_option()
+        if tilt_time != self._motion.tilt_time:
+            self._motion.tilt_time = tilt_time
+            self._motion.tilt = None
         self._attr_supported_features = self._features()
         self.async_write_ha_state()
 

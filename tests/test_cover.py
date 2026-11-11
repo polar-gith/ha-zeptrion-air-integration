@@ -251,3 +251,40 @@ async def test_travel_times_taken_over_from_full_runs(hass: HomeAssistant, fake_
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_tilt_time_option(hass: HomeAssistant, fake_zapp, clock) -> None:
+    device, host = fake_zapp
+    entry = await _setup(
+        hass, device, host,
+        {"travel_up_ch1": 61.0, "travel_down_ch1": 59.0, "tilt_time_ch1": 1.2},
+    )
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+
+    # full run down: closed, slats closed
+    await _key(hass, device, clock, 9000.0, 6)
+    await _value(hass, device, clock, 9000.2, 100)
+    await _value(hass, device, clock, 9059.2, 0)
+    state = hass.states.get(cover)
+    assert state.attributes["current_position"] == 0
+    assert state.attributes["current_tilt_position"] == 0
+
+    # open the slats: a timed move of 1.2 s up, height unchanged
+    clock.now = 9100.0
+    await hass.services.async_call("cover", "open_cover_tilt", {"entity_id": cover}, blocking=True)
+    assert device.commands[-1] == (1, "move_open_1200")
+    await _value(hass, device, clock, 9100.1, 100)
+    await _value(hass, device, clock, 9101.3, 0)
+    state = hass.states.get(cover)
+    assert state.attributes["current_tilt_position"] == 100
+    assert state.attributes["current_position"] == 0
+
+    # set position 50: no slat turn needed any more
+    clock.now = 9200.0
+    await hass.services.async_call(
+        "cover", "set_cover_position", {"entity_id": cover, "position": 50}, blocking=True
+    )
+    assert device.commands[-1] == (1, f"move_open_{round(0.5 * (61.0 - 1.2) * 1000)}")
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
