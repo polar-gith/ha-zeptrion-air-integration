@@ -114,3 +114,41 @@ def test_reached_end_only_at_the_end_it_moves_to() -> None:
     motion.on_value(100, 0.0)
     assert not motion.reached_end(0.1)  # starts at the bottom, moving up
     assert motion.reached_end(49.0)
+
+
+TILT_TRAVEL = TravelTimes(up=61.0, down=59.0)
+
+
+def test_slats_turn_before_the_height_changes() -> None:
+    motion = CoverMotion(TILT_TRAVEL, position=0.0, tilt_time=1.2, tilt=0.0)
+    motion.hint("up", 0.0)
+    motion.on_value(100, 0.0)
+    assert motion.current_tilt(0.6) == 50.0
+    assert motion.current_position(0.6) == 0.0  # only the slats moved
+    assert motion.current_tilt(1.2) == 100.0
+    motion.stop_requested(1.2)
+    motion.on_value(0, 1.2)
+    assert motion.tilt == 100.0 and motion.position == 0.0
+
+
+def test_position_math_leaves_out_the_tilt_time() -> None:
+    motion = CoverMotion(TILT_TRAVEL, position=0.0, tilt_time=1.2, tilt=0.0)
+    direction, seconds = motion.seconds_for(50.0)
+    assert direction == "up"
+    assert seconds == 1.2 + 0.5 * (61.0 - 1.2)
+    motion.tilt = 100.0  # slats already open: no turn before moving up
+    assert motion.seconds_for(50.0)[1] == 0.5 * (61.0 - 1.2)
+
+
+def test_tilt_targets() -> None:
+    motion = CoverMotion(TILT_TRAVEL, position=50.0, tilt_time=1.2, tilt=100.0)
+    assert motion.seconds_for_tilt(0.0) == ("down", 1.2)
+    assert motion.seconds_for_tilt(75.0) == ("down", 0.3)
+    motion.tilt = None
+    assert motion.seconds_for_tilt(100.0) == ("up", 1.2)
+
+
+def test_without_tilt_time_nothing_changes() -> None:
+    motion = CoverMotion(TILT_TRAVEL, position=0.0)
+    assert motion.current_tilt(0.0) is None
+    assert motion.seconds_for(50.0) == ("up", 30.5)

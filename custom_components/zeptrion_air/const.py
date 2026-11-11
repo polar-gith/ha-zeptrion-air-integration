@@ -79,6 +79,11 @@ def travel_option_key(direction: str, channel: int) -> str:
     return f"travel_{direction}_ch{channel}"
 
 
+def tilt_option_key(channel: int) -> str:
+    """Option key of a blind's slat tilt time, e.g. ``tilt_time_ch1``."""
+    return f"tilt_time_ch{channel}"
+
+
 def is_travel_option(key: str) -> bool:
-    """True for the per-blind travel time options (changed without a reload)."""
-    return key.startswith("travel_up_ch") or key.startswith("travel_down_ch")
+    """True for the per-blind time options (changed without a reload)."""
+    return key.startswith(("travel_up_ch", "travel_down_ch", "tilt_time_ch"))

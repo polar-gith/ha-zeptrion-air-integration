@@ -94,6 +94,8 @@ The Smartfront temperature measures the module itself and therefore reads severa
 
 **Position (optional).** With the full travel time up and down configured for a blind, the integration estimates its position from the motor time, shows it while moving and supports "set position" (`move_open_<ms>` / `move_close_<ms>`; above 32 s it starts the movement and sends a stop). A movement reaching 95 % of the travel time snaps to the end. After a movement with unknown direction the position is unknown until the next full run. The last position survives a restart.
 
+**Slats (venetian blinds).** With a slat tilt time set for a blind ("Channel n: slat tilt time (s)", typically 1-2 s; 0 = no slats, ignored), the first part of a run after a change of direction turns the slats instead of moving the height. The blind then also reports a tilt position (100 = slats open, turned by moving up; 0 = closed), supports "set tilt position", and the tilt buttons open or close the slats fully instead of moving one step. Position moves leave out the time the slats still have to turn. Measure the tilt time by reversing the blind and stopping it the moment the slats have turned.
+
 **Travel times are taken over from the zApp automatically.** The zApp learns a blind's run time itself (it does a few learning runs after installation) and switches the motor off when the blind arrives at its end stop. A full run from one end stop to the other that nobody stopped therefore lasted exactly the travel time: the first such run sets an unknown travel time, and a known one is updated when two of the last five runs agree within 1 s and differ from it by more than 0.5 s. This needs no action; switch it off with the option "Take over blind travel times from the zApp".
 
 Travel times can also be entered per blind in the hub's options ("Channel n: travel time up / down (s)"), or measured by hand with the **learning mode**, e.g. for devices whose run time is set longer than the travel:
@@ -130,6 +132,7 @@ Each hub (config entry) has its own options: **Settings > Devices & services > Z
 | Blind step duration (ms) | `step_duration_ms` | 250 | Duration of a single up/down step for blinds (100-32000 ms). |
 | Take over blind travel times from the zApp | `auto_travel_times` | on | Only on hubs with blinds. See [Blinds](#blinds-direction-position-and-learning-mode). |
 | Channel n: travel time up / down (s) | `travel_up_chN`, `travel_down_chN` | 0 | Full travel time per blind; 0 = unknown (no position). |
+| Channel n: slat tilt time (s) | `tilt_time_chN` | 0 | Time the slats turn on a change of direction; 0 = no slats. |
 
 ## Current Limitations
 

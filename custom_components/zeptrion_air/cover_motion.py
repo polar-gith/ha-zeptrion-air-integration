@@ -100,9 +100,21 @@ class _Hint:
 class CoverMotion:
     """State machine for one blind channel."""
 
-    def __init__(self, travel: TravelTimes | None = None, position: float | None = None) -> None:
+    def __init__(
+        self,
+        travel: TravelTimes | None = None,
+        position: float | None = None,
+        tilt_time: float | None = None,
+        tilt: float | None = None,
+    ) -> None:
         self.travel = travel or TravelTimes()
         self.position: float | None = position
+        # Slats (venetian blinds): on a change of direction the motor first turns
+        # the slats for ``tilt_time`` seconds before the height changes.
+        # Tilt position: 100 = slats open (turned by moving up), 0 = closed.
+        self.tilt_time: float | None = tilt_time if tilt_time and tilt_time > 0 else None
+        self.tilt: float | None = tilt
+        self._start_tilt: float | None = None
         self.end_stop: EndStop | None = (
             "top" if position == 100 else "bottom" if position == 0 else None
         )
@@ -153,6 +165,8 @@ class CoverMotion:
             return
         self.end_stop = end_stop
         self.position = 100.0 if end_stop == "top" else 0.0
+        if self.tilt_time:
+            self.tilt = 100.0 if end_stop == "top" else 0.0
 
     # ---------------------------------------------------------------- output
 
@@ -173,6 +187,14 @@ class CoverMotion:
         target_end = 100.0 if self.direction == "up" else 0.0
         return position == target_end
 
+    def current_tilt(self, now: float) -> float | None:
+        """Estimated slat position, also while moving (None without a tilt time)."""
+        if self.tilt_time is None:
+            return None
+        if not self.moving:
+            return self.tilt
+        return self._estimate_tilt(self._elapsed(now))
+
     def seconds_for(self, target: float) -> tuple[Direction, float] | None:
         """Direction and motor time to move from the current position to target."""
         if self.position is None or self.moving:
@@ -181,10 +203,25 @@ class CoverMotion:
         if abs(delta) < 0.5:
             return None
         direction: Direction = "up" if delta > 0 else "down"
-        travel = self.travel.for_direction(direction)
+        travel = self._height_travel(direction)
         if travel is None:
             return None
-        return direction, abs(delta) / 100 * travel
+        return direction, self._tilt_needed(direction, self.tilt) + abs(delta) / 100 * travel
+
+    def seconds_for_tilt(self, target: float) -> tuple[Direction, float] | None:
+        """Direction and motor time to turn the slats from their current tilt to target."""
+        if self.tilt_time is None or self.moving:
+            return None
+        current = self.tilt
+        if current is None:
+            # unknown: turn fully towards the nearer end of the request
+            direction: Direction = "up" if target >= 50 else "down"
+            return direction, self.tilt_time
+        delta = target - current
+        if abs(delta) < 0.5:
+            return None
+        direction = "up" if delta > 0 else "down"
+        return direction, abs(delta) / 100 * self.tilt_time
 
     # ------------------------------------------------------------- internals
 
@@ -199,11 +236,13 @@ class CoverMotion:
         self._started_at = now
         self._start_end = self.end_stop if direction is not None else None
         self._start_position = self.position if direction is not None else None
+        self._start_tilt = self.tilt if direction is not None else None
         self._timed = bool(hint and direction is not None and hint.timed)
         self._stop_requested = self._timed
         if direction is None:
             self.position = None
             self.end_stop = None
+            self.tilt = None
 
     def _finish(self, now: float) -> Run | None:
         if not self.moving:
@@ -222,11 +261,15 @@ class CoverMotion:
         if self.direction is None:
             self.position = None
             self.end_stop = None
+            self.tilt = None
         elif not run.stopped_by_hand or (travel is not None and duration >= FULL_RUN_FRACTION * travel):
             # ran into the relay timer (or long enough): at the end stop
             self.position = 100.0 if self.direction == "up" else 0.0
             self.end_stop = "top" if self.direction == "up" else "bottom"
+            if self.tilt_time:
+                self.tilt = 100.0 if self.direction == "up" else 0.0
         else:
+            self.tilt = self._estimate_tilt(duration)
             self.position = self._estimate(duration)
             self.end_stop = None
             if self.position == 100.0:
@@ -237,19 +280,50 @@ class CoverMotion:
         self.direction = None
         self._started_at = None
         self._start_position = None
+        self._start_tilt = None
         self._target = None
         return run
 
     def _elapsed(self, now: float) -> float:
         return 0.0 if self._started_at is None else now - self._started_at
 
+    def _height_travel(self, direction: Direction) -> float | None:
+        """Seconds the height takes end to end (full travel minus the slat turn)."""
+        travel = self.travel.for_direction(direction)
+        if travel is None:
+            return None
+        return max(1.0, travel - (self.tilt_time or 0.0))
+
+    def _tilt_needed(self, direction: Direction, start_tilt: float | None) -> float:
+        """Seconds the slats turn before the height changes."""
+        if self.tilt_time is None:
+            return 0.0
+        if start_tilt is None:
+            return self.tilt_time
+        target = 100.0 if direction == "up" else 0.0
+        return abs(target - start_tilt) / 100 * self.tilt_time
+
+    def _estimate_tilt(self, elapsed: float) -> float | None:
+        if self.tilt_time is None or self.direction is None:
+            return None
+        target = 100.0 if self.direction == "up" else 0.0
+        start = self._start_tilt
+        if start is None:
+            start = 0.0 if self.direction == "up" else 100.0
+        change = elapsed / self.tilt_time * 100
+        value = start + (change if self.direction == "up" else -change)
+        value = min(value, target) if self.direction == "up" else max(value, target)
+        return round(min(100.0, max(0.0, value)), 1)
+
     def _estimate(self, elapsed: float) -> float | None:
         if self.direction is None or self._start_position is None:
             return None
         travel = self.travel.for_direction(self.direction)
-        if travel is None:
+        height_travel = self._height_travel(self.direction)
+        if travel is None or height_travel is None:
             return None
-        change = elapsed / travel * 100
+        height_elapsed = max(0.0, elapsed - self._tilt_needed(self.direction, self._start_tilt))
+        change = height_elapsed / height_travel * 100
         if elapsed >= FULL_RUN_FRACTION * travel:
             change = 100.0
         value = self._start_position + (change if self.direction == "up" else -change)
