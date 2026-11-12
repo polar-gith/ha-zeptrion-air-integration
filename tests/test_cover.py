@@ -330,3 +330,21 @@ async def test_missed_stop_is_recovered(hass: HomeAssistant, fake_zapp, clock) -
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_renamed_blind_is_re_added_with_services(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """Renaming the entity_id re-adds the entity outside platform setup."""
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 61.0, "travel_down_ch1": 59.0})
+    old = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    er.async_get(hass).async_update_entity(old, new_entity_id="cover.renamed_blind")
+    await hass.async_block_till_done()
+    assert hass.states.get("cover.renamed_blind") is not None
+
+    await hass.services.async_call(
+        DOMAIN, "blind_recall_s1", {"entity_id": "cover.renamed_blind"}, blocking=True
+    )
+    assert device.commands[-1][1] == "recall_s1"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
