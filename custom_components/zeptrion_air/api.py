@@ -299,6 +299,15 @@ class ZeptrionAirApiClient:
             data={"cmd": f"move_close_{time_ms}"},
         )
 
+    async def async_channel_store_scene(self, channel: int, scene: int) -> dict[str, Any]:
+        """Store the channel's current state as scene S1-S4 (``store_s<n>``)."""
+        if scene not in (1, 2, 3, 4):
+            raise ValueError(f"scene must be 1-4, got {scene}")
+        return await self._api_post_url_encoded_wrapper(
+            path=f"/zrap/chctrl/ch{channel}",
+            data={"cmd": f"store_s{scene}"},
+        )
+
     async def async_channel_recall_s1(self, channel: int) -> dict[str, Any]:
         """Send 'recall_s1' command to a channel."""
         return await self._api_post_url_encoded_wrapper(

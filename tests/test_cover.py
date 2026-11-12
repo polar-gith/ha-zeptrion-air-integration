@@ -348,3 +348,95 @@ async def test_renamed_blind_is_re_added_with_services(hass: HomeAssistant, fake
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_store_scene_by_action_and_button(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """S1-S4 can be stored from HA; a moving blind is refused."""
+    from homeassistant.exceptions import HomeAssistantError
+
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 61.0, "travel_down_ch1": 59.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    button = _eid(hass, "button", f"zapp_{device.serial}_ch1_blind_store_s2")
+    assert er.async_get(hass).async_get(button).entity_category == "config"
+
+    await hass.services.async_call(
+        DOMAIN, "blind_store_scene", {"entity_id": cover, "scene": 3}, blocking=True
+    )
+    assert device.commands[-1] == (1, "store_s3")
+
+    await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+    assert device.commands[-1] == (1, "store_s2")
+
+    # while the blind moves nothing is stored
+    await _key(hass, device, clock, 1000.0, 5)
+    await _value(hass, device, clock, 1000.1, 100)
+    sent = len(device.commands)
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+    assert len(device.commands) == sent
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def _run_after_command(hass, device, clock, command: str, start: float, seconds: float) -> None:
+    """Wait for the command, then simulate a run that the zApp ends by itself."""
+    await _wait_for(lambda: device.commands and device.commands[-1] == (1, command))
+    device.commands.append((0, "seen"))  # marker, so the next wait sees a new command
+    await _value(hass, device, clock, start, 100)
+    await _value(hass, device, clock, start + seconds, 0)
+
+
+async def test_calibration_run_measures_travel_times(hass: HomeAssistant, fake_zapp, clock) -> None:
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 50.0, "travel_down_ch1": 50.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    button = _eid(hass, "button", f"zapp_{device.serial}_ch1_blind_calibrate")
+    assert er.async_get(hass).async_get(button).entity_category == "config"
+
+    # known position 40 % before calibrating
+    await _key(hass, device, clock, 9000.0, 6)
+    await _value(hass, device, clock, 9000.1, 100)
+    await _value(hass, device, clock, 9050.1, 0)  # bottom
+    await hass.services.async_call("cover", "set_cover_position", {"entity_id": cover, "position": 40}, blocking=True)
+    await _value(hass, device, clock, 9060.0, 100)
+    await _value(hass, device, clock, 9080.0, 0)
+    assert hass.states.get(cover).attributes["current_position"] == 40
+
+    clock.now = 9100.0
+    await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+    await _run_after_command(hass, device, clock, "open", 9100.5, 30.0)
+    await _wait_for(lambda: hass.states.get(cover).attributes.get("calibration", "").startswith("2/3"))
+    await _run_after_command(hass, device, clock, "close", 9131.0, 59.2)
+    await _run_after_command(hass, device, clock, "open", 9191.0, 61.4)
+    await hass.async_block_till_done()
+
+    assert entry.options["travel_down_ch1"] == 59.2
+    assert entry.options["travel_up_ch1"] == 61.4
+    state = hass.states.get(cover)
+    assert "calibration" not in state.attributes
+    # back to 40 %: a timed move down of 60 % of 59.2 s does not fit a timed command
+    await _wait_for(lambda: device.commands[-1][1] == "close")
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_calibration_aborted_when_stopped(hass: HomeAssistant, fake_zapp, clock) -> None:
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 50.0, "travel_down_ch1": 50.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+
+    clock.now = 9100.0
+    await hass.services.async_call(DOMAIN, "blind_calibrate", {"entity_id": cover}, blocking=True)
+    await _run_after_command(hass, device, clock, "open", 9100.5, 30.0)
+    await _wait_for(lambda: device.commands[-1] == (1, "close"))
+    await _value(hass, device, clock, 9131.0, 100)
+    await hass.services.async_call("cover", "stop_cover", {"entity_id": cover}, blocking=True)
+    await _value(hass, device, clock, 9140.0, 0)
+    await hass.async_block_till_done()
+
+    assert entry.options["travel_down_ch1"] == 50.0
+    assert "calibration" not in hass.states.get(cover).attributes
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

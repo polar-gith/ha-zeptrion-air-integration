@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.components.button import ButtonEntity
+from homeassistant.const import EntityCategory
 
 from .const import (
     DOMAIN, 
@@ -15,6 +16,8 @@ from .const import (
     SERVICE_BLIND_RECALL_S2, 
     SERVICE_BLIND_RECALL_S3, 
     SERVICE_BLIND_RECALL_S4,
+    SERVICE_BLIND_STORE_SCENE,
+    SERVICE_BLIND_CALIBRATE,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS
 )
@@ -28,6 +31,13 @@ BUTTON_ACTIONS: list[dict[str, str]] = [
     {"type": "blind_recall_s2", "label": "Scene S2", "service": SERVICE_BLIND_RECALL_S2, "icon": "mdi:numeric-2-box-outline"},
     {"type": "blind_recall_s3", "label": "Scene S3", "service": SERVICE_BLIND_RECALL_S3, "icon": "mdi:numeric-3-box-outline"},
     {"type": "blind_recall_s4", "label": "Scene S4", "service": SERVICE_BLIND_RECALL_S4, "icon": "mdi:numeric-4-box-outline"},
+    # Store the current position as scene (like holding the scene key > 5 s)
+    {"type": "blind_store_s1", "label": "Store S1", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "1"},
+    {"type": "blind_store_s2", "label": "Store S2", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "2"},
+    {"type": "blind_store_s3", "label": "Store S3", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "3"},
+    {"type": "blind_store_s4", "label": "Store S4", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "4"},
+    # Calibration run: up, down, up, back; measures the travel times
+    {"type": "blind_calibrate", "label": "Calibrate", "service": SERVICE_BLIND_CALIBRATE, "icon": "mdi:arrow-expand-vertical"},
 ]
 
 async def async_setup_entry(
@@ -86,7 +96,8 @@ async def async_setup_entry(
                         action_type=action_def["service"], 
                         action_label=action_def["label"],
                         action_type_slug=action_def["type"],
-                        icon=action_def["icon"]
+                        icon=action_def["icon"],
+                        scene=int(action_def.get("scene", 0)),
                     )
                 )
         else:
@@ -115,6 +126,7 @@ class ZeptrionAirActionButton(ButtonEntity):
         action_label: str,
         action_type_slug: str,
         icon: str, 
+        scene: int = 0,
     ) -> None:
         """Initialize the Zeptrion Air action button."""
         self.config_entry: ConfigEntry = config_entry
@@ -127,6 +139,10 @@ class ZeptrionAirActionButton(ButtonEntity):
         self._attr_name: str = f"{action_label}"
         self._attr_unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}_{action_type_slug}"
         self._attr_icon: str = icon
+        self._scene = scene
+        if action_type in (SERVICE_BLIND_STORE_SCENE, SERVICE_BLIND_CALIBRATE):
+            # Configuration: kept off the default dashboards
+            self._attr_entity_category = EntityCategory.CONFIG
 
         _LOGGER.debug(
             "Button __init__ for action '%s' on channel %s for hub_serial '%s' (entry_title: '%s'):",
@@ -158,6 +174,16 @@ class ZeptrionAirActionButton(ButtonEntity):
                 await client.async_channel_recall_s3(self._channel_id)
             elif self._action_type == SERVICE_BLIND_RECALL_S4:
                 await client.async_channel_recall_s4(self._channel_id)
+            elif self._action_type == SERVICE_BLIND_CALIBRATE:
+                blind = self._blind_entity()
+                if blind is None:
+                    raise HomeAssistantError(f"Blind of {self.name} not found")
+                await blind.async_blind_calibrate()
+                return
+            elif self._action_type == SERVICE_BLIND_STORE_SCENE:
+                # Same checks as the action: refuse while the blind moves
+                await self._async_store_scene()
+                return
             else:
                 _LOGGER.warning(
                     "Button '%s' pressed with unhandled action type '%s' for channel %s.",
@@ -182,3 +208,19 @@ class ZeptrionAirActionButton(ButtonEntity):
                 self._action_type, self.name, self._channel_id, e
             )
             raise HomeAssistantError(f"Failed to execute action {self._action_type} for button {self.name}: An unexpected error occurred. {e}") from e
+
+    async def _async_store_scene(self) -> None:
+        """Store via the blind entity, so a moving blind is refused."""
+        blind = self._blind_entity()
+        if blind is None:
+            await self.config_entry.runtime_data.client.async_channel_store_scene(self._channel_id, self._scene)
+            return
+        await blind.async_blind_store_scene(self._scene)
+
+    def _blind_entity(self) -> Any:
+        """The cover entity of this channel (same device)."""
+        component = self.hass.data.get("entity_components", {}).get("cover")
+        unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}"
+        if component is None:
+            return None
+        return next((e for e in component.entities if e.unique_id == unique_id), None)
