@@ -154,6 +154,8 @@ This repository is not listed in the default HACS store - add it as a **custom r
 
 ## Technical Details: API Usage
 
+The official zApp API documentation by Feller and a short reference of the parts used here are linked in [docs/zapp-api.md](docs/zapp-api.md).
+
 This integration interacts with the Zeptrion Air hub's local REST API using the following endpoints:
 
 *   **GET `/zrap/id`**: Used to retrieve device identification information, including hardware version, serial number, system type, and software version. This is crucial for device setup and identification.
