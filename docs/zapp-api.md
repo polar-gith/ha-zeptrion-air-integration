@@ -4,8 +4,9 @@ Official documentation by Feller AG:
 **[zeptrionAIR API, 10.ZEPAPI-E.1612 (PDF)](https://mam.feller.ch/Technische%20Dokumentationen/zeptrionAIR-API_10.ZEPAPI-E.161216.pdf)**
 (firmware 01.08.18, 46 pages).
 
-The PDF is not stored in this repository: Feller does not allow redistributing it without written consent.
-Use the link above. The notes below summarise what the integration relies on.
+A copy is stored in this repository as [docs/api/zeptrionAIR-API_10.ZEPAPI-E.161216.pdf](api/zeptrionAIR-API_10.ZEPAPI-E.161216.pdf),
+with the permission of Feller AG (given to the maintainer by phone, November 2026). © Feller AG, all rights reserved.
+The notes below summarise what the integration relies on.
 
 ## Endpoints used
 
