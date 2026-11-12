@@ -90,6 +90,15 @@
       },
       "smartfront_humidity": {
         "name": "Smartfront humidity"
+      },
+      "stream_connects": {
+        "name": "Connections"
+      },
+      "stream_short_outages": {
+        "name": "Short outages"
+      },
+      "stream_long_outages": {
+        "name": "Long outages"
       }
     },
     "switch": {
