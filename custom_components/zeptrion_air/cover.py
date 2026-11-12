@@ -165,6 +165,18 @@ async def async_setup_entry(
     else:
         _LOGGER.info("No Zeptrion Air cover entities to add.")
 
+    # Entity services are registered once per platform during setup. Doing it in
+    # async_added_to_hass fails when an entity is re-added outside platform
+    # setup (e.g. after an entity_id rename): "Cannot get non-set current platform".
+    platform = entity_platform.async_get_current_platform()
+    for service in (
+        SERVICE_BLIND_RECALL_S1,
+        SERVICE_BLIND_RECALL_S2,
+        SERVICE_BLIND_RECALL_S3,
+        SERVICE_BLIND_RECALL_S4,
+    ):
+        platform.async_register_entity_service(service, {}, f"async_{service}")
+
     return True
 
 
@@ -342,12 +354,6 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         )
         self.async_on_remove(self._cancel_timers)
 
-        platform: entity_platform.EntityPlatform | None = entity_platform.async_get_current_platform()
-        if platform:
-            platform.async_register_entity_service(SERVICE_BLIND_RECALL_S1, {}, self.async_blind_recall_s1.__name__)
-            platform.async_register_entity_service(SERVICE_BLIND_RECALL_S2, {}, self.async_blind_recall_s2.__name__)
-            platform.async_register_entity_service(SERVICE_BLIND_RECALL_S3, {}, self.async_blind_recall_s3.__name__)
-            platform.async_register_entity_service(SERVICE_BLIND_RECALL_S4, {}, self.async_blind_recall_s4.__name__)
 
     @callback
     def _cancel_timers(self) -> None:
