@@ -348,3 +348,33 @@ async def test_renamed_blind_is_re_added_with_services(hass: HomeAssistant, fake
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_store_scene_by_action_and_button(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """S1-S4 can be stored from HA; a moving blind is refused."""
+    from homeassistant.exceptions import HomeAssistantError
+
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 61.0, "travel_down_ch1": 59.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    button = _eid(hass, "button", f"zapp_{device.serial}_ch1_blind_store_s2")
+    assert er.async_get(hass).async_get(button).entity_category == "config"
+
+    await hass.services.async_call(
+        DOMAIN, "blind_store_scene", {"entity_id": cover, "scene": 3}, blocking=True
+    )
+    assert device.commands[-1] == (1, "store_s3")
+
+    await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+    assert device.commands[-1] == (1, "store_s2")
+
+    # while the blind moves nothing is stored
+    await _key(hass, device, clock, 1000.0, 5)
+    await _value(hass, device, clock, 1000.1, 100)
+    sent = len(device.commands)
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+    assert len(device.commands) == sent
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

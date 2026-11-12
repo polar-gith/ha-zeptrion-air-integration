@@ -6,6 +6,7 @@ import time
 from datetime import timedelta
 from typing import Any
 
+import voluptuous as vol
 from homeassistant.components.cover import (
     ATTR_CURRENT_POSITION,
     ATTR_CURRENT_TILT_POSITION,
@@ -32,6 +33,7 @@ from .const import (
     SERVICE_BLIND_RECALL_S2,
     SERVICE_BLIND_RECALL_S3,
     SERVICE_BLIND_RECALL_S4,
+    SERVICE_BLIND_STORE_SCENE,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS,
     SIGNAL_AVAILABILITY,
@@ -169,6 +171,11 @@ async def async_setup_entry(
     # async_added_to_hass fails when an entity is re-added outside platform
     # setup (e.g. after an entity_id rename): "Cannot get non-set current platform".
     platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        SERVICE_BLIND_STORE_SCENE,
+        {vol.Required("scene"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4))},
+        "async_blind_store_scene",
+    )
     for service in (
         SERVICE_BLIND_RECALL_S1,
         SERVICE_BLIND_RECALL_S2,
@@ -664,6 +671,18 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         if not self._motion.moving:
             self._stop_tick()
         self.async_write_ha_state()
+
+    async def async_blind_store_scene(self, scene: int) -> None:
+        """Store the blind's current position on the zApp as scene S1-S4."""
+        if self._motion.moving:
+            raise HomeAssistantError(
+                f"{self.name} is moving: stop it at the wanted position before storing scene S{scene}"
+            )
+        try:
+            await self.config_entry.runtime_data.client.async_channel_store_scene(self._channel_id, scene)
+        except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
+            raise HomeAssistantError(f"Failed to store scene S{scene} for blind {self.name}: {e}") from e
+        _LOGGER.info("Stored scene S%s for blind %s (channel %s)", scene, self.name, self._channel_id)
 
     async def async_blind_recall_s1(self) -> None:
         """Recall scene S1 for the blind."""

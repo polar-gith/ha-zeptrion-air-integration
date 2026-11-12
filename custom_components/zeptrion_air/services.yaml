@@ -29,3 +29,22 @@ blind_recall_s4:
     entity:
       integration: zeptrion_air
       domain: cover
+
+blind_store_scene:
+  name: Blind Store Scene
+  description: Stores the blind's current position on the zApp as scene S1-S4 (same as holding the scene key). Stop the blind at the wanted position first.
+  target:
+    entity:
+      integration: zeptrion_air
+      domain: cover
+  fields:
+    scene:
+      name: Scene
+      description: Scene number 1-4.
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box

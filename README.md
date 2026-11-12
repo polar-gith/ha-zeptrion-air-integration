@@ -20,6 +20,7 @@ This is a custom integration for Home Assistant that allows you to control [Zept
         *   `zeptrion_air.blind_recall_s2`
         *   `zeptrion_air.blind_recall_s3`
         *   `zeptrion_air.blind_recall_s4`
+        *   `zeptrion_air.blind_store_scene` (`scene: 1-4`): store the current position as scene S1-S4
 *   **Light Control (Switches/Dimmers):** Channels of category 1 (on/off) and category 3 (dimmer) are exposed as Home Assistant `Light` entities. See [Light Entities (Switches & Dimmers)](#light-entities-switches--dimmers) below for details.
 *   **Button Entities:** Provides button entities in Home Assistant for each of the custom cover services (Step Up/Down, S1-S4 scenes), making them easily accessible from the UI.
 *   **Sensor Entities:** Exposes channel name, group, and Zeptrion icon ID as sensor entities (disabled by default). These can be enabled by the user if desired.
@@ -107,6 +108,10 @@ Travel times can also be entered per blind in the hub's options ("Channel n: tra
 If all blinds are the same (height, drive), switch on **"Blind learning: apply to all blinds"** (also coupled across zApps) before switching learning mode off: all measurements are then pooled and the agreed times are given to every blind without its own result, so measuring one blind twice is enough.
 
 A measurement is a movement that started at a known end stop, went towards the other end and was stopped by hand; timed moves (steps, set position) never count. During learning, each blind shows its measurements in the `learning` attribute; `last_run` shows direction, duration and whether it was stopped by hand.
+
+### Storing scenes S1-S4
+
+Each blind has the buttons **Store S1 … Store S4** (under the device's *Configuration*), and the action `zeptrion_air.blind_store_scene` with `scene: 1-4`. They do the same as holding a scene key on the wall: the zApp stores the blind's current position (`store_s<n>`), which the wall keys and the *Scene S1-S4* buttons then recall. Stop the blind at the wanted position first; a moving blind is refused. Feller recommends to start from the top end stop (reference position) and set the slats before storing. Scenes cannot be read back from the zApp.
 
 ## Connection handling
 
