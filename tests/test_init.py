@@ -103,6 +103,19 @@ async def test_short_outage_keeps_entities_available(hass: HomeAssistant, fake_z
     assert hass.states.get(cover).state != STATE_UNAVAILABLE
     assert runtime.short_outages == 1
 
+    # Counters: hidden diagnostic sensors, refreshed with the hub poll
+    registry = er.async_get(hass)
+    connects = _entity_id(hass, f"zapp_{device.serial}_connects", "sensor")
+    short = _entity_id(hass, f"zapp_{device.serial}_short_outages", "sensor")
+    long_ = _entity_id(hass, f"zapp_{device.serial}_long_outages", "sensor")
+    assert registry.async_get(short).hidden_by == er.RegistryEntryHider.INTEGRATION
+    assert registry.async_get(short).entity_category == "diagnostic"
+    await runtime.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(connects).state == "2"
+    assert hass.states.get(short).state == "1"
+    assert hass.states.get(long_).state == "0"
+
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
 
@@ -139,6 +152,8 @@ async def test_long_outage_makes_entities_unavailable(hass: HomeAssistant, fake_
     await hass.async_block_till_done()
     assert hass.states.get(cover).state != STATE_UNAVAILABLE
     await _wait_for(lambda: hass.states.get(light).state == "on")
+    assert runtime.long_outages == 1
+    assert runtime.short_outages == 0
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

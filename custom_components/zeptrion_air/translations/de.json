@@ -90,6 +90,15 @@
       },
       "smartfront_humidity": {
         "name": "Smartfront-Feuchte"
+      },
+      "stream_connects": {
+        "name": "Verbindungsaufbauten"
+      },
+      "stream_short_outages": {
+        "name": "Kurze Abbrüche"
+      },
+      "stream_long_outages": {
+        "name": "Lange Ausfälle"
       }
     },
     "switch": {

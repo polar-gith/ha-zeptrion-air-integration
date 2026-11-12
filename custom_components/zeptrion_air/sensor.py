@@ -142,6 +142,13 @@ async def async_setup_entry(
                 ZeptrionAirSmartfrontSensor(coordinator, hub_serial, description)
             )
 
+    # --- Connection counters (diagnostic, hidden by default) ---
+    if coordinator and hub_serial and runtime_data is not None:
+        for description in CONNECTION_SENSORS:
+            new_entities.append(
+                ZeptrionAirConnectionSensor(coordinator, hub_serial, entry, description)
+            )
+
     if new_entities:
         _LOGGER.info(f"Adding {len(new_entities)} Zeptrion Air sensor entities in total.")
         async_add_entities(new_entities)
@@ -280,7 +287,7 @@ class ZeptrionAirRssiSensor(ZeptrionAirEntity, SensorEntity):
 
 
 from homeassistant.components.sensor import SensorEntityDescription
-from homeassistant.const import LIGHT_LUX, PERCENTAGE, UnitOfTemperature
+from homeassistant.const import LIGHT_LUX, PERCENTAGE, EntityCategory, UnitOfTemperature
 
 from .smartfront import parse_sensor_value
 
@@ -333,3 +340,69 @@ class ZeptrionAirSmartfrontSensor(ZeptrionAirEntity, SensorEntity):
     @property
     def available(self) -> bool:
         return super().available and self.native_value is not None
+
+
+# Counters of the event stream since HA start or reload of the entry. Hidden
+# and diagnostic: they are meant for troubleshooting, not for dashboards.
+CONNECTION_SENSORS: tuple[SensorEntityDescription, ...] = (
+    SensorEntityDescription(
+        key="connects",
+        translation_key="stream_connects",
+        icon="mdi:lan-connect",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_visible_default=False,
+    ),
+    SensorEntityDescription(
+        key="short_outages",
+        translation_key="stream_short_outages",
+        icon="mdi:lan-pending",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_visible_default=False,
+    ),
+    SensorEntityDescription(
+        key="long_outages",
+        translation_key="stream_long_outages",
+        icon="mdi:lan-disconnect",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_visible_default=False,
+    ),
+)
+
+
+class ZeptrionAirConnectionSensor(ZeptrionAirEntity, SensorEntity):
+    """Event stream counter, refreshed with every hub poll (60 s).
+
+    Counts since HA start or reload of the entry. Always available, the
+    counters are kept locally and are most useful while the zApp is away.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: ZeptrionAirDataUpdateCoordinator,
+        hub_serial: str,
+        entry: ConfigEntry,
+        description: SensorEntityDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._entry = entry
+        self._attr_unique_id = f"zapp_{hub_serial}_{description.key}"
+
+    @property
+    def native_value(self) -> int | None:
+        runtime_data = self._entry.runtime_data
+        if runtime_data is None:
+            return None
+        if self.entity_description.key == "connects":
+            listener = runtime_data.websocket_listener
+            return listener.connects if listener else 0
+        return getattr(runtime_data, self.entity_description.key)
+
+    @property
+    def available(self) -> bool:
+        return self._entry.runtime_data is not None

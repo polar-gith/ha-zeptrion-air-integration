@@ -55,6 +55,7 @@ async def async_get_config_entry_diagnostics(
             "available": runtime_data.available,
             "stream_down": runtime_data.stream_down,
             "short_outages": runtime_data.short_outages,
+            "long_outages": runtime_data.long_outages,
             "event_stream": (
                 runtime_data.websocket_listener.get_stats()
                 if runtime_data.websocket_listener

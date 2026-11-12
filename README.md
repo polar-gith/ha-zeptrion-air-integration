@@ -116,6 +116,7 @@ The zApp pushes channel changes over the WebSocket `ws://<host>/zrap/ws`. It sen
 *   Reconnects use exponential backoff from 1 s to 60 s with +/-20 % jitter.
 *   After every (re)connect all channel states are read once (`/zrap/chscan`), so a change made during the gap is not lost.
 *   Entities only become unavailable after 60 s without a connection. Short drops are logged at debug level; a longer outage logs one warning and one info message when the zApp is back.
+*   Three hidden diagnostic sensors per zApp count the event stream since HA start or reload of the entry: *Connections* (connection setups, 1 after a clean start), *Short outages* (drops under 60 s, entities stayed available) and *Long outages* (entities were unavailable). They refresh with the 60 s hub poll and are found under the device's diagnostic entities; unhide them to show them on a dashboard.
 
 HTTP requests follow the device's rules: reads are retried, commands are sent exactly once (a repeated `move_open_<ms>` or `dim_down_<ms>` would act twice), the 302 answer to a command is not followed, and at most two requests run against a zApp at a time.
 

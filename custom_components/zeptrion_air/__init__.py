@@ -401,6 +401,7 @@ def _async_start_event_stream(
                     runtime_data.short_outages += 1
                     LOGGER.debug("[%s] Event stream back after %.1f s", hostname, down_for)
                 else:
+                    runtime_data.long_outages += 1
                     LOGGER.info("[%s] Connection back after %.0f s", hostname, down_for)
             runtime_data.stream_down = False
             runtime_data.stream_down_since = None
