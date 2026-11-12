@@ -17,6 +17,7 @@ from .const import (
     SERVICE_BLIND_RECALL_S3, 
     SERVICE_BLIND_RECALL_S4,
     SERVICE_BLIND_STORE_SCENE,
+    SERVICE_BLIND_CALIBRATE,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS
 )
@@ -35,6 +36,8 @@ BUTTON_ACTIONS: list[dict[str, str]] = [
     {"type": "blind_store_s2", "label": "Store S2", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "2"},
     {"type": "blind_store_s3", "label": "Store S3", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "3"},
     {"type": "blind_store_s4", "label": "Store S4", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "4"},
+    # Calibration run: up, down, up, back; measures the travel times
+    {"type": "blind_calibrate", "label": "Calibrate", "service": SERVICE_BLIND_CALIBRATE, "icon": "mdi:arrow-expand-vertical"},
 ]
 
 async def async_setup_entry(
@@ -137,7 +140,7 @@ class ZeptrionAirActionButton(ButtonEntity):
         self._attr_unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}_{action_type_slug}"
         self._attr_icon: str = icon
         self._scene = scene
-        if action_type == SERVICE_BLIND_STORE_SCENE:
+        if action_type in (SERVICE_BLIND_STORE_SCENE, SERVICE_BLIND_CALIBRATE):
             # Configuration: kept off the default dashboards
             self._attr_entity_category = EntityCategory.CONFIG
 
@@ -171,6 +174,12 @@ class ZeptrionAirActionButton(ButtonEntity):
                 await client.async_channel_recall_s3(self._channel_id)
             elif self._action_type == SERVICE_BLIND_RECALL_S4:
                 await client.async_channel_recall_s4(self._channel_id)
+            elif self._action_type == SERVICE_BLIND_CALIBRATE:
+                blind = self._blind_entity()
+                if blind is None:
+                    raise HomeAssistantError(f"Blind of {self.name} not found")
+                await blind.async_blind_calibrate()
+                return
             elif self._action_type == SERVICE_BLIND_STORE_SCENE:
                 # Same checks as the action: refuse while the blind moves
                 await self._async_store_scene()
@@ -202,12 +211,16 @@ class ZeptrionAirActionButton(ButtonEntity):
 
     async def _async_store_scene(self) -> None:
         """Store via the blind entity, so a moving blind is refused."""
-        component = self.hass.data.get("entity_components", {}).get("cover")
-        unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}"
-        blind = None
-        if component is not None:
-            blind = next((e for e in component.entities if e.unique_id == unique_id), None)
+        blind = self._blind_entity()
         if blind is None:
             await self.config_entry.runtime_data.client.async_channel_store_scene(self._channel_id, self._scene)
             return
         await blind.async_blind_store_scene(self._scene)
+
+    def _blind_entity(self) -> Any:
+        """The cover entity of this channel (same device)."""
+        component = self.hass.data.get("entity_components", {}).get("cover")
+        unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}"
+        if component is None:
+            return None
+        return next((e for e in component.entities if e.unique_id == unique_id), None)

@@ -48,3 +48,11 @@ blind_store_scene:
           min: 1
           max: 4
           mode: box
+
+blind_calibrate:
+  name: Blind Calibrate
+  description: Calibration run, e.g. after a new blind was installed. Moves the blind fully up, down and up, measures and stores the travel times, then returns to the previous position. A notification shows the result.
+  target:
+    entity:
+      integration: zeptrion_air
+      domain: cover

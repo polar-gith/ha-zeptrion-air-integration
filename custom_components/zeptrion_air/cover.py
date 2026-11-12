@@ -1,6 +1,7 @@
 """Cover platform for Zeptrion Air."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import timedelta
@@ -16,6 +17,7 @@ from homeassistant.components.cover import (
     CoverEntity,
     CoverEntityFeature,
 )
+from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, Event, callback
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
@@ -34,6 +36,7 @@ from .const import (
     SERVICE_BLIND_RECALL_S3,
     SERVICE_BLIND_RECALL_S4,
     SERVICE_BLIND_STORE_SCENE,
+    SERVICE_BLIND_CALIBRATE,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS,
     SIGNAL_AVAILABILITY,
@@ -171,6 +174,7 @@ async def async_setup_entry(
     # async_added_to_hass fails when an entity is re-added outside platform
     # setup (e.g. after an entity_id rename): "Cannot get non-set current platform".
     platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(SERVICE_BLIND_CALIBRATE, {}, "async_blind_calibrate")
     platform.async_register_entity_service(
         SERVICE_BLIND_STORE_SCENE,
         {vol.Required("scene"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4))},
@@ -227,6 +231,9 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         self._moving_check_cancel: CALLBACK_TYPE | None = None
         self._stop_timer_cancel: CALLBACK_TYPE | None = None
         self._last_run: dict[str, Any] | None = None
+        self._run_waiter: asyncio.Future[Run] | None = None
+        self._calibration: str | None = None
+        self._calibration_task: asyncio.Task[None] | None = None
 
         self._auto_samples: dict[str, list[float]] = {}
         self._attr_supported_features = self._features()
@@ -300,6 +307,8 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             attributes["tilt_time"] = self._motion.tilt_time
         if self._last_run:
             attributes["last_run"] = self._last_run
+        if self._calibration:
+            attributes["calibration"] = self._calibration
         learning = async_get_learning_manager(self.hass).status(
             self.config_entry.entry_id, self._channel_id
         ) if self.hass else None
@@ -537,6 +546,17 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         self._stop_tick()
         if run is None:
             return
+        if self._run_waiter is not None and not self._run_waiter.done():
+            self._run_waiter.set_result(run)
+            if self._calibration is not None:
+                # calibration runs set the travel times themselves
+                self._last_run = {
+                    "direction": run.direction,
+                    "duration": round(run.duration, 1),
+                    "stopped_by_hand": run.stopped_by_hand,
+                }
+                self.async_write_ha_state()
+                return
         self._last_run = {
             "direction": run.direction,
             "duration": round(run.duration, 1),
@@ -672,6 +692,87 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             self._stop_tick()
         self.async_write_ha_state()
 
+    async def async_blind_calibrate(self) -> None:
+        """Start a calibration run: up, down, up, then back to the previous position.
+
+        The two full runs from one end stop to the other measure the travel times
+        (the zApp stops the motor at the end stop), which are stored for this blind.
+        """
+        if self._calibration_task is not None and not self._calibration_task.done():
+            raise HomeAssistantError(f"Calibration of {self.name} is already running")
+        if self._motion.moving:
+            raise HomeAssistantError(f"{self.name} is moving: wait until it stands before calibrating")
+        self._calibration_task = self.config_entry.async_create_background_task(
+            self.hass, self._async_calibrate(), name=f"zeptrion_air calibrate {self.entity_id}"
+        )
+
+    async def _async_calibration_run(self, direction: str, step: str) -> Run:
+        """Run fully in one direction and return the finished run."""
+        self._calibration = step
+        self.async_write_ha_state()
+        self._run_waiter = self.hass.loop.create_future()
+        try:
+            if direction == "up":
+                await self.async_open_cover()
+            else:
+                await self.async_close_cover()
+            async with asyncio.timeout(CALIBRATION_RUN_TIMEOUT_S):
+                run = await self._run_waiter
+        except TimeoutError as err:
+            raise _CalibrationAborted(f"no end of the {direction} run within {CALIBRATION_RUN_TIMEOUT_S} s") from err
+        finally:
+            self._run_waiter = None
+        if run.direction != direction or run.stopped_by_hand:
+            raise _CalibrationAborted(f"the {direction} run was stopped or reversed")
+        return run
+
+    async def _async_calibrate(self) -> None:
+        previous = self._motion.position
+        result: dict[str, float] = {}
+        try:
+            await self._async_calibration_run("up", "1/3 up to the top (reference)")
+            down = await self._async_calibration_run("down", "2/3 measuring down")
+            up = await self._async_calibration_run("up", "3/3 measuring up")
+            result = {"down": round(down.duration, 1), "up": round(up.duration, 1)}
+            if min(result.values()) < MIN_CALIBRATION_RUN_S:
+                raise _CalibrationAborted(
+                    f"runs too short ({result['up']} s up, {result['down']} s down)"
+                )
+            self._auto_samples.clear()
+            async_store_travel_times(
+                self.hass,
+                self.config_entry,
+                {
+                    travel_option_key("up", self._channel_id): result["up"],
+                    travel_option_key("down", self._channel_id): result["down"],
+                },
+            )
+            self._reload_travel_times()
+            self._calibration = None
+            if previous is not None and 0 < previous < 100:
+                await self.async_set_cover_position(position=round(previous))
+            message = (
+                f"{self.name}: travel time up {result['up']} s, down {result['down']} s."
+                + (f" Back to {round(previous)} %." if previous is not None and 0 < previous < 100 else "")
+            )
+            _LOGGER.info("Calibration finished: %s", message)
+        except _CalibrationAborted as err:
+            message = f"{self.name}: calibration aborted, {err}. Travel times unchanged."
+            _LOGGER.warning("Calibration aborted: %s", message)
+        except HomeAssistantError as err:
+            message = f"{self.name}: calibration aborted, {err}. Travel times unchanged."
+            _LOGGER.warning("Calibration aborted: %s", message)
+        finally:
+            self._calibration = None
+            self._run_waiter = None
+            self.async_write_ha_state()
+        persistent_notification.async_create(
+            self.hass,
+            message,
+            title="Zeptrion blind calibration",
+            notification_id=f"zeptrion_air_calibration_{self.config_entry.entry_id}_{self._channel_id}",
+        )
+
     async def async_blind_store_scene(self, scene: int) -> None:
         """Store the blind's current position on the zApp as scene S1-S4."""
         if self._motion.moving:
@@ -744,3 +845,11 @@ def _positive(value: Any) -> float | None:
         return None
     return number if number > 0 else None
 
+
+
+CALIBRATION_RUN_TIMEOUT_S = 300
+MIN_CALIBRATION_RUN_S = 5.0
+
+
+class _CalibrationAborted(Exception):
+    """A calibration run did not end at the other end stop."""
