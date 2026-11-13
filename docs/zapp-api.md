@@ -33,3 +33,9 @@ The notes below summarise what the integration relies on.
 
 - No position feedback for blinds, no reference run or calibration command. Position and travel times are estimated by the integration.
 - No way to read which positions are stored in scenes S1–S4.
+
+## Observed behaviour (firmware 01.08.x)
+
+- **Scene recall on a blind** (tested 13.11.2026 on a UG blind, 31 s travel): the zApp first runs the blind down to the bottom end stop, then immediately up for the time stored with the scene. Example: stored after a 19.1 s move up from the bottom; recall from the top ran 31.0 s down, then 19.1 s up (≈ 59 %). Home Assistant sees two runs; with correct travel times the integration follows both (the second starts at the known bottom end stop).
+- **`open` at the top end stop** is ignored (the motor does not start); the calibration run treats this as "already at the reference".
+- **Run time** of `open` / `close`: the zApp ends the relay after the blind's travel time, so an unstopped full run measures the travel time. Blinds of different height have different times (here 61/59 s in the EG, 31–33 s in the UG).
