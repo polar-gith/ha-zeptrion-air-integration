@@ -33,6 +33,13 @@ Direction = Literal["up", "down"]
 EndStop = Literal["top", "bottom"]
 
 HINT_VALID_S = 3.0
+# A run that ends this soon after a wall key was released was stopped by the release
+# (hold-to-move, or a short tap that only turns the slats).
+KEY_RELEASE_STOP_S = 1.0
+# Scene: largest deviation of the first run from the time to an end stop that is
+# still accepted as "ran to that end stop".
+SCENE_MATCH_S = 2.0
+SCENE_MATCH_FRACTION = 0.25
 FULL_RUN_FRACTION = 0.95
 MIN_SAMPLE_S = 5.0
 SAMPLE_AGREEMENT_S = 1.0
@@ -122,6 +129,9 @@ class CoverMotion:
         self.end_stop: EndStop | None = (
             "top" if position == 100 else "bottom" if position == 0 else None
         )
+        # The end stop the blind came from last: the zApp stores a scene relative
+        # to it (Feller: store coming from the top).
+        self.last_end_stop: EndStop | None = self.end_stop
         self.moving = False
         self.direction: Direction | None = None
         self._started_at: float | None = None
@@ -131,8 +141,10 @@ class CoverMotion:
         self._timed = False
         self._hint: _Hint | None = None
         self._target: float | None = None
-        self._scene_to_bottom = False
+        self._scene_from: float | None = None
+        self._scene_tilt: float | None = None
         self._user_stop = False
+        self._key_released_at: float | None = None
 
     # ---------------------------------------------------------------- inputs
 
@@ -154,12 +166,20 @@ class CoverMotion:
     def scene_hint(self, now: float) -> None:
         """A scene S1-S4 was recalled.
 
-        The zApp first runs the blind down to the bottom end stop (it tracks the
-        position itself, so this run ends there), then right away up for the time
-        stored with the scene. From the bottom only the run up follows.
+        The zApp stores a scene as its reference end stop (the end stop the blind
+        came from when the scene was stored; Feller: store from the top) plus the
+        net motor time from there. On recall it runs to the reference end stop
+        and then, right away, the net time back. Standing at an end stop the
+        existing rules already follow this; from a known position in between the
+        end stop of the first run is told by its duration (see _finish).
         """
         self._hint = _Hint(None, now, scene=True)
         self._target = None
+
+    def key_released(self, now: float) -> None:
+        """A wall key of this channel was released."""
+        if self.moving:
+            self._key_released_at = now
 
     def stop_requested(self, now: float) -> None:
         """A stop command or a wall key press while moving."""
@@ -181,6 +201,7 @@ class CoverMotion:
         if self.moving:
             return
         self.end_stop = end_stop
+        self.last_end_stop = end_stop
         self.position = 100.0 if end_stop == "top" else 0.0
         if self.tilt_time:
             self.tilt = 100.0 if end_stop == "top" else 0.0
@@ -258,10 +279,18 @@ class CoverMotion:
             return
         hint = self._hint
         self._hint = None
-        if hint and hint.scene and now - hint.at <= HINT_VALID_S and self.end_stop != "bottom":
-            # scene: first the run down to the bottom end stop (see scene_hint)
-            self._begin(now, "down", timed=True)
-            self._scene_to_bottom = True
+        if (
+            hint
+            and hint.scene
+            and now - hint.at <= HINT_VALID_S
+            and self.end_stop is None
+            and self.position is not None
+        ):
+            # scene from a known position in between: the direction of the first
+            # run (to the reference end stop) is told by its duration at its end
+            self._scene_from = self.position
+            self._scene_tilt = self.tilt
+            self._begin(now, None, timed=True)
             return
         direction = hint.direction if hint and now - hint.at <= HINT_VALID_S else None
         timed = bool(hint and direction is not None and hint.timed)
@@ -283,6 +312,7 @@ class CoverMotion:
         self._timed = timed
         self._stop_requested = self._timed
         self._user_stop = False
+        self._key_released_at = None
         if direction is None:
             self.position = None
             self.end_stop = None
@@ -291,9 +321,19 @@ class CoverMotion:
     def _finish(self, now: float) -> Run | None:
         if not self.moving:
             return None
-        scene_to_bottom = self._scene_to_bottom and not self._user_stop
-        self._scene_to_bottom = False
+        scene_from, scene_tilt = self._scene_from, self._scene_tilt
+        self._scene_from = self._scene_tilt = None
         duration = self._elapsed(now)
+        if self._key_released_at is not None and now - self._key_released_at <= KEY_RELEASE_STOP_S:
+            # ended by releasing the wall key (hold-to-move or a slat tap)
+            self._stop_requested = True
+        scene_end = (
+            None
+            if scene_from is None or self._user_stop
+            else self._scene_end_stop(scene_from, scene_tilt, duration)
+        )
+        if scene_end is not None:
+            self.direction = "up" if scene_end == "top" else "down"
         run = Run(
             direction=self.direction,
             duration=duration,
@@ -304,14 +344,14 @@ class CoverMotion:
         self.moving = False
         travel = self.travel.for_direction(self.direction) if self.direction else None
 
-        if scene_to_bottom:
-            # scene, first part: the zApp ended the run at the bottom end stop;
-            # the run up for the stored time follows right away
-            self.position = 0.0
-            self.end_stop = "bottom"
+        if scene_end is not None:
+            # scene, first part: the zApp ended the run at its reference end stop;
+            # the run back for the stored time follows right away
+            self.position = 100.0 if scene_end == "top" else 0.0
+            self.end_stop = scene_end
             if self.tilt_time:
-                self.tilt = 0.0
-            self._hint = _Hint("up", now, timed=True)
+                self.tilt = self.position
+            self._hint = _Hint("down" if scene_end == "top" else "up", now, timed=True)
         elif self.direction is None:
             self.position = None
             self.end_stop = None
@@ -331,12 +371,34 @@ class CoverMotion:
             elif self.position == 0.0:
                 self.end_stop = "bottom"
 
+        if self.end_stop is not None:
+            self.last_end_stop = self.end_stop
         self.direction = None
         self._started_at = None
         self._start_position = None
         self._start_tilt = None
         self._target = None
         return run
+
+    def _scene_end_stop(
+        self, start: float, start_tilt: float | None, duration: float
+    ) -> EndStop | None:
+        """End stop the first run of a scene went to, told by its duration."""
+        candidates: list[tuple[float, EndStop]] = []
+        for direction, end in (("down", "bottom"), ("up", "top")):
+            height = self._height_travel(direction)  # type: ignore[arg-type]
+            if height is None:
+                return None
+            share = start / 100 if direction == "down" else (100 - start) / 100
+            expected = self._tilt_needed(direction, start_tilt) + share * height  # type: ignore[arg-type]
+            candidates.append((abs(duration - expected), end))  # type: ignore[arg-type]
+        candidates.sort()
+        error, end = candidates[0]
+        expected_other = candidates[1][0]
+        limit = max(SCENE_MATCH_S, SCENE_MATCH_FRACTION * (duration or 1.0))
+        if error > limit or error == expected_other:
+            return None
+        return end
 
     def _elapsed(self, now: float) -> float:
         return 0.0 if self._started_at is None else now - self._started_at

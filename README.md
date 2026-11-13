@@ -38,7 +38,12 @@ Blinds of different height have different times; measure each one.
 
 **Slats.** With a slat tilt time (typically 1–2 s), the first part of a run after a change of direction turns the slats. The blind then reports a tilt position (100 = open) and supports *set tilt position*; the tilt buttons turn the slats one step (option *step duration*).
 
-**Scenes S1–S4.** *Store S1–S4* does the same as holding a scene key on the wall: the zApp stores the current position (refused while the blind moves). On recall the zApp runs the blind down to the bottom end stop and then up for the stored time; the integration follows both runs and knows the position afterwards. Scenes cannot be read back from the zApp.
+**Scenes S1–S4.** The zApp stores a scene as the end stop the blind came from plus the net motor time from there, and replays it as "run to that end stop, then the net time back". Feller therefore says: drive the blind fully **up** first, then to the height, then store. Coming from the top the replay ends with a run down (slats closed/tilted); coming from the bottom it ends with a run up (slats open). The slat angle itself is not stored.
+- *Store S1–S4* (and `blind_store_scene`) store right away if the blind came from the top. Otherwise the blind first runs to the top and back to its current position, then the scene is stored (a notification confirms it). Refused while the blind moves or when its position is unknown.
+- On recall the integration follows both runs: from an end stop by the rules above, from a known position in between by the duration of the first run.
+- Scenes cannot be read back from the zApp.
+
+**Wall keys.** Depending on the blind, a wall key starts a full run, or moves only while held (a short tap turns the slats). A run that ends within 1 s after the key is released counts as stopped by hand, not as arrived at the end stop.
 
 ## Lights
 

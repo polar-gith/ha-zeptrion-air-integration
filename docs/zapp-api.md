@@ -36,6 +36,10 @@ The notes below summarise what the integration relies on.
 
 ## Observed behaviour (firmware 01.08.x)
 
-- **Scene recall on a blind** (tested 13.11.2026 on a UG blind, 31 s travel): the zApp first runs the blind down to the bottom end stop, then immediately up for the time stored with the scene. Example: stored after a 19.1 s move up from the bottom; recall from the top ran 31.0 s down, then 19.1 s up (≈ 59 %). Home Assistant sees two runs; with correct travel times the integration follows both (the second starts at the known bottom end stop).
+- **Scenes on a blind** (tested 13.11.2026, UG blind with 31 s travel): the zApp stores the end stop the blind came from (the reference) and the net motor time from there; the slat angle is not stored separately. On recall it runs to the reference end stop (ending by its own position estimate, not after the full run time), then right away the net time back.
+  - Stored after: top → 16.0 s down → 0.6 s up (slats half open). Recall from the bottom: 31.7 s up, 15.5 s down; slats end closed.
+  - Stored after: bottom → 19.1 s up. Recall from the top: 31.0 s down, 19.1 s up; from 70 %: 23.3 s down, 19.1 s up; from the bottom: 19.1 s up only. Slats end open.
+  - Feller's instructions (zeptrion manuals): drive the blind to the upper end stop (reference position) first, then to the height, set the slats, then hold the scene key > 5 s.
+- **Wall keys** on blinds set to hold-to-move: a short tap turns the slats (motor runs ~0.2–0.8 s), holding moves until the key is released.
 - **`open` at the top end stop** is ignored (the motor does not start); the calibration run treats this as "already at the reference".
 - **Run time** of `open` / `close`: the zApp ends the relay after the blind's travel time, so an unstopped full run measures the travel time. Blinds of different height have different times (here 61/59 s in the EG, 31–33 s in the UG).
