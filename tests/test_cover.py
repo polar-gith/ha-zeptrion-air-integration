@@ -580,3 +580,33 @@ async def test_store_scene_coming_from_the_bottom_goes_via_the_top(hass: HomeAss
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_unknown_run_from_middle_told_by_duration(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """A scene or open/close from another zApp's Smartbutton: no hint, direction from the duration."""
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 31.5, "travel_down_ch1": 31.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    await _key(hass, device, clock, 1000.0, 6)
+    await _value(hass, device, clock, 1000.1, 100)
+    await _value(hass, device, clock, 1031.1, 0)
+    clock.now = 1040.0
+    await hass.services.async_call("cover", "set_cover_position", {"entity_id": cover, "position": 70}, blocking=True)
+    await _value(hass, device, clock, 1040.1, 100)
+    await _value(hass, device, clock, 1040.1 + 0.7 * 31.5, 0)
+
+    # scene stored from the top, triggered elsewhere: up 9.5 s, then down 15.5 s
+    await _value(hass, device, clock, 1100.0, 100)
+    await _value(hass, device, clock, 1109.5, 0)
+    assert hass.states.get(cover).attributes["current_position"] == 100
+    await _value(hass, device, clock, 1110.0, 100)
+    await _value(hass, device, clock, 1125.5, 0)
+    assert 48 <= hass.states.get(cover).attributes["current_position"] <= 52
+
+    # a run of unknown direction that ends at neither end: position unknown
+    await _value(hass, device, clock, 1200.0, 100)
+    await _value(hass, device, clock, 1205.0, 0)
+    assert hass.states.get(cover).attributes.get("current_position") is None
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

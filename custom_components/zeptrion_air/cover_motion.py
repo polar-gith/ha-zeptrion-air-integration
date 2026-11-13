@@ -9,8 +9,9 @@ and a position can only be estimated from the time the motor ran.
 Rules:
 * A direction hint (command or wall key) is valid for HINT_VALID_S seconds; a
   movement that starts without one has an unknown direction (scene, Smartbutton
-  of another device, ...) and makes the position unknown, unless the blind
-  stands at a known end stop: then it can only move away from it.
+  or wall key of any zApp, another device, ...). At a known end stop it can only
+  move away from it. From a known position in between, a run that ends at an end
+  stop is recognised by its duration; otherwise the position becomes unknown.
 * A movement that ends without a stop request (HA stop, wall key) ran into the
   relay timer, so the blind is at its end stop: position 0 or 100.
 * A movement that reaches FULL_RUN_FRACTION of the travel time also snaps to the end.
@@ -279,15 +280,17 @@ class CoverMotion:
             return
         hint = self._hint
         self._hint = None
+        valid = hint if hint and now - hint.at <= HINT_VALID_S else None
         if (
-            hint
-            and hint.scene
-            and now - hint.at <= HINT_VALID_S
+            (valid is None or valid.scene)
             and self.end_stop is None
             and self.position is not None
         ):
-            # scene from a known position in between: the direction of the first
-            # run (to the reference end stop) is told by its duration at its end
+            # Direction unknown from a known position in between: a scene (from
+            # Home Assistant, a wall key, a Smartbutton or another zApp) or a
+            # plain open/close from another device. If the run ends at an end
+            # stop, its duration tells which one (see _scene_end_stop); a scene
+            # then runs back right away.
             self._scene_from = self.position
             self._scene_tilt = self.tilt
             self._begin(now, None, timed=True)

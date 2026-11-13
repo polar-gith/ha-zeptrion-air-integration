@@ -40,7 +40,7 @@ Blinds of different height have different times; measure each one.
 
 **Scenes S1–S4.** The zApp stores a scene as the end stop the blind came from plus the net motor time from there, and replays it as "run to that end stop, then the net time back". Feller therefore says: drive the blind fully **up** first, then to the height, then store. Coming from the top the replay ends with a run down (slats closed/tilted); coming from the bottom it ends with a run up (slats open). The slat angle itself is not stored.
 - *Store S1–S4* (and `blind_store_scene`) store right away if the blind came from the top. Otherwise the blind first runs to the top and back to its current position, then the scene is stored (a notification confirms it). Refused while the blind moves or when its position is unknown.
-- On recall the integration follows both runs: from an end stop by the rules above, from a known position in between by the duration of the first run.
+- Scenes are recalled from anywhere: the *Scene* buttons, wall keys, Smartbuttons of any zApp (they can send any command to any zApp) or other devices. The integration follows the runs without knowing who started them: from an end stop the run goes away from it; from a known position in between a run that ends at an end stop is recognised by its duration, and the run back follows. A run of unknown direction that ends elsewhere makes the position unknown until the next full run.
 - Scenes cannot be read back from the zApp.
 
 **Wall keys.** Depending on the blind, a wall key starts a full run, or moves only while held (a short tap turns the slats). A run that ends within 1 s after the key is released counts as stopped by hand, not as arrived at the end stop.
