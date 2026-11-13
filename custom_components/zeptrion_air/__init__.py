@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
+from homeassistant.helpers import entity_registry as er
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -284,6 +285,12 @@ async def async_setup_entry(
 
     LOGGER.debug("Forwarding setup to platforms: %s", ZEPTRION_PLATFORMS)
     LOGGER.debug("Attempting to forward entry setups for %s.", entry.entry_id)
+    # The learning mode switches were replaced by the calibration run (2026.11.14)
+    entity_registry = er.async_get(hass)
+    for registry_entry in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+        if registry_entry.domain == "switch":
+            entity_registry.async_remove(registry_entry.entity_id)
+
     await hass.config_entries.async_forward_entry_setups(entry, ZEPTRION_PLATFORMS)
     LOGGER.debug("Successfully forwarded entry setups for %s.", entry.entry_id)
     

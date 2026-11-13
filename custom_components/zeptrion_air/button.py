@@ -166,6 +166,15 @@ class ZeptrionAirActionButton(ButtonEntity):
         client: ZeptrionAirApiClient = self.config_entry.runtime_data.client
 
         try:
+            if self._action_type in (
+                SERVICE_BLIND_RECALL_S1,
+                SERVICE_BLIND_RECALL_S2,
+                SERVICE_BLIND_RECALL_S3,
+                SERVICE_BLIND_RECALL_S4,
+            ) and (blind := self._blind_entity()) is not None:
+                # via the blind, so it knows a scene runs (position tracking)
+                await getattr(blind, f"async_{self._action_type}")()
+                return
             if self._action_type == SERVICE_BLIND_RECALL_S1:
                 await client.async_channel_recall_s1(self._channel_id)
             elif self._action_type == SERVICE_BLIND_RECALL_S2:
@@ -202,6 +211,8 @@ class ZeptrionAirActionButton(ButtonEntity):
                 self._action_type, self.name, self._channel_id, e
             )
             raise HomeAssistantError(f"Failed to execute action {self._action_type} for button {self.name}: An API error occurred. {e}") from e
+        except HomeAssistantError:
+            raise
         except Exception as e:
             _LOGGER.error(
                 "Unexpected error executing action '%s' for button '%s' on channel %s: %s",

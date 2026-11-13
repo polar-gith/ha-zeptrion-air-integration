@@ -1,4 +1,4 @@
-"""Movement tracking of one Zeptrion blind: direction, estimated position, travel time learning.
+"""Movement tracking of one Zeptrion blind: direction, estimated position, travel times.
 
 The zApp only reports "motor runs" (100) and "motor stands" (0) for a blind
 channel; the relay stays on for its configured run time (typically about 60 s),
@@ -14,8 +14,10 @@ Rules:
 * A movement that ends without a stop request (HA stop, wall key) ran into the
   relay timer, so the blind is at its end stop: position 0 or 100.
 * A movement that reaches FULL_RUN_FRACTION of the travel time also snaps to the end.
-* Learning: a movement that started at a known end stop, went towards the other
-  end and was stopped by hand is a measurement of the travel time in that direction.
+* Travel times: a full run that the zApp ended by itself measures the travel time
+  of its direction (taken over automatically, and used by the calibration run).
+* Scenes: the zApp first runs the blind down to the bottom end stop, then up for
+  the stored time (see scene_hint).
 
 The idea of direction from wall keys and position estimation with snapping
 follows diaznet/ha-zeptrionair (MIT).
@@ -96,6 +98,7 @@ class _Hint:
     direction: Direction | None
     at: float
     timed: bool = False
+    scene: bool = False
 
 
 class CoverMotion:
@@ -128,6 +131,8 @@ class CoverMotion:
         self._timed = False
         self._hint: _Hint | None = None
         self._target: float | None = None
+        self._scene_to_bottom = False
+        self._user_stop = False
 
     # ---------------------------------------------------------------- inputs
 
@@ -146,10 +151,21 @@ class CoverMotion:
         self._hint = _Hint(direction, now, timed)
         self._target = target
 
+    def scene_hint(self, now: float) -> None:
+        """A scene S1-S4 was recalled.
+
+        The zApp first runs the blind down to the bottom end stop (it tracks the
+        position itself, so this run ends there), then right away up for the time
+        stored with the scene. From the bottom only the run up follows.
+        """
+        self._hint = _Hint(None, now, scene=True)
+        self._target = None
+
     def stop_requested(self, now: float) -> None:
         """A stop command or a wall key press while moving."""
         if self.moving:
             self._stop_requested = True
+            self._user_stop = True
 
     def on_value(self, value: int, now: float) -> Run | None:
         """Feed a channel value (100 = motor runs, 0 = stands). Returns the finished run."""
@@ -161,7 +177,7 @@ class CoverMotion:
         return None
 
     def mark_end_stop(self, end_stop: EndStop) -> None:
-        """The blind is known to be at this end stop (e.g. stopped there in learning mode)."""
+        """The blind is known to be at this end stop."""
         if self.moving:
             return
         self.end_stop = end_stop
@@ -242,6 +258,11 @@ class CoverMotion:
             return
         hint = self._hint
         self._hint = None
+        if hint and hint.scene and now - hint.at <= HINT_VALID_S and self.end_stop != "bottom":
+            # scene: first the run down to the bottom end stop (see scene_hint)
+            self._begin(now, "down", timed=True)
+            self._scene_to_bottom = True
+            return
         direction = hint.direction if hint and now - hint.at <= HINT_VALID_S else None
         timed = bool(hint and direction is not None and hint.timed)
         if direction is None and self.end_stop is not None:
@@ -250,6 +271,9 @@ class CoverMotion:
             # timing), so it counts as timed, not as a run into the end stop.
             direction = "up" if self.end_stop == "bottom" else "down"
             timed = True
+        self._begin(now, direction, timed)
+
+    def _begin(self, now: float, direction: Direction | None, timed: bool) -> None:
         self.moving = True
         self.direction = direction
         self._started_at = now
@@ -258,6 +282,7 @@ class CoverMotion:
         self._start_tilt = self.tilt if direction is not None else None
         self._timed = timed
         self._stop_requested = self._timed
+        self._user_stop = False
         if direction is None:
             self.position = None
             self.end_stop = None
@@ -266,6 +291,8 @@ class CoverMotion:
     def _finish(self, now: float) -> Run | None:
         if not self.moving:
             return None
+        scene_to_bottom = self._scene_to_bottom and not self._user_stop
+        self._scene_to_bottom = False
         duration = self._elapsed(now)
         run = Run(
             direction=self.direction,
@@ -277,7 +304,15 @@ class CoverMotion:
         self.moving = False
         travel = self.travel.for_direction(self.direction) if self.direction else None
 
-        if self.direction is None:
+        if scene_to_bottom:
+            # scene, first part: the zApp ended the run at the bottom end stop;
+            # the run up for the stored time follows right away
+            self.position = 0.0
+            self.end_stop = "bottom"
+            if self.tilt_time:
+                self.tilt = 0.0
+            self._hint = _Hint("up", now, timed=True)
+        elif self.direction is None:
             self.position = None
             self.end_stop = None
             self.tilt = None
@@ -349,12 +384,12 @@ class CoverMotion:
         return round(min(100.0, max(0.0, value)), 1)
 
 
-# ------------------------------------------------------------------ learning
+# ------------------------------------------------------------- travel times
 
 
 @dataclass
 class TravelTimeSamples:
-    """Measurements of one blind collected in learning mode."""
+    """Travel time measurements of one blind; a value counts when two agree."""
 
     up: list[float] = field(default_factory=list)
     down: list[float] = field(default_factory=list)

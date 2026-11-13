@@ -36,14 +36,14 @@
         },
         "data_description": {
           "step_duration_ms": "Duration of a single up/down step for blinds (100-32000 ms).",
-          "travel_up_ch1": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
-          "travel_down_ch1": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
-          "travel_up_ch2": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
-          "travel_down_ch2": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
-          "travel_up_ch3": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
-          "travel_down_ch3": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
-          "travel_up_ch4": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
-          "travel_down_ch4": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the learning mode switch.",
+          "travel_up_ch1": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the Calibrate button.",
+          "travel_down_ch1": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the Calibrate button.",
+          "travel_up_ch2": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the Calibrate button.",
+          "travel_down_ch2": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the Calibrate button.",
+          "travel_up_ch3": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the Calibrate button.",
+          "travel_down_ch3": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the Calibrate button.",
+          "travel_up_ch4": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the Calibrate button.",
+          "travel_down_ch4": "Full travel time of the blind; 0 = unknown (no position). Learned automatically from full runs, or with the Calibrate button.",
           "auto_travel_times": "The zApp switches a blind off when it reaches its end stop. A full run from one end to the other that nobody stopped therefore lasted exactly the travel time; it is taken over automatically.",
           "tilt_time_ch1": "Time the slats of a venetian blind turn on a change of direction before the height changes; 0 = no slats (ignored).",
           "tilt_time_ch2": "Time the slats of a venetian blind turn on a change of direction before the height changes; 0 = no slats (ignored).",
@@ -99,14 +99,6 @@
       },
       "stream_long_outages": {
         "name": "Long outages"
-      }
-    },
-    "switch": {
-      "blind_learning": {
-        "name": "Blind learning mode"
-      },
-      "blind_learning_apply_all": {
-        "name": "Blind learning: apply to all blinds"
       }
     }
   }
