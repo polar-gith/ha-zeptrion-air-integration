@@ -309,6 +309,15 @@ async def test_store_scene_by_action_and_button(hass: HomeAssistant, fake_zapp, 
     button = _eid(hass, "button", f"zapp_{device.serial}_ch1_blind_store_s2")
     assert er.async_get(hass).async_get(button).entity_category == "config"
 
+    # position unknown: refused with a hint to move up first
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            DOMAIN, "blind_store_scene", {"entity_id": cover, "scene": 3}, blocking=True
+        )
+    # coming from the top: stored right away
+    await _key(hass, device, clock, 900.0, 5)
+    await _value(hass, device, clock, 900.1, 100)
+    await _value(hass, device, clock, 961.2, 0)
     await hass.services.async_call(
         DOMAIN, "blind_store_scene", {"entity_id": cover, "scene": 3}, blocking=True
     )
@@ -410,7 +419,7 @@ async def test_calibration_from_the_top_when_the_zapp_ignores_open(hass: HomeAss
     await hass.async_block_till_done()
 
 
-async def test_scene_from_middle_runs_to_bottom_then_up(hass: HomeAssistant, fake_zapp, clock) -> None:
+async def test_scene_from_middle_with_bottom_reference(hass: HomeAssistant, fake_zapp, clock) -> None:
     """A scene: the zApp runs down to the bottom end stop, then up for the stored time."""
     device, host = fake_zapp
     entry = await _setup(hass, device, host, {"travel_up_ch1": 31.5, "travel_down_ch1": 31.0})
@@ -429,8 +438,7 @@ async def test_scene_from_middle_runs_to_bottom_then_up(hass: HomeAssistant, fak
     clock.now = 1100.0
     await hass.services.async_call(DOMAIN, "blind_recall_s1", {"entity_id": cover}, blocking=True)
     await _value(hass, device, clock, 1100.3, 100)
-    assert hass.states.get(cover).state == "closing"
-    await _value(hass, device, clock, 1123.6, 0)  # zApp ends at the bottom
+    await _value(hass, device, clock, 1123.6, 0)  # zApp ends at the bottom (stored from there)
     assert hass.states.get(cover).attributes["current_position"] == 0
     await _value(hass, device, clock, 1124.1, 100)  # right away up
     assert hass.states.get(cover).state == "opening"
@@ -471,5 +479,104 @@ async def test_scene_stopped_by_hand_keeps_estimate(hass: HomeAssistant, fake_za
     await _value(hass, device, clock, 1110.3, 0)
     position = hass.states.get(cover).attributes["current_position"]
     assert 60 <= position <= 75  # ~10 s down from the top, not snapped to the bottom
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_scene_from_middle_with_top_reference(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """A scene stored coming from the top: up to the top first, then down (slats closed)."""
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 31.5, "travel_down_ch1": 31.0, "tilt_time_ch1": 1.2})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    await _key(hass, device, clock, 1000.0, 6)
+    await _value(hass, device, clock, 1000.1, 100)
+    await _value(hass, device, clock, 1031.1, 0)
+    await hass.services.async_call("cover", "set_cover_position", {"entity_id": cover, "position": 70}, blocking=True)
+    await _value(hass, device, clock, 1040.0, 100)
+    await _value(hass, device, clock, 1040.0 + 1.2 + 0.7 * 30.3, 0)
+    assert hass.states.get(cover).attributes["current_position"] == 70
+
+    clock.now = 1100.0
+    await hass.services.async_call(DOMAIN, "blind_recall_s2", {"entity_id": cover}, blocking=True)
+    await _value(hass, device, clock, 1100.3, 100)
+    await _value(hass, device, clock, 1100.3 + 0.3 * 30.3, 0)  # up to the top
+    assert hass.states.get(cover).attributes["end_stop"] == "top"
+    await _value(hass, device, clock, 1110.0, 100)  # right away down
+    assert hass.states.get(cover).state == "closing"
+    await _value(hass, device, clock, 1110.0 + 15.5, 0)
+    state = hass.states.get(cover)
+    assert 48 <= state.attributes["current_position"] <= 54
+    assert state.attributes["current_tilt_position"] == 0
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_wall_key_release_stops_the_run(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """Hold-to-move: the run ends with the key release and is not an end stop."""
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 31.5, "travel_down_ch1": 31.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    await _key(hass, device, clock, 1000.0, 5)
+    await _value(hass, device, clock, 1000.1, 100)
+    await _value(hass, device, clock, 1032.0, 0)  # top, ended by the zApp
+    assert hass.states.get(cover).attributes["end_stop"] == "top"
+
+    # hold the down key for 7.9 s: the motor runs until the release
+    clock.now = 1100.0
+    bta = ["."] * 9
+    bta[6 - 1] = "P"
+    await device.push({"eid2": {"bta": "".join(bta)}})
+    await asyncio.sleep(0.05)
+    await _value(hass, device, clock, 1100.4, 100)
+    clock.now = 1107.9
+    await device.push({"eid2": {"bta": "........."}})
+    await asyncio.sleep(0.05)
+    await _value(hass, device, clock, 1108.0, 0)
+    state = hass.states.get(cover)
+    assert state.attributes["end_stop"] is None
+    assert 70 <= state.attributes["current_position"] <= 80
+
+    # a short tap only turns the slats: no jump to the end stop
+    clock.now = 1200.0
+    bta = ["."] * 9
+    bta[5 - 1] = "P"
+    await device.push({"eid2": {"bta": "".join(bta)}})
+    await asyncio.sleep(0.05)
+    await _value(hass, device, clock, 1200.4, 100)
+    clock.now = 1200.6
+    await device.push({"eid2": {"bta": "........."}})
+    await asyncio.sleep(0.05)
+    await _value(hass, device, clock, 1200.7, 0)
+    assert hass.states.get(cover).attributes["end_stop"] is None
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_store_scene_coming_from_the_bottom_goes_via_the_top(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """Stored from the bottom the zApp would replay ending upwards: go via the top first."""
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 31.5, "travel_down_ch1": 31.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    await _key(hass, device, clock, 1000.0, 6)
+    await _value(hass, device, clock, 1000.1, 100)
+    await _value(hass, device, clock, 1031.1, 0)  # bottom
+    clock.now = 1040.0
+    await hass.services.async_call("cover", "set_cover_position", {"entity_id": cover, "position": 40}, blocking=True)
+    await _value(hass, device, clock, 1040.1, 100)
+    await _value(hass, device, clock, 1040.1 + 0.4 * 31.5, 0)
+    assert hass.states.get(cover).attributes["current_position"] == 40
+
+    clock.now = 1100.0
+    await hass.services.async_call(DOMAIN, "blind_store_scene", {"entity_id": cover, "scene": 1}, blocking=True)
+    await _run_after_command(hass, device, clock, "open", 1100.2, 0.6 * 31.5)  # up to the top
+    # back down to 40 %: a timed move, ended by the zApp
+    await _wait_for(lambda: device.commands[-1][1].startswith("move_close_"))
+    await _value(hass, device, clock, 1130.0, 100)
+    await _value(hass, device, clock, 1130.0 + 0.6 * 31.0, 0)
+    await _wait_for(lambda: device.commands[-1] == (1, "store_s1"))
+    assert 38 <= hass.states.get(cover).attributes["current_position"] <= 42
+
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

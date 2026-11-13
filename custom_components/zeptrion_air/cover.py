@@ -335,6 +335,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
                 self._motion.position = float(position)
             if end_stop in ("top", "bottom"):
                 self._motion.end_stop = end_stop
+                self._motion.last_end_stop = end_stop
                 self._motion.position = 100.0 if end_stop == "top" else 0.0
             tilt = last_state.attributes.get(ATTR_CURRENT_TILT_POSITION)
             if self._motion.tilt_time and isinstance(tilt, (int, float)):
@@ -497,11 +498,17 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
     def _handle_key_event(self, event: KeyEvent) -> None:
         """A Smartfront key of this zApp was pressed."""
         function = event.function
-        if not event.pressed or function is None or function.kind != "channel":
+        if function is None or function.kind != "channel":
             return
         if self._channel_id not in function.channels:
             return
         now = time.monotonic()
+        if not event.pressed:
+            # On blinds set to hold-to-move (or a short tap turning the slats)
+            # the release stops the motor; a run ending right after it was
+            # stopped by hand, not at the end stop.
+            self._motion.key_released(now)
+            return
         if self._motion.moving:
             # A key press while the motor runs ends the current run. With the
             # opposite key the zApp may start the other direction right away
@@ -790,16 +797,74 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         )
 
     async def async_blind_store_scene(self, scene: int) -> None:
-        """Store the blind's current position on the zApp as scene S1-S4."""
+        """Store the blind's current position on the zApp as scene S1-S4.
+
+        The zApp stores a scene relative to the end stop the blind came from
+        (Feller: store coming from the top) and replays it as "run to that end
+        stop, then the net time back". Coming from the bottom the replay ends with
+        a run up (slats open). So unless the blind came from the top, it first
+        runs to the top and back to the current position before storing.
+        """
         if self._motion.moving:
             raise HomeAssistantError(
                 f"{self._display_name} is moving: stop it at the wanted position before storing scene S{scene}"
             )
+        if self._calibration_task is not None and not self._calibration_task.done():
+            raise HomeAssistantError(f"{self._display_name} is busy (calibration or storing a scene)")
+        if self._motion.last_end_stop == "top":
+            await self._async_send_store(scene)
+            return
+        position = self._motion.position
+        if position is None or not self._travel.complete:
+            raise HomeAssistantError(
+                f"{self._display_name}: position unknown. Move the blind fully up, then to the "
+                f"wanted position, then store scene S{scene}."
+            )
+        self._calibration_task = self.config_entry.async_create_background_task(
+            self.hass,
+            self._async_store_from_top(scene, position),
+            name=f"zeptrion_air store scene {self.entity_id}",
+        )
+
+    async def _async_send_store(self, scene: int) -> None:
         try:
             await self.config_entry.runtime_data.client.async_channel_store_scene(self._channel_id, scene)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
             raise HomeAssistantError(f"Failed to store scene S{scene} for {self._display_name}: {e}") from e
         _LOGGER.info("Stored scene S%s for blind %s (channel %s)", scene, self.name, self._channel_id)
+
+    async def _async_store_from_top(self, scene: int, position: float) -> None:
+        """Run to the top (reference), back to ``position``, then store."""
+        message: str
+        try:
+            await self._async_calibration_run(
+                "up", f"S{scene}: 1/2 up to the top (reference)", reference=True
+            )
+            if position < 99.5:
+                self._calibration = f"S{scene}: 2/2 back to {round(position)} %"
+                self.async_write_ha_state()
+                self._run_waiter = self.hass.loop.create_future()
+                await self.async_set_cover_position(position=round(position))
+                async with asyncio.timeout(CALIBRATION_RUN_TIMEOUT_S):
+                    await self._run_waiter
+                if self._motion.moving:
+                    raise _CalibrationAborted("the blind did not stop at the position")
+            await self._async_send_store(scene)
+            message = f"{self._display_name}: scene S{scene} stored at {round(position)} %, coming from the top."
+        except (_CalibrationAborted, HomeAssistantError, TimeoutError) as err:
+            message = f"{self._display_name}: scene S{scene} not stored, {err or 'timeout'}."
+            _LOGGER.warning("Storing a scene aborted: %s", message)
+        finally:
+            self._calibration = None
+            self._run_waiter = None
+            self._start_waiter = None
+            self.async_write_ha_state()
+        persistent_notification.async_create(
+            self.hass,
+            message,
+            title="Zeptrion blind scene",
+            notification_id=f"zeptrion_air_scene_{self.config_entry.entry_id}_{self._channel_id}",
+        )
 
     async def async_blind_recall_s1(self) -> None:
         """Recall scene S1 for the blind."""
