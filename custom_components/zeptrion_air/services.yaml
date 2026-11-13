@@ -56,3 +56,41 @@ blind_calibrate:
     entity:
       integration: zeptrion_air
       domain: cover
+
+light_store_scene:
+  name: Light Store Scene
+  description: Stores the light's current state (on/off and dim level) on the zApp as scene S1-S4, like holding the scene key.
+  target:
+    entity:
+      integration: zeptrion_air
+      domain: light
+  fields:
+    scene:
+      name: Scene
+      description: Scene number 1-4.
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+
+light_recall_scene:
+  name: Light Recall Scene
+  description: Recalls scene S1-S4 of the light (on/off and dim level as stored on the zApp).
+  target:
+    entity:
+      integration: zeptrion_air
+      domain: light
+  fields:
+    scene:
+      name: Scene
+      description: Scene number 1-4.
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box

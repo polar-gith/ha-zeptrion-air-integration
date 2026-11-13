@@ -27,6 +27,8 @@ SERVICE_BLIND_RECALL_S3: str = "blind_recall_s3"
 SERVICE_BLIND_RECALL_S4: str = "blind_recall_s4"
 SERVICE_BLIND_STORE_SCENE: str = "blind_store_scene"
 SERVICE_BLIND_CALIBRATE: str = "blind_calibrate"
+SERVICE_LIGHT_STORE_SCENE: str = "light_store_scene"
+SERVICE_LIGHT_RECALL_SCENE: str = "light_recall_scene"
 
 # Default values
 DEFAULT_STEP_DURATION_MS: int = 250

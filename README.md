@@ -17,11 +17,11 @@ Requires Home Assistant 2026.8 or newer.
 | Per zApp | Entities |
 |---|---|
 | Blind / awning channel (cat. 5/6) | Cover with direction, position and slats; buttons *Scene S1–S4*, *Store S1–S4* and *Calibrate* (the last two under *Configuration*) |
-| Switch / dimmer channel (cat. 1/3) | Light (on/off or brightness) |
+| Switch / dimmer channel (cat. 1/3) | Light (on/off or brightness); buttons *Scene S1–S4* and *Store S1–S4* (the latter under *Configuration*) |
 | Smartfront fitted | Event *Wall keys*, sensors temperature (module heat, reads above room temperature) and, if present, illuminance / humidity |
 | Always | Wi-Fi signal; hidden diagnostic counters *Connections*, *Short outages*, *Long outages*; sensors name / group / icon ID per channel (disabled) |
 
-Actions: `zeptrion_air.blind_up_step`, `blind_down_step`, `blind_recall_s1` … `s4`, `blind_store_scene` (`scene: 1-4`), `blind_calibrate`.
+Actions: `zeptrion_air.blind_up_step`, `blind_down_step`, `blind_recall_s1` … `s4`, `blind_store_scene` (`scene: 1-4`), `blind_calibrate`, `light_store_scene`, `light_recall_scene` (`scene: 1-4`).
 
 ## Blinds
 
@@ -48,6 +48,8 @@ Blinds of different height have different times; measure each one.
 ## Lights
 
 Switches use on/off, dimmers brightness. The zApp has no "set brightness" command: brightness is reached by switching on and dimming down for a time (full travel 3.4 s), and the zApp reports any lit dimmer as `100`, so brightness is optimistic. `transition` is ignored. On/off changes from the wall are pushed in real time.
+
+**Scenes S1–S4.** A switch or dimmer channel stores its current state as a scene too: on or **off**, and for dimmers the dim level. *Store S1–S4* (and `light_store_scene`) store it on the zApp like holding the scene key; *Scene S1–S4* (and `light_recall_scene`) recall it. Scenes stored through Home Assistant are also kept by the integration (attributes `scene_s1` … `scene_s4`, brightness 0–255, 0 = off), so a recall from Home Assistant shows the stored brightness. A scene recalled elsewhere (wall key, Smartbutton, other device) or stored with the scene key is only seen as on/off; the brightness shown stays the last known one.
 
 ## Wall keys (Smartfront)
 
@@ -82,7 +84,7 @@ Push updates over the zApp WebSocket. After 60 s without a frame `GET /zrap/rssi
 
 ## Limitations
 
-- Blind positions and dimmer brightness are estimates; the zApp reports neither.
+- Blind positions and dimmer brightness are estimates; the zApp reports neither. Scenes cannot be read back.
 - Wall keys need a Smartfront.
 - Channel name / group / icon sensors are read once at setup.
 
