@@ -116,7 +116,7 @@ Each blind has the buttons **Store S1 … Store S4** (under the device's *Config
 
 ### Calibration run
 
-After a blind or its motor was replaced, or when positions drift, press **Calibrate** (under the device's *Configuration*) or call `zeptrion_air.blind_calibrate`. The blind moves fully up (reference), fully down and fully up again; the two full runs, which the zApp ends at the end stops, are stored as the blind's travel times. It then returns to its previous position, if that was known, and a notification shows the result. Stopping or reversing the blind during the run aborts the calibration without changing anything. The zApp itself has no calibration function: its end positions are set on the motor, and stored scenes should be stored again afterwards.
+After a blind or its motor was replaced, or when positions drift, press **Calibrate** (under the device's *Configuration*) or call `zeptrion_air.blind_calibrate`. The blind moves fully up (reference; a zApp already at the top may ignore this, which also counts as the reference), fully down and fully up again; the two full runs, which the zApp ends at the end stops, are stored as the blind's travel times. It then returns to its previous position, if that was known, and a notification shows the result. Stopping or reversing the blind during the run aborts the calibration without changing anything. The zApp itself has no calibration function: its end positions are set on the motor, and stored scenes should be stored again afterwards.
 
 ## Connection handling
 

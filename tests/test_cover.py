@@ -440,3 +440,22 @@ async def test_calibration_aborted_when_stopped(hass: HomeAssistant, fake_zapp, 
     assert "calibration" not in hass.states.get(cover).attributes
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_calibration_from_the_top_when_the_zapp_ignores_open(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """At the top a zApp may ignore "open" (no motor start): that is the reference."""
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 50.0, "travel_down_ch1": 50.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    with patch("custom_components.zeptrion_air.cover.CALIBRATION_START_TIMEOUT_S", 0.3):
+        clock.now = 9100.0
+        await hass.services.async_call(DOMAIN, "blind_calibrate", {"entity_id": cover}, blocking=True)
+        await _wait_for(lambda: device.commands and device.commands[-1] == (1, "open"))
+        # no run: after the start timeout the down run is commanded
+        await _run_after_command(hass, device, clock, "close", 9101.0, 59.0)
+        await _run_after_command(hass, device, clock, "open", 9161.0, 61.0)
+        await hass.async_block_till_done()
+    assert entry.options["travel_down_ch1"] == 59.0
+    assert entry.options["travel_up_ch1"] == 61.0
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

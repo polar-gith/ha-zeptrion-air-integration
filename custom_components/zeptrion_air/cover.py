@@ -232,6 +232,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         self._stop_timer_cancel: CALLBACK_TYPE | None = None
         self._last_run: dict[str, Any] | None = None
         self._run_waiter: asyncio.Future[Run] | None = None
+        self._start_waiter: asyncio.Future[None] | None = None
         self._calibration: str | None = None
         self._calibration_task: asyncio.Task[None] | None = None
 
@@ -530,6 +531,8 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
 
         if value == 100:
             self._motion.on_value(100, now)
+            if self._start_waiter is not None and not self._start_waiter.done():
+                self._start_waiter.set_result(None)
             if self._motion.direction is None:
                 _LOGGER.debug("Blind %s moves, direction unknown (scene or other device)", self._attr_name)
             self._start_tick()
@@ -706,22 +709,40 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             self.hass, self._async_calibrate(), name=f"zeptrion_air calibrate {self.entity_id}"
         )
 
-    async def _async_calibration_run(self, direction: str, step: str) -> Run:
-        """Run fully in one direction and return the finished run."""
+    async def _async_calibration_run(self, direction: str, step: str, *, reference: bool = False) -> Run | None:
+        """Run fully in one direction and return the finished run.
+
+        ``reference``: the first run to the top. A zApp that already stands at
+        the top ignores the command (the motor does not start); that counts as
+        being at the reference and returns None.
+        """
         self._calibration = step
         self.async_write_ha_state()
         self._run_waiter = self.hass.loop.create_future()
+        self._start_waiter = self.hass.loop.create_future()
         try:
             if direction == "up":
                 await self.async_open_cover()
             else:
                 await self.async_close_cover()
+            try:
+                async with asyncio.timeout(CALIBRATION_START_TIMEOUT_S):
+                    await self._start_waiter
+            except TimeoutError as err:
+                if reference:
+                    _LOGGER.debug("%s: no motor start, already at the top", self._attr_name)
+                    self._motion.mark_end_stop("top")
+                    return None
+                raise _CalibrationAborted(
+                    f"the motor did not start {direction} within {CALIBRATION_START_TIMEOUT_S} s"
+                ) from err
             async with asyncio.timeout(CALIBRATION_RUN_TIMEOUT_S):
                 run = await self._run_waiter
         except TimeoutError as err:
             raise _CalibrationAborted(f"no end of the {direction} run within {CALIBRATION_RUN_TIMEOUT_S} s") from err
         finally:
             self._run_waiter = None
+            self._start_waiter = None
         if run.direction != direction or run.stopped_by_hand:
             raise _CalibrationAborted(f"the {direction} run was stopped or reversed")
         return run
@@ -730,9 +751,11 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         previous = self._motion.position
         result: dict[str, float] = {}
         try:
-            await self._async_calibration_run("up", "1/3 up to the top (reference)")
+            await self._async_calibration_run("up", "1/3 up to the top (reference)", reference=True)
             down = await self._async_calibration_run("down", "2/3 measuring down")
             up = await self._async_calibration_run("up", "3/3 measuring up")
+            if down is None or up is None:
+                raise _CalibrationAborted("a measuring run did not start")
             result = {"down": round(down.duration, 1), "up": round(up.duration, 1)}
             if min(result.values()) < MIN_CALIBRATION_RUN_S:
                 raise _CalibrationAborted(
@@ -765,6 +788,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         finally:
             self._calibration = None
             self._run_waiter = None
+            self._start_waiter = None
             self.async_write_ha_state()
         persistent_notification.async_create(
             self.hass,
@@ -848,6 +872,7 @@ def _positive(value: Any) -> float | None:
 
 
 CALIBRATION_RUN_TIMEOUT_S = 300
+CALIBRATION_START_TIMEOUT_S = 10
 MIN_CALIBRATION_RUN_S = 5.0
 
 
