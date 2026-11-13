@@ -34,6 +34,7 @@ class FakeZapp:
 
     def __post_init__(self) -> None:
         self.commands: list[tuple[int, str]] = []
+        self.scenes: dict[tuple[int, int], int] = {}  # (channel, scene) -> value, lights only
         self.requests: list[str] = []
         self.in_flight = 0
         self.max_in_flight = 0
@@ -115,6 +116,13 @@ class FakeZapp:
                 await asyncio.sleep(30)
             if cmd in ("on", "off"):
                 self.values[n] = 100 if cmd == "on" else 0
+                await self.push({"eid1": {"ch": n, "val": self.values[n]}})
+            light = self.channels.get(n, {}).get("cat") in ("1", "3")
+            if light and cmd.startswith("store_s"):
+                self.scenes[(n, int(cmd[-1]))] = self.values[n]
+            if light and cmd.startswith("recall_s") and (n, int(cmd[-1])) in self.scenes:
+                # like the zApp: a lit dimmer reports 100 whatever its level
+                self.values[n] = 100 if self.scenes[(n, int(cmd[-1]))] else 0
                 await self.push({"eid1": {"ch": n, "val": self.values[n]}})
             raise web.HTTPFound(location="/")  # 302, must not be followed
         if path == "/":

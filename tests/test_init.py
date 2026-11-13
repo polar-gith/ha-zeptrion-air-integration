@@ -181,3 +181,45 @@ async def test_setup_retries_when_device_offline(hass: HomeAssistant, fake_zapp)
     from homeassistant.config_entries import ConfigEntryState
 
     assert entry.state is ConfigEntryState.SETUP_RETRY
+
+
+async def test_light_scenes_store_and_recall(hass: HomeAssistant, fake_zapp) -> None:
+    device, host = fake_zapp
+    device.channels[2]["cat"] = "3"  # dimmer
+    entry = await _setup(hass, host, device.serial)
+    await _wait_for(lambda: entry.runtime_data.websocket_listener.connected)
+    light = _entity_id(hass, f"zapp_{device.serial}_ch2_light", "light")
+    store_s1 = _entity_id(hass, f"zapp_{device.serial}_ch2_light_store_s1", "button")
+    recall_s1 = _entity_id(hass, f"zapp_{device.serial}_ch2_light_recall_s1", "button")
+    assert er.async_get(hass).async_get(store_s1).entity_category == "config"
+
+    # S1 = dimmed to 40 %, S2 = off
+    await hass.services.async_call(
+        "light", "turn_on", {"entity_id": light, "brightness": 102}, blocking=True
+    )
+    await hass.services.async_call("button", "press", {"entity_id": store_s1}, blocking=True)
+    assert device.commands[-1] == (2, "store_s1")
+    await hass.services.async_call("light", "turn_off", {"entity_id": light}, blocking=True)
+    await hass.services.async_call(
+        DOMAIN, "light_store_scene", {"entity_id": light, "scene": 2}, blocking=True
+    )
+    assert device.commands[-1] == (2, "store_s2")
+    assert hass.states.get(light).attributes["scene_s1"] == 102
+    assert hass.states.get(light).attributes["scene_s2"] == 0
+
+    # Recall S1: on with the stored brightness, although the zApp reports 100
+    await hass.services.async_call("button", "press", {"entity_id": recall_s1}, blocking=True)
+    assert device.commands[-1] == (2, "recall_s1")
+    await _wait_for(lambda: hass.states.get(light).state == "on")
+    await asyncio.sleep(0.1)
+    assert hass.states.get(light).attributes["brightness"] == 102
+
+    # Recall S2: off
+    await hass.services.async_call(
+        DOMAIN, "light_recall_scene", {"entity_id": light, "scene": 2}, blocking=True
+    )
+    assert device.commands[-1] == (2, "recall_s2")
+    await _wait_for(lambda: hass.states.get(light).state == "off")
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

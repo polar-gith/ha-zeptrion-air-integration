@@ -308,6 +308,10 @@ class ZeptrionAirApiClient:
             data={"cmd": f"store_s{scene}"},
         )
 
+    async def async_channel_recall_s(self, channel: int, scene: int) -> dict[str, Any]:
+        """Recall scene S1-S4 of a channel."""
+        return await getattr(self, f"async_channel_recall_s{int(scene)}")(channel)
+
     async def async_channel_recall_s1(self, channel: int) -> dict[str, Any]:
         """Send 'recall_s1' command to a channel."""
         return await self._api_post_url_encoded_wrapper(

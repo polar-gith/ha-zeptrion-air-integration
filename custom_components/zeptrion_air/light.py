@@ -17,7 +17,14 @@ from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import (
+    ExtraStoredData,
+    RestoredExtraData,
+    RestoreEntity,
+)
+import voluptuous as vol
 
 from .api import (
     ZeptrionAirApiClientCommunicationError,
@@ -25,6 +32,8 @@ from .api import (
 )
 from .const import (
     DOMAIN,
+    SERVICE_LIGHT_RECALL_SCENE,
+    SERVICE_LIGHT_STORE_SCENE,
     SIGNAL_AVAILABILITY,
     ZEPTRION_AIR_WEBSOCKET_MESSAGE,
 )
@@ -32,6 +41,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 DIMMER_FULL_TRAVEL_MS = 3400
+SCENE_SCHEMA = {vol.Required("scene"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4))}
 
 # Lights are not polled (the event stream re-reads all channels after a reconnect).
 
@@ -113,10 +123,18 @@ async def async_setup_entry(
     else:
         _LOGGER.info("No Zeptrion Air light entities to add.")
 
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        SERVICE_LIGHT_STORE_SCENE, SCENE_SCHEMA, "async_light_store_scene"
+    )
+    platform.async_register_entity_service(
+        SERVICE_LIGHT_RECALL_SCENE, SCENE_SCHEMA, "async_light_recall_scene"
+    )
+
     return True
 
 
-class ZeptrionAirLight(LightEntity):
+class ZeptrionAirLight(LightEntity, RestoreEntity):
     """Representation of a Zeptrion Air light."""
 
     def __init__(
@@ -140,6 +158,10 @@ class ZeptrionAirLight(LightEntity):
         self._attr_brightness = 255 if is_dimmer else None
         self._last_nonzero_brightness = 255
         self._pending_refresh_task: asyncio.Task | None = None
+        # Scenes S1-S4 as stored through Home Assistant: 0 = off, else the
+        # brightness (255 for switches). The zApp keeps the real scene; this
+        # only lets a recall show the stored brightness (the zApp reports 100).
+        self._scenes: dict[int, int] = {}
 
         # No polling: since 2026.11.3 all channel states are read again after
         # every reconnect of the event stream, which replaces the former
@@ -264,7 +286,65 @@ class ZeptrionAirLight(LightEntity):
             )
         )
 
+        if (extra := await self.async_get_last_extra_data()) is not None:
+            data = extra.as_dict()
+            self._scenes = {
+                int(k): int(v) for k, v in (data.get("scenes") or {}).items()
+            }
+            if self._is_dimmer and data.get("brightness"):
+                self._attr_brightness = int(data["brightness"])
+                self._last_nonzero_brightness = int(data["brightness"])
+
         await self._async_refresh_from_scan()
+
+    @property
+    def extra_restore_state_data(self) -> ExtraStoredData:
+        """Stored scenes and the last brightness survive a restart."""
+        return RestoredExtraData(
+            {
+                "scenes": {str(k): v for k, v in self._scenes.items()},
+                "brightness": self._last_nonzero_brightness if self._is_dimmer else None,
+            }
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Scenes stored through Home Assistant (brightness 0-255, 0 = off)."""
+        if not self._scenes:
+            return None
+        return {f"scene_s{k}": v for k, v in sorted(self._scenes.items())}
+
+    async def async_light_store_scene(self, scene: int) -> None:
+        """Store the current state (on/off, dim level) as scene S1-S4 on the zApp."""
+        try:
+            await self.config_entry.runtime_data.client.async_channel_store_scene(
+                self._channel_id, scene
+            )
+        except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
+            raise HomeAssistantError(f"{self.name}: storing scene S{scene} failed: {e}") from e
+        if not self._attr_is_on:
+            self._scenes[scene] = 0
+        else:
+            self._scenes[scene] = (self._attr_brightness or 255) if self._is_dimmer else 255
+        self.async_write_ha_state()
+
+    async def async_light_recall_scene(self, scene: int) -> None:
+        """Recall scene S1-S4; the zApp sets on/off and the dim level."""
+        stored = self._scenes.get(scene)
+        if stored is not None:
+            # Optimistic: the push that follows only says on (100) or off (0)
+            self._attr_is_on = stored > 0
+            if self._is_dimmer and stored > 0:
+                self._attr_brightness = stored
+                self._last_nonzero_brightness = stored
+            self.async_write_ha_state()
+        try:
+            await self.config_entry.runtime_data.client.async_channel_recall_s(
+                self._channel_id, scene
+            )
+        except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
+            raise HomeAssistantError(f"{self.name}: recalling scene S{scene} failed: {e}") from e
+        self._schedule_refresh(0.35 + (DIMMER_FULL_TRAVEL_MS / 1000 if self._is_dimmer else 0))
 
     async def async_handle_websocket_message(self, event: Event) -> None:
         """Handle websocket events for this light."""

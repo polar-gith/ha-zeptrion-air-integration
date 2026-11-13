@@ -18,6 +18,8 @@ from .const import (
     SERVICE_BLIND_RECALL_S4,
     SERVICE_BLIND_STORE_SCENE,
     SERVICE_BLIND_CALIBRATE,
+    SERVICE_LIGHT_RECALL_SCENE,
+    SERVICE_LIGHT_STORE_SCENE,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS
 )
@@ -38,6 +40,20 @@ BUTTON_ACTIONS: list[dict[str, str]] = [
     {"type": "blind_store_s4", "label": "Store S4", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "4"},
     # Calibration run: up, down, up, back; measures the travel times
     {"type": "blind_calibrate", "label": "Calibrate", "service": SERVICE_BLIND_CALIBRATE, "icon": "mdi:arrow-expand-vertical"},
+]
+
+# Switch / dimmer channels: scenes store on/off and the dim level
+LIGHT_BUTTON_ACTIONS: list[dict[str, str]] = [
+    *(
+        {"type": f"light_recall_s{n}", "label": f"Scene S{n}", "service": SERVICE_LIGHT_RECALL_SCENE,
+         "icon": f"mdi:numeric-{n}-box-outline", "scene": str(n)}
+        for n in range(1, 5)
+    ),
+    *(
+        {"type": f"light_store_s{n}", "label": f"Store S{n}", "service": SERVICE_LIGHT_STORE_SCENE,
+         "icon": "mdi:content-save-outline", "scene": str(n)}
+        for n in range(1, 5)
+    ),
 ]
 
 async def async_setup_entry(
@@ -82,9 +98,14 @@ async def async_setup_entry(
         # Remove any double underscores and strip leading/trailing underscores
         entity_base_slug = '_'.join(filter(None, entity_base_slug.split('_')))
 
+        actions: list[dict[str, str]] = []
         if device_type == "cover":
+            actions = BUTTON_ACTIONS
+        elif device_type in ("light_switch", "light_dimmer"):
+            actions = LIGHT_BUTTON_ACTIONS
+        if actions:
             _LOGGER.debug(f"Found cover channel {channel_id} for buttons. Parent device name: '{parent_device_name}', Entity base slug: '{entity_base_slug}'")
-            for action_def in BUTTON_ACTIONS:
+            for action_def in actions:
                 new_entities.append(
                     ZeptrionAirActionButton(
                         config_entry=entry, 
@@ -101,7 +122,7 @@ async def async_setup_entry(
                     )
                 )
         else:
-            _LOGGER.debug("Skipping channel %s for buttons, not a cover.", channel_id_maybe)
+            _LOGGER.debug("Skipping channel %s for buttons, no scenes.", channel_id_maybe)
             
     if new_entities:
         _LOGGER.info("Adding %s Zeptrion Air button entities.", len(new_entities))
@@ -140,7 +161,7 @@ class ZeptrionAirActionButton(ButtonEntity):
         self._attr_unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}_{action_type_slug}"
         self._attr_icon: str = icon
         self._scene = scene
-        if action_type in (SERVICE_BLIND_STORE_SCENE, SERVICE_BLIND_CALIBRATE):
+        if action_type in (SERVICE_BLIND_STORE_SCENE, SERVICE_BLIND_CALIBRATE, SERVICE_LIGHT_STORE_SCENE):
             # Configuration: kept off the default dashboards
             self._attr_entity_category = EntityCategory.CONFIG
 
@@ -166,6 +187,12 @@ class ZeptrionAirActionButton(ButtonEntity):
         client: ZeptrionAirApiClient = self.config_entry.runtime_data.client
 
         try:
+            if self._action_type in (SERVICE_LIGHT_STORE_SCENE, SERVICE_LIGHT_RECALL_SCENE):
+                light = self._channel_entity("light", "_light")
+                if light is None:
+                    raise HomeAssistantError(f"Light of {self.name} not found")
+                await getattr(light, f"async_{self._action_type}")(self._scene)
+                return
             if self._action_type in (
                 SERVICE_BLIND_RECALL_S1,
                 SERVICE_BLIND_RECALL_S2,
@@ -230,8 +257,12 @@ class ZeptrionAirActionButton(ButtonEntity):
 
     def _blind_entity(self) -> Any:
         """The cover entity of this channel (same device)."""
-        component = self.hass.data.get("entity_components", {}).get("cover")
-        unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}"
+        return self._channel_entity("cover", "")
+
+    def _channel_entity(self, domain: str, suffix: str) -> Any:
+        """The cover or light entity of this channel (same device)."""
+        component = self.hass.data.get("entity_components", {}).get(domain)
+        unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}{suffix}"
         if component is None:
             return None
         return next((e for e in component.entities if e.unique_id == unique_id), None)
