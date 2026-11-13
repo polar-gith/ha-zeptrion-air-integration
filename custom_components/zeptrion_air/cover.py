@@ -49,7 +49,7 @@ from .const import (
     travel_option_key,
 )
 from .cover_motion import CoverMotion, Run, TravelTimes, TravelTimeSamples
-from .learning import async_get_learning_manager, async_store_travel_times
+from .learning import async_store_travel_times
 
 AUTO_SAMPLES_KEPT = 5
 from .smartfront import KeyEvent
@@ -195,7 +195,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
     """Representation of a Zeptrion Air Blind.
 
     Direction comes from Home Assistant commands and Smartfront wall keys; with
-    travel times configured (options, or learned in learning mode) the position
+    travel times configured (options, full runs or the calibration run) the position
     is estimated and "set position" is supported. See cover_motion.py.
     """
 
@@ -310,12 +310,13 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             attributes["last_run"] = self._last_run
         if self._calibration:
             attributes["calibration"] = self._calibration
-        learning = async_get_learning_manager(self.hass).status(
-            self.config_entry.entry_id, self._channel_id
-        ) if self.hass else None
-        if learning is not None:
-            attributes["learning"] = learning
         return attributes
+
+    @property
+    def _display_name(self) -> str:
+        """Name as shown in Home Assistant (follows renames in the UI)."""
+        state = self.hass.states.get(self.entity_id) if self.hass and self.entity_id else None
+        return state.name if state is not None else str(self.name)
 
     def _at_end_now(self) -> bool:
         return self._motion.reached_end(time.monotonic())
@@ -358,9 +359,6 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
                 SIGNAL_KEY_EVENT.format(self.config_entry.entry_id),
                 self._handle_key_event,
             )
-        )
-        self.async_on_remove(
-            async_get_learning_manager(self.hass).async_add_listener(self.async_write_ha_state)
         )
         self.async_on_remove(
             async_dispatcher_connect(
@@ -565,13 +563,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             "duration": round(run.duration, 1),
             "stopped_by_hand": run.stopped_by_hand,
         }
-        if async_get_learning_manager(self.hass).async_record(
-            self.config_entry.entry_id, self._channel_id, self._attr_name, run
-        ):
-            # In learning mode a measurement is stopped exactly at the other end
-            # stop, so the next run starts from a known end.
-            self._motion.mark_end_stop("top" if run.direction == "up" else "bottom")
-        elif run.is_auto_sample and run.direction is not None and self._auto_travel_times():
+        if run.is_auto_sample and run.direction is not None and self._auto_travel_times():
             self._auto_learn(run.direction, run.duration)
         self.async_write_ha_state()
 
@@ -702,9 +694,9 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         (the zApp stops the motor at the end stop), which are stored for this blind.
         """
         if self._calibration_task is not None and not self._calibration_task.done():
-            raise HomeAssistantError(f"Calibration of {self.name} is already running")
+            raise HomeAssistantError(f"Calibration of {self._display_name} is already running")
         if self._motion.moving:
-            raise HomeAssistantError(f"{self.name} is moving: wait until it stands before calibrating")
+            raise HomeAssistantError(f"{self._display_name} is moving: wait until it stands before calibrating")
         self._calibration_task = self.config_entry.async_create_background_task(
             self.hass, self._async_calibrate(), name=f"zeptrion_air calibrate {self.entity_id}"
         )
@@ -775,15 +767,15 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             if previous is not None and 0 < previous < 100:
                 await self.async_set_cover_position(position=round(previous))
             message = (
-                f"{self.name}: travel time up {result['up']} s, down {result['down']} s."
+                f"{self._display_name}: travel time up {result['up']} s, down {result['down']} s."
                 + (f" Back to {round(previous)} %." if previous is not None and 0 < previous < 100 else "")
             )
             _LOGGER.info("Calibration finished: %s", message)
         except _CalibrationAborted as err:
-            message = f"{self.name}: calibration aborted, {err}. Travel times unchanged."
+            message = f"{self._display_name}: calibration aborted, {err}. Travel times unchanged."
             _LOGGER.warning("Calibration aborted: %s", message)
         except HomeAssistantError as err:
-            message = f"{self.name}: calibration aborted, {err}. Travel times unchanged."
+            message = f"{self._display_name}: calibration aborted, {err}. Travel times unchanged."
             _LOGGER.warning("Calibration aborted: %s", message)
         finally:
             self._calibration = None
@@ -801,18 +793,18 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         """Store the blind's current position on the zApp as scene S1-S4."""
         if self._motion.moving:
             raise HomeAssistantError(
-                f"{self.name} is moving: stop it at the wanted position before storing scene S{scene}"
+                f"{self._display_name} is moving: stop it at the wanted position before storing scene S{scene}"
             )
         try:
             await self.config_entry.runtime_data.client.async_channel_store_scene(self._channel_id, scene)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-            raise HomeAssistantError(f"Failed to store scene S{scene} for blind {self.name}: {e}") from e
+            raise HomeAssistantError(f"Failed to store scene S{scene} for {self._display_name}: {e}") from e
         _LOGGER.info("Stored scene S%s for blind %s (channel %s)", scene, self.name, self._channel_id)
 
     async def async_blind_recall_s1(self) -> None:
         """Recall scene S1 for the blind."""
         _LOGGER.debug("Recalling S1 for blind %s (Channel %s)", self.name, self._channel_id)
-        self._motion.hint(None, time.monotonic())  # scene: direction unknown
+        self._motion.scene_hint(time.monotonic())
         try:
             await self.config_entry.runtime_data.client.async_channel_recall_s1(self._channel_id)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
@@ -825,7 +817,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
     async def async_blind_recall_s2(self) -> None:
         """Recall scene S2 for the blind."""
         _LOGGER.debug("Recalling S2 for blind %s (Channel %s)", self.name, self._channel_id)
-        self._motion.hint(None, time.monotonic())  # scene: direction unknown
+        self._motion.scene_hint(time.monotonic())
         try:
             await self.config_entry.runtime_data.client.async_channel_recall_s2(self._channel_id)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
@@ -838,7 +830,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
     async def async_blind_recall_s3(self) -> None:
         """Recall scene S3 for the blind."""
         _LOGGER.debug("Recalling S3 for blind %s (Channel %s)", self.name, self._channel_id)
-        self._motion.hint(None, time.monotonic())  # scene: direction unknown
+        self._motion.scene_hint(time.monotonic())
         try:
             await self.config_entry.runtime_data.client.async_channel_recall_s3(self._channel_id)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
@@ -851,7 +843,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
     async def async_blind_recall_s4(self) -> None:
         """Recall scene S4 for the blind."""
         _LOGGER.debug("Recalling S4 for blind %s (Channel %s)", self.name, self._channel_id)
-        self._motion.hint(None, time.monotonic())  # scene: direction unknown
+        self._motion.scene_hint(time.monotonic())
         try:
             await self.config_entry.runtime_data.client.async_channel_recall_s4(self._channel_id)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
