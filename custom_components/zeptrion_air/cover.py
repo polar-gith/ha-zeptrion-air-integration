@@ -48,6 +48,7 @@ from .const import (
     tilt_option_key,
     travel_option_key,
 )
+from .areas import suggested_area_for_channel
 from .cover_motion import CoverMotion, Run, TravelTimes, TravelTimeSamples
 from .learning import async_store_travel_times
 
@@ -147,6 +148,8 @@ async def async_setup_entry(
                 "manufacturer": hub_manufacturer,
                 "sw_version": hub_sw_version,
             }
+            if area := suggested_area_for_channel(channel_info_dict):
+                blind_device_info["suggested_area"] = area
             panel_type_string: str = panel_type_mapping.get(channel_cat, "Unknown Panel")
             blind_device_info["model"] = f"Zeptrion Air Channel {channel_id} - {panel_type_string}"
 

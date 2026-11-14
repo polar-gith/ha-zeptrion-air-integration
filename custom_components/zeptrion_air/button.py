@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -19,9 +19,7 @@ from .const import (
     SERVICE_BLIND_STORE_SCENE,
     SERVICE_BLIND_CALIBRATE,
     SERVICE_LIGHT_RECALL_SCENE,
-    SERVICE_LIGHT_STORE_SCENE,
-    CONF_STEP_DURATION_MS,
-    DEFAULT_STEP_DURATION_MS
+    SERVICE_LIGHT_STORE_SCENE
 )
 from .api import ZeptrionAirApiClientError, ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClient
 

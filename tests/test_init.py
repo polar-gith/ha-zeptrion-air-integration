@@ -223,3 +223,35 @@ async def test_light_scenes_store_and_recall(hass: HomeAssistant, fake_zapp) -> 
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_migration_drops_light_polling_and_rooms_become_areas(
+    hass: HomeAssistant, fake_zapp
+) -> None:
+    from homeassistant.helpers import area_registry as ar
+    from homeassistant.helpers import device_registry as dr
+
+    device, host = fake_zapp
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title=f"zapp-{device.serial}",
+        unique_id=device.serial,
+        data={CONF_HOSTNAME: host},
+        options={"light_polling": True, "step_duration_ms": 100},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.minor_version == 2
+    assert entry.options == {"step_duration_ms": 100}
+
+    # chdes group "Living" of both channels: suggested for hub and channel devices
+    area = ar.async_get(hass).async_get_area_by_name("Living")
+    assert area is not None
+    registry = dr.async_get(hass)
+    hub = registry.async_get_device(identifiers={(DOMAIN, device.serial)})
+    blind = registry.async_get_device(identifiers={(DOMAIN, f"{device.serial}_ch1")})
+    assert hub.area_id == area.id
+    assert blind.area_id == area.id
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

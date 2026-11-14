@@ -7,13 +7,10 @@ https://github.com/polar-gith/ha-zeptrion-air-integration
 
 from __future__ import annotations
 
-import logging
-import re
 import time
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
 from homeassistant.helpers import entity_registry as er
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -31,6 +28,7 @@ from .api import (
 )
 from .coordinator import ZeptrionAirDataUpdateCoordinator
 from .data import ZeptrionAirData
+from .areas import suggested_area_for_channel, suggested_area_for_hub
 from .smartfront import KeyEvent, parse_btfu
 from .websocket_listener import ZeptrionAirWebsocketListener
 
@@ -40,6 +38,7 @@ from .const import (
     CONF_HOSTNAME,
     DOMAIN,
     LOGGER,
+    OBSOLETE_OPTIONS,
     PLATFORMS as ZEPTRION_PLATFORMS,
     SIGNAL_AVAILABILITY,
     SIGNAL_KEY_EVENT,
@@ -51,6 +50,20 @@ from .const import (
 
 if TYPE_CHECKING:
     pass
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old config entries.
+
+    1.1 -> 1.2: drop options that no longer exist (``light_polling``).
+    """
+    if entry.version > 1:
+        return False  # downgrade from a future version
+    if entry.version == 1 and entry.minor_version < 2:
+        options = {k: v for k, v in entry.options.items() if k not in OBSOLETE_OPTIONS}
+        hass.config_entries.async_update_entry(entry, options=options, minor_version=2)
+        LOGGER.debug("Migrated %s to 1.2 (removed obsolete options)", entry.title)
+    return True
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -148,11 +161,6 @@ async def async_setup_entry(
     
     LOGGER.debug(f"Constructed hub_device_info for {serial_number}: {hub_device_info}")
 
-    registry: device_registry.DeviceRegistry = device_registry.async_get(hass)
-    registry.async_get_or_create(
-        config_entry_id=entry.entry_id,
-        **hub_device_info 
-    )
 
     runtime_data: ZeptrionAirData = entry.runtime_data
     runtime_data.base_options = {
@@ -265,6 +273,28 @@ async def async_setup_entry(
             continue 
 
     LOGGER.info(f"Final identified usable channels for {hub_name}: {identified_channels}")
+
+    # The room ("group") stored in the zApp is suggested as area. Home Assistant
+    # only uses it when a device is created, so existing areas are never changed.
+    hub_area = suggested_area_for_hub(identified_channels)
+    registry: device_registry.DeviceRegistry = device_registry.async_get(hass)
+    hub_device = registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        **hub_device_info,
+        **({"suggested_area": hub_area} if hub_area else {}),
+    )
+    # Channel devices are created here (before the platforms), so the room of
+    # each channel reaches Home Assistant while the device is new.
+    for channel in identified_channels:
+        if area := suggested_area_for_channel(channel):
+            registry.async_get_or_create(
+                config_entry_id=entry.entry_id,
+                identifiers={(DOMAIN, f"{serial_number}_ch{channel['id']}")},
+                name=channel.get("entity_base_name"),
+                manufacturer="Feller AG",
+                via_device_id=hub_device.id,
+                suggested_area=area,
+            )
 
     integration_obj: Integration = async_get_loaded_integration(hass, entry.domain)
     

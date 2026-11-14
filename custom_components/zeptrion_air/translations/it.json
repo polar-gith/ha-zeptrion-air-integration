@@ -1,0 +1,124 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Aggiungi zApp",
+        "description": "Nome host (ad es. `zapp-21510211.local`) o indirizzo IP dello zApp.",
+        "data": {
+          "hostname": "Nome host o indirizzo IP",
+          "step_duration_ms": "Durata di un passo delle tende (ms)"
+        }
+      },
+      "confirm": {
+        "description": "Vuoi aggiungere {hostname} (`{ip_address}`) a Home Assistant?",
+        "title": "Aggiungi zApp"
+      },
+      "reconfigure": {
+        "title": "Modifica l'indirizzo di {name}",
+        "description": "Nuovo nome host o nuovo indirizzo IP di questo zApp. Deve essere lo stesso dispositivo (stesso numero di serie); entità e impostazioni vengono mantenute.",
+        "data": {
+          "hostname": "Nome host o indirizzo IP"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Connessione non riuscita",
+      "unknown": "Errore imprevisto"
+    },
+    "abort": {
+      "already_configured": "Il dispositivo è già configurato",
+      "cannot_connect": "Connessione non riuscita",
+      "not_zeptrion_device": "Non è un dispositivo Zeptrion Air",
+      "reconfigure_successful": "L'indirizzo è stato modificato.",
+      "wrong_device": "Questo indirizzo appartiene a un altro zApp (numero di serie diverso)."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni Zeptrion Air",
+        "data": {
+          "step_duration_ms": "Durata di un passo delle tende (ms)",
+          "travel_up_ch1": "Canale 1: tempo di salita (s)",
+          "travel_down_ch1": "Canale 1: tempo di discesa (s)",
+          "travel_up_ch2": "Canale 2: tempo di salita (s)",
+          "travel_down_ch2": "Canale 2: tempo di discesa (s)",
+          "travel_up_ch3": "Canale 3: tempo di salita (s)",
+          "travel_down_ch3": "Canale 3: tempo di discesa (s)",
+          "travel_up_ch4": "Canale 4: tempo di salita (s)",
+          "travel_down_ch4": "Canale 4: tempo di discesa (s)",
+          "auto_travel_times": "Acquisire i tempi di corsa delle tende dallo zApp",
+          "tilt_time_ch1": "Canale 1: tempo di rotazione lamelle (s)",
+          "tilt_time_ch2": "Canale 2: tempo di rotazione lamelle (s)",
+          "tilt_time_ch3": "Canale 3: tempo di rotazione lamelle (s)",
+          "tilt_time_ch4": "Canale 4: tempo di rotazione lamelle (s)"
+        },
+        "data_description": {
+          "step_duration_ms": "Durata di un singolo passo su/giù delle tende (100-32000 ms).",
+          "travel_up_ch1": "Tempo di corsa completo della tenda; 0 = sconosciuto (nessuna posizione). Acquisito automaticamente dalle corse complete o misurato con il pulsante «Calibrate».",
+          "travel_down_ch1": "Tempo di corsa completo della tenda; 0 = sconosciuto (nessuna posizione). Acquisito automaticamente dalle corse complete o misurato con il pulsante «Calibrate».",
+          "travel_up_ch2": "Tempo di corsa completo della tenda; 0 = sconosciuto (nessuna posizione). Acquisito automaticamente dalle corse complete o misurato con il pulsante «Calibrate».",
+          "travel_down_ch2": "Tempo di corsa completo della tenda; 0 = sconosciuto (nessuna posizione). Acquisito automaticamente dalle corse complete o misurato con il pulsante «Calibrate».",
+          "travel_up_ch3": "Tempo di corsa completo della tenda; 0 = sconosciuto (nessuna posizione). Acquisito automaticamente dalle corse complete o misurato con il pulsante «Calibrate».",
+          "travel_down_ch3": "Tempo di corsa completo della tenda; 0 = sconosciuto (nessuna posizione). Acquisito automaticamente dalle corse complete o misurato con il pulsante «Calibrate».",
+          "travel_up_ch4": "Tempo di corsa completo della tenda; 0 = sconosciuto (nessuna posizione). Acquisito automaticamente dalle corse complete o misurato con il pulsante «Calibrate».",
+          "travel_down_ch4": "Tempo di corsa completo della tenda; 0 = sconosciuto (nessuna posizione). Acquisito automaticamente dalle corse complete o misurato con il pulsante «Calibrate».",
+          "auto_travel_times": "Lo zApp spegne una tenda quando raggiunge il finecorsa. Una corsa completa da un finecorsa all'altro non interrotta da nessuno è quindi durata esattamente il tempo di corsa; viene acquisito automaticamente.",
+          "tilt_time_ch1": "Tempo in cui le lamelle di una tenda alla veneziana ruotano a un cambio di direzione prima che cambi l'altezza; 0 = nessuna lamella (ignorato).",
+          "tilt_time_ch2": "Tempo in cui le lamelle di una tenda alla veneziana ruotano a un cambio di direzione prima che cambi l'altezza; 0 = nessuna lamella (ignorato).",
+          "tilt_time_ch3": "Tempo in cui le lamelle di una tenda alla veneziana ruotano a un cambio di direzione prima che cambi l'altezza; 0 = nessuna lamella (ignorato).",
+          "tilt_time_ch4": "Tempo in cui le lamelle di una tenda alla veneziana ruotano a un cambio di direzione prima che cambi l'altezza; 0 = nessuna lamella (ignorato)."
+        }
+      }
+    }
+  },
+  "entity": {
+    "event": {
+      "wall_keys": {
+        "name": "Tasti a parete",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "key_1_press": "Tasto 1 premuto",
+              "key_1_release": "Tasto 1 rilasciato",
+              "key_2_press": "Tasto 2 premuto",
+              "key_2_release": "Tasto 2 rilasciato",
+              "key_3_press": "Tasto 3 premuto",
+              "key_3_release": "Tasto 3 rilasciato",
+              "key_4_press": "Tasto 4 premuto",
+              "key_4_release": "Tasto 4 rilasciato",
+              "key_5_press": "Tasto 5 premuto",
+              "key_5_release": "Tasto 5 rilasciato",
+              "key_6_press": "Tasto 6 premuto",
+              "key_6_release": "Tasto 6 rilasciato",
+              "key_7_press": "Tasto 7 premuto",
+              "key_7_release": "Tasto 7 rilasciato",
+              "key_8_press": "Tasto 8 premuto",
+              "key_8_release": "Tasto 8 rilasciato"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "smartfront_temperature": {
+        "name": "Temperatura Smartfront"
+      },
+      "smartfront_illuminance": {
+        "name": "Luminosità Smartfront"
+      },
+      "smartfront_humidity": {
+        "name": "Umidità Smartfront"
+      },
+      "stream_connects": {
+        "name": "Connessioni"
+      },
+      "stream_short_outages": {
+        "name": "Interruzioni brevi"
+      },
+      "stream_long_outages": {
+        "name": "Interruzioni lunghe"
+      }
+    }
+  }
+}
