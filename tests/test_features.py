@@ -15,7 +15,7 @@ from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.zeptrion_air.api import compact_smartbutton_requests, truncate_utf8
-from custom_components.zeptrion_air.const import CONF_HOSTNAME, DOMAIN, WEAK_WIFI_POLLS
+from custom_components.zeptrion_air.const import CONF_HOSTNAME, DOMAIN
 
 
 async def _wait_for(predicate, timeout: float = 5.0) -> None:
@@ -27,7 +27,7 @@ async def _wait_for(predicate, timeout: float = 5.0) -> None:
 async def _setup(hass: HomeAssistant, device, host: str) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN, title=f"zapp-{device.serial}", unique_id=device.serial,
-        minor_version=3, data={CONF_HOSTNAME: host},
+        minor_version=4, data={CONF_HOSTNAME: host},
     )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -46,13 +46,34 @@ async def _unload(hass: HomeAssistant, entry: MockConfigEntry) -> None:
     await hass.async_block_till_done()
 
 
-async def test_restart_button(hass: HomeAssistant, fake_zapp) -> None:
+async def test_reconnect_button_and_old_restart_removed(hass: HomeAssistant, fake_zapp) -> None:
     device, host = fake_zapp
-    entry = await _setup(hass, device, host)
-    button = _eid(hass, "button", f"zapp_{device.serial}_restart")
-    assert er.async_get(hass).async_get(button).entity_category == "config"
+    entry = MockConfigEntry(
+        domain=DOMAIN, title=f"zapp-{device.serial}", unique_id=device.serial,
+        minor_version=3, data={CONF_HOSTNAME: host},
+    )
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    old = registry.async_get_or_create(
+        "button", DOMAIN, f"zapp_{device.serial}_restart", config_entry=entry
+    )
+    issues = ir.async_get(hass)
+    ir.async_create_issue(
+        hass, DOMAIN, f"weak_wifi_{device.serial}", is_fixable=False,
+        severity=ir.IssueSeverity.WARNING, translation_key="weak_wifi",
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.minor_version == 4
+    assert registry.async_get(old.entity_id) is None  # Restart is gone
+    assert issues.async_get_issue(DOMAIN, f"weak_wifi_{device.serial}") is None  # notice cleared
+
+    button = _eid(hass, "button", f"zapp_{device.serial}_reconnect")
+    assert registry.async_get(button).entity_category is None  # under Controls
+    connects = device.ws_connects
     await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
-    assert device.reboots == 1
+    await _wait_for(lambda: device.ws_connects > connects, timeout=10)
+    await hass.async_block_till_done()
     await _unload(hass, entry)
 
 
@@ -123,33 +144,9 @@ async def test_leds_disabled_by_11_16_are_enabled(hass: HomeAssistant, fake_zapp
     )
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert entry.minor_version == 3
+    assert entry.minor_version == 4
     assert registry.async_get(old.entity_id).disabled_by is None
     assert hass.states.get(old.entity_id) is not None
-    await _unload(hass, entry)
-
-
-async def test_weak_wifi_raises_and_clears_repair_issue(hass: HomeAssistant, fake_zapp) -> None:
-    device, host = fake_zapp
-    entry = await _setup(hass, device, host)
-    coordinator = entry.runtime_data.coordinator
-    issues = ir.async_get(hass)
-    issue_id = f"weak_wifi_{device.serial}"
-
-    device.rssi_dbm = -78
-    for _ in range(WEAK_WIFI_POLLS - 1):
-        await coordinator.async_refresh()
-    assert issues.async_get_issue(DOMAIN, issue_id) is None
-    await coordinator.async_refresh()
-    issue = issues.async_get_issue(DOMAIN, issue_id)
-    assert issue is not None and issue.translation_placeholders["rssi"] == "-78"
-
-    device.rssi_dbm = -74  # within the hysteresis: stays
-    await coordinator.async_refresh()
-    assert issues.async_get_issue(DOMAIN, issue_id) is not None
-    device.rssi_dbm = -65
-    await coordinator.async_refresh()
-    assert issues.async_get_issue(DOMAIN, issue_id) is None
     await _unload(hass, entry)
 
 

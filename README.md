@@ -4,7 +4,7 @@
 
 Local control of [Feller Zeptrion Air](https://www.feller.ch/de/Produkte/Gebaeudeautomation/Zeptrion-Systeme/Zeptrion-Air) devices (zApps): blinds, awnings, switches and dimmers, wall keys and Smartfront sensors. No cloud; the zApp's local REST API and WebSocket are used.
 
-**All functions of the zeptrion Air devices are integrated**: every channel command, scenes, wall keys and Smartbuttons, Smartfront sensors and LEDs, names, restart and diagnostics. Languages: English, German, French, Italian.
+**All functions of the zeptrion Air devices are integrated**: every channel command, scenes, wall keys and Smartbuttons, Smartfront sensors and LEDs, names, reconnect and diagnostics. Languages: English, German, French, Italian.
 
 ## Installation
 
@@ -22,7 +22,7 @@ Requires Home Assistant 2026.8 or newer.
 | Blind / awning channel (cat. 5/6) | Cover with direction, position and slats; buttons *Scene S1–S4*, *Store S1–S4* and *Calibrate* (the last two under *Configuration*) |
 | Switch / dimmer channel (cat. 1/3) | Light (on/off or brightness); buttons *Scene S1–S4* and *Store S1–S4* (the latter under *Configuration*) |
 | Smartfront fitted | Event *Wall keys*, sensors temperature (module heat, reads above room temperature) and, if present, illuminance / humidity; light *Smartfront LED n* per key in use; button *Undo LED change* |
-| Always | Button *Restart* (under *Configuration*); Wi-Fi signal and a repair notice when it stays below −75 dBm; hidden diagnostic counters *Connections*, *Short outages*, *Long outages*; sensors name / group / icon ID per channel (disabled) |
+| Always | Button *Reconnect*; Wi-Fi signal; hidden diagnostic counters *Connections*, *Short outages*, *Long outages*; sensors name / group / icon ID per channel (disabled) |
 
 Actions: `zeptrion_air.blind_up_step`, `blind_down_step`, `blind_recall_s1`, `blind_recall_s2`, `blind_recall_s3`, `blind_recall_s4`, `blind_store_scene` (`scene: 1-4`), `blind_calibrate`, `light_store_scene`, `light_recall_scene` (`scene: 1-4`), `program_smartbutton`, `write_name_to_zapp`.
 
@@ -120,8 +120,8 @@ Based on Feller's *zApp API* 10.ZEPAPI-E.1612 ([docs/api](docs/api)).
 | `/zrap/chscan`, WebSocket `/zrap/ws` | states, pushed in real time; read again after every reconnect |
 | `/zrap/chnotify` (long poll) | not used; the WebSocket replaces it |
 | `/zrap/chdes` read / write | device names, rooms as suggested areas, `write_name_to_zapp` |
-| `/zrap/id`, `/zrap/rssi` | device info, Wi-Fi sensor, liveness check, weak signal repair notice |
-| `/zrap/sys` reboot | button *Restart*; factory and network reset deliberately not offered |
+| `/zrap/id`, `/zrap/rssi` | device info, Wi-Fi sensor, liveness check |
+| `/zrap/sys` reboot | not usable: firmware 01.08.28 answers 302 but does not restart (tested); button *Reconnect* reloads the zApp in Home Assistant instead; factory and network reset deliberately not offered |
 | `/zrap/net`, `/zrap/netscan` | not used (network setup belongs in the zeptrion app; `/zrap/net` contains the Wi-Fi password) |
 | `/zrap/loc`, `/zrap/date`, `/zrap/ntp`, `/zrap/scheduler` | not used: timers and clock of the zApp stay in the zeptrion app; use Home Assistant automations instead |
 | `/zapi/smartfront/id`, `/sensors` | wall keys, Smartfront sensors |

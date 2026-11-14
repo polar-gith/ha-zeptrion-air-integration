@@ -128,13 +128,10 @@
     "button": {
       "smartfront_led_undo": {
         "name": "Annulla modifica LED"
+      },
+      "reconnect": {
+        "name": "Riconnetti"
       }
-    }
-  },
-  "issues": {
-    "weak_wifi": {
-      "title": "Segnale Wi-Fi debole: {name}",
-      "description": "Lo zApp {name} ha un segnale Wi-Fi di {rssi} dBm da più di 30 minuti. Feller raccomanda almeno {limit} dBm; al di sotto la connessione diventa inaffidabile (interruzioni, comandi ritardati). Avvicinare l'access point o aggiungerne uno. Questo messaggio scompare non appena il segnale migliora."
     }
   }
 }

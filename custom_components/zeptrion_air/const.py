@@ -72,11 +72,6 @@ SIGNAL_KEY_EVENT: str = "zeptrion_air_key_event_{}"
 SIGNAL_TRAVEL_TIMES: str = "zeptrion_air_travel_times_{}"
 SIGNAL_CHANNEL_DESCRIPTOR: str = "zeptrion_air_chdes_{}"
 
-# Wi-Fi: Feller recommends warning below -75 dBm; a repair issue is raised after
-# WEAK_WIFI_POLLS one-minute polls below it and cleared at WEAK_WIFI_CLEAR_DBM.
-WEAK_WIFI_DBM: int = -75
-WEAK_WIFI_CLEAR_DBM: int = -72
-WEAK_WIFI_POLLS: int = 30
 
 # Smartfront key events
 EVENT_PRESS: str = "press"

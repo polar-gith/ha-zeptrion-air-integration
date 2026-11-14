@@ -230,14 +230,6 @@ class ZeptrionAirApiClient:
 
     # ------------------------------------------------------------ device info
 
-    async def async_reboot(self) -> None:
-        """Restart the zApp (/zrap/sys cmd=reboot). Settings are kept.
-
-        The other /zrap/sys commands (factory-default, network-default) are
-        deliberately not offered.
-        """
-        await self._api_post_url_encoded_wrapper("/zrap/sys", {"cmd": "reboot"})
-
     async def async_set_channel_descriptor(
         self, channel: int, *, name: str | None = None, group: str | None = None
     ) -> None:
