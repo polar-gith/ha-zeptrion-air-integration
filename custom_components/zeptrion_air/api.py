@@ -65,6 +65,7 @@ class ZeptrionAirApiClient:
         self._enable_jitter = enable_jitter
         self._request_timeout = request_timeout
         self._semaphore = asyncio.Semaphore(max(1, max_parallel_requests))
+        self._smartbutton_path: str | None = None
 
     @property
     def hostname(self) -> str:
@@ -98,6 +99,7 @@ class ZeptrionAirApiClient:
         data: str | None = None,
         headers: dict[str, str] | None = None,
         retry: bool,
+        timeout: float | None = None,
     ) -> tuple[int, str]:
         """Perform one HTTP request and return (status, body).
 
@@ -112,7 +114,7 @@ class ZeptrionAirApiClient:
             retryable = False
             try:
                 async with self._semaphore:
-                    async with asyncio.timeout(self._request_timeout):
+                    async with asyncio.timeout(timeout or self._request_timeout):
                         async with self._session.request(
                             method,
                             url,
@@ -138,7 +140,7 @@ class ZeptrionAirApiClient:
             except TimeoutError as err:
                 retryable = True
                 last_error = ZeptrionAirApiClientCommunicationError(
-                    f"{method.upper()} {path} on {self._hostname}: timeout after {self._request_timeout:.0f} s"
+                    f"{method.upper()} {path} on {self._hostname}: timeout after {timeout or self._request_timeout:.0f} s"
                 )
                 last_error.__cause__ = err
             except (aiohttp.ClientError, OSError) as err:
@@ -211,7 +213,110 @@ class ZeptrionAirApiClient:
         except Exception:  # the 302 answer may carry a small HTML page
             return {"non_xml_response": body}
 
+    async def _api_post_json(self, path: str, payload: Any, *, timeout: float | None = None) -> Any:
+        """Send JSON to a /zapi resource (never retried). Returns the parsed answer, if any."""
+        _status, body = await self._request(
+            "post",
+            path,
+            data=json.dumps(payload, separators=(",", ":")),
+            headers={"Content-Type": "application/json"},
+            retry=False,
+            timeout=timeout,
+        )
+        try:
+            return json.loads(body) if body.strip() else None
+        except ValueError:
+            return None
+
     # ------------------------------------------------------------ device info
+
+    async def async_reboot(self) -> None:
+        """Restart the zApp (/zrap/sys cmd=reboot). Settings are kept.
+
+        The other /zrap/sys commands (factory-default, network-default) are
+        deliberately not offered.
+        """
+        await self._api_post_url_encoded_wrapper("/zrap/sys", {"cmd": "reboot"})
+
+    async def async_set_channel_descriptor(
+        self, channel: int, *, name: str | None = None, group: str | None = None
+    ) -> None:
+        """Write name and/or group of a channel (/zrap/chdes/chN), 32 bytes each."""
+        data: dict[str, str] = {}
+        if name is not None:
+            data["name"] = truncate_utf8(name, CHDES_TEXT_BYTES)
+        if group is not None:
+            data["group"] = truncate_utf8(group, CHDES_TEXT_BYTES)
+        if data:
+            await self._api_post_url_encoded_wrapper(f"/zrap/chdes/ch{channel}", data)
+
+    # ------------------------------------------------------- Smartfront LEDs
+
+    async def async_get_leds(self) -> list[dict[str, Any]]:
+        """Read the Smartfront LEDs (/zapi/smartfront/led); [] without Smartfront."""
+        try:
+            data = await self._api_json_wrapper("/zapi/smartfront/led")
+        except ZeptrionAirApiClientNotFoundError:
+            return []
+        return [d for d in data if isinstance(d, dict)] if isinstance(data, list) else []
+
+    async def async_set_led_backgrounds(self, colors: dict[int, str]) -> None:
+        """Set the background colour (``bg``, "#rrggbb") of Smartfront LEDs.
+
+        Only ``bg`` is free to use; ``on``, ``rgb`` and ``effects`` belong to the
+        zApp's own status display and are never written.
+        """
+        await self._api_post_json(
+            "/zapi/smartfront/led", [{"id": led, "bg": color} for led, color in sorted(colors.items())]
+        )
+
+    # -------------------------------------------------- Smartbutton programming
+
+    async def _smartbutton_prefix(self) -> str:
+        """The PDF names both /zapi/smartbt/... and /zapi/smartfront/...; probe."""
+        if self._smartbutton_path is None:
+            for prefix in ("/zapi/smartbt", "/zapi/smartfront"):
+                try:
+                    await self._api_json_wrapper(f"{prefix}/prgm")
+                except ZeptrionAirApiClientNotFoundError:
+                    continue
+                self._smartbutton_path = prefix
+                break
+            else:
+                raise ZeptrionAirApiClientNotFoundError(
+                    f"{self._hostname}: this Smartfront cannot program Smartbuttons"
+                )
+        return self._smartbutton_path
+
+    async def async_smartbutton_program(
+        self, requests: list[dict[str, str]], *, wait_s: int = 60
+    ) -> bool:
+        """Program the next Smartbutton pressed with HTTP requests (API 5.2).
+
+        1. ``prgm`` {"on": true, "ntm": wait_s}: Smartbuttons blink.
+        2. ``prgn`` answers once a button is pressed (``prg`` true) or the time ran out.
+        3. ``prgs`` stores the requests on that button.
+        Returns False if no Smartbutton was pressed in time.
+        """
+        prefix = await self._smartbutton_prefix()
+        await self._api_post_json(f"{prefix}/prgm", {"on": True, "ntm": int(wait_s)})
+        try:
+            _status, body = await self._request(
+                "get", f"{prefix}/prgn", retry=False, timeout=wait_s + 10
+            )
+            try:
+                pressed = bool(json.loads(body).get("prg"))
+            except (ValueError, AttributeError):
+                pressed = False
+            if not pressed:
+                return False
+            await self._api_post_json(f"{prefix}/prgs", compact_smartbutton_requests(requests))
+            return True
+        finally:
+            try:
+                await self._api_post_json(f"{prefix}/prgm", {"on": False})
+            except ZeptrionAirApiClientError:
+                pass
 
     async def async_get_device_identification(self) -> dict[str, Any]:
         """Get the device identification from the API."""
@@ -416,3 +521,37 @@ class ZeptrionAirApiClient:
         await self.async_channel_on(channel)
         await asyncio.sleep(0.25)
         return await self.async_channel_dim_down_for(channel, dim_down_ms)
+
+
+CHDES_TEXT_BYTES = 32
+SMARTBUTTON_MAX_BYTES = 730  # whole prgs request incl. header, per Feller API 5.2.4
+SMARTBUTTON_PAYLOAD_BYTES = 560  # leaves room for the HTTP header
+
+
+def truncate_utf8(text: str, max_bytes: int) -> str:
+    """Cut text to at most max_bytes of UTF-8 without splitting a character."""
+    raw = text.encode("utf-8")
+    if len(raw) <= max_bytes:
+        return text
+    return raw[:max_bytes].decode("utf-8", errors="ignore")
+
+
+def compact_smartbutton_requests(requests: list[dict[str, str]]) -> Any:
+    """Drop attributes repeated from the previous request (allowed by API 5.2.4).
+
+    A single request is sent as object, several as array. Raises ValueError if
+    the result is longer than the zApp accepts.
+    """
+    compact: list[dict[str, str]] = []
+    previous: dict[str, str] = {}
+    for request in requests:
+        item = {k: v for k, v in request.items() if previous.get(k) != v}
+        compact.append(item)
+        previous = {**previous, **request}
+    payload: Any = compact[0] if len(compact) == 1 else compact
+    size = len(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    if size > SMARTBUTTON_PAYLOAD_BYTES:
+        raise ValueError(
+            f"Smartbutton programme too long ({size} bytes, at most {SMARTBUTTON_PAYLOAD_BYTES})"
+        )
+    return payload

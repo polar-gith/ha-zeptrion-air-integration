@@ -4,6 +4,8 @@
 
 Local control of [Feller Zeptrion Air](https://www.feller.ch/de/Produkte/Gebaeudeautomation/Zeptrion-Systeme/Zeptrion-Air) devices (zApps): blinds, awnings, switches and dimmers, wall keys and Smartfront sensors. No cloud; the zApp's local REST API and WebSocket are used.
 
+**All functions of the zeptrion Air devices are integrated**: every channel command, scenes, wall keys and Smartbuttons, Smartfront sensors and LEDs, names, restart and diagnostics. Only the zApp's own timers, clock and network setup are left to the zeptrion app on purpose; see [Feller API coverage](#feller-api-coverage). Languages: English, German, French, Italian.
+
 ## Installation
 
 Requires Home Assistant 2026.8 or newer.
@@ -19,10 +21,10 @@ Requires Home Assistant 2026.8 or newer.
 |---|---|
 | Blind / awning channel (cat. 5/6) | Cover with direction, position and slats; buttons *Scene S1–S4*, *Store S1–S4* and *Calibrate* (the last two under *Configuration*) |
 | Switch / dimmer channel (cat. 1/3) | Light (on/off or brightness); buttons *Scene S1–S4* and *Store S1–S4* (the latter under *Configuration*) |
-| Smartfront fitted | Event *Wall keys*, sensors temperature (module heat, reads above room temperature) and, if present, illuminance / humidity |
-| Always | Wi-Fi signal; hidden diagnostic counters *Connections*, *Short outages*, *Long outages*; sensors name / group / icon ID per channel (disabled) |
+| Smartfront fitted | Event *Wall keys*, sensors temperature (module heat, reads above room temperature) and, if present, illuminance / humidity; lights *Smartfront LED 1–8* for the keys in use (disabled by default) |
+| Always | Button *Restart* (under *Configuration*); Wi-Fi signal and a repair notice when it stays below −75 dBm; hidden diagnostic counters *Connections*, *Short outages*, *Long outages*; sensors name / group / icon ID per channel (disabled) |
 
-Actions: `zeptrion_air.blind_up_step`, `blind_down_step`, `blind_recall_s1`, `blind_recall_s2`, `blind_recall_s3`, `blind_recall_s4`, `blind_store_scene` (`scene: 1-4`), `blind_calibrate`, `light_store_scene`, `light_recall_scene` (`scene: 1-4`).
+Actions: `zeptrion_air.blind_up_step`, `blind_down_step`, `blind_recall_s1`, `blind_recall_s2`, `blind_recall_s3`, `blind_recall_s4`, `blind_store_scene` (`scene: 1-4`), `blind_calibrate`, `light_store_scene`, `light_recall_scene` (`scene: 1-4`), `program_smartbutton`, `write_name_to_zapp`.
 
 ## Blinds
 
@@ -68,6 +70,29 @@ conditions:
     state: key_5_press
 ```
 
+## Smartfront LEDs
+
+Each key in use has an LED whose **background colour** can be set; the lights *Smartfront LED n* (enable them first) take colour and brightness, e.g. as status display (window open = red). The zApp keeps using the LEDs for its own indications and shows the background colour otherwise. The LEDs are bright: a brightness around 20–30 % is usually enough.
+
+## Smartbuttons
+
+`zeptrion_air.program_smartbutton` programs a Smartbutton like the zeptrion app: choose the zApp, the commands (blinds or lights of any zApp, e.g. `recall_s1`, `toggle`, `move_close_5000`) and/or raw HTTP requests in the Feller format. The Smartbuttons then blink; press the one to program within the wait time. A notification shows the result. The previous programme is replaced and cannot be read back. For automations in Home Assistant no programming is needed: every Smartbutton press already arrives as wall key event.
+
+```yaml
+action: zeptrion_air.program_smartbutton
+data:
+  device_id: <zApp device>
+  actions:
+    - entity_id: cover.play_blind
+      command: recall_s1
+    - entity_id: light.kitchen_light
+      command: "off"
+```
+
+## Names in the zApp
+
+`zeptrion_air.write_name_to_zapp` writes the name shown in Home Assistant, and the area as group, into the zApp (at most 32 bytes each), so the zeptrion app shows the same names. Name and group can also be given explicitly.
+
 ## Connection
 
 Push updates over the zApp WebSocket. After 60 s without a frame `GET /zrap/rssi` checks the zApp; reconnects back off from 1 to 60 s; after every reconnect all channels are read once. Entities turn unavailable only after 60 s without connection. Commands are sent exactly once (a repeated timed command would act twice), reads are retried, at most two requests run per zApp. *Download diagnostics* gives connection statistics with host, serial and names redacted.
@@ -82,6 +107,27 @@ Push updates over the zApp WebSocket. After 60 s without a frame `GET /zrap/rssi
 | Take over blind travel times from the zApp | on | see *Travel times* |
 | Channel n: travel time up / down (s) | 0 | 0 = unknown (no position) |
 | Channel n: slat tilt time (s) | 0 | 0 = no slats |
+
+## Feller API coverage
+
+Based on Feller's *zApp API* 10.ZEPAPI-E.1612 ([docs/api](docs/api)).
+
+| API | Use in Home Assistant |
+|---|---|
+| `/zrap/chctrl` on, off, toggle, dim, open, close, move, stop, timed commands | lights, covers, step and tilt buttons, Smartbutton commands |
+| `/zrap/chctrl` `store_s1-4`, `recall_s1-4` | scene buttons and actions (blinds and lights) |
+| `/zrap/chctrl` `delete_s1-4` | not offered (not needed; a scene is overwritten by storing) |
+| `/zrap/chscan`, WebSocket `/zrap/ws` | states, pushed in real time; read again after every reconnect |
+| `/zrap/chnotify` (long poll) | not used; the WebSocket replaces it |
+| `/zrap/chdes` read / write | device names, rooms as suggested areas, `write_name_to_zapp` |
+| `/zrap/id`, `/zrap/rssi` | device info, Wi-Fi sensor, liveness check, weak signal repair notice |
+| `/zrap/sys` reboot | button *Restart*; factory and network reset deliberately not offered |
+| `/zrap/net`, `/zrap/netscan` | not used (network setup belongs in the zeptrion app; `/zrap/net` contains the Wi-Fi password) |
+| `/zrap/loc`, `/zrap/date`, `/zrap/ntp`, `/zrap/scheduler` | not used: timers and clock of the zApp stay in the zeptrion app; use Home Assistant automations instead |
+| `/zapi/smartfront/id`, `/sensors` | wall keys, Smartfront sensors |
+| `/zapi/smartfront/led` (background colour) | lights *Smartfront LED n* |
+| Smartbutton programming `prgm` / `prgn` / `prgs` | `program_smartbutton` |
+| mDNS `zapp-*` | discovery (plus DHCP) |
 
 ## Limitations
 

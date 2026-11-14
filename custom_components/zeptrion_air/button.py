@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.components.button import ButtonEntity
+from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
 from homeassistant.const import EntityCategory
 
 from .const import (
@@ -122,6 +122,8 @@ async def async_setup_entry(
         else:
             _LOGGER.debug("Skipping channel %s for buttons, no scenes.", channel_id_maybe)
             
+    new_entities.append(ZeptrionAirRestartButton(entry, hub_serial))  # type: ignore[arg-type]
+
     if new_entities:
         _LOGGER.info("Adding %s Zeptrion Air button entities.", len(new_entities))
         async_add_entities(new_entities)
@@ -264,3 +266,25 @@ class ZeptrionAirActionButton(ButtonEntity):
         if component is None:
             return None
         return next((e for e in component.entities if e.unique_id == unique_id), None)
+
+
+class ZeptrionAirRestartButton(ButtonEntity):
+    """Restart the zApp (/zrap/sys cmd=reboot); settings are kept."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_device_class = ButtonDeviceClass.RESTART
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, config_entry: ConfigEntry, hub_serial: str) -> None:
+        self.config_entry = config_entry
+        self._attr_unique_id = f"zapp_{hub_serial}_restart"
+        self._attr_device_info = {"identifiers": {(DOMAIN, hub_serial)}}
+
+    async def async_press(self) -> None:
+        """Restart; the event stream reconnects and reads all channels again."""
+        try:
+            await self.config_entry.runtime_data.client.async_reboot()
+        except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as err:
+            raise HomeAssistantError(f"{self.config_entry.title}: restart failed: {err}") from err
+        _LOGGER.info("%s: restart requested", self.config_entry.title)

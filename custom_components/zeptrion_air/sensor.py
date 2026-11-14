@@ -5,11 +5,12 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, SIGNAL_CHANNEL_DESCRIPTOR
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,8 +61,9 @@ async def async_setup_entry(
         channel_device_identifier: tuple[str, str] = (DOMAIN, f"{hub_serial}_ch{channel_id}")
 
         # Channel details from the API
-        channel_api_name: str = channel_info_dict.get("name", "")
-        channel_api_group: str = channel_info_dict.get("group", "")
+        # api_name / api_group are the raw chdes values ("name" is group or name)
+        channel_api_name: str = channel_info_dict.get("api_name") or ""
+        channel_api_group: str = channel_info_dict.get("api_group") or ""
         channel_api_icon_id: str = channel_info_dict.get("icon", "") # This is the icon ID like "1443_Auf_Ab"
 
         # Get the entity_base_name for display purposes (friendly name)
@@ -85,6 +87,7 @@ async def async_setup_entry(
                 new_entities.append(
                     ZeptrionAirChannelSensor(
                         config_entry_unique_id=str(entry.unique_id or entry.entry_id),
+                        entry_id=entry.entry_id,
                         hub_serial=hub_serial,
                         channel_id=channel_id,
                         channel_device_identifier=channel_device_identifier, 
@@ -165,6 +168,7 @@ class ZeptrionAirChannelSensor(SensorEntity):
     def __init__(
         self,
         config_entry_unique_id: str,
+        entry_id: str,
         hub_serial: str,
         channel_id: int,
         channel_device_identifier: tuple[str, str],
@@ -178,6 +182,7 @@ class ZeptrionAirChannelSensor(SensorEntity):
     ) -> None:
         '''Initialize the sensor.'''
         self._hub_serial: str = hub_serial
+        self._entry_id = entry_id
         self._channel_id: int = channel_id
         self._sensor_type: str = sensor_type
         self._attr_native_value: str = initial_value
@@ -203,6 +208,25 @@ class ZeptrionAirChannelSensor(SensorEntity):
         _LOGGER.debug("  Friendly name: '%s'", self._attr_name)
         _LOGGER.debug("  Unique ID: '%s'", self._attr_unique_id)
         
+
+    async def async_added_to_hass(self) -> None:
+        """Follow names written to the zApp from Home Assistant."""
+        await super().async_added_to_hass()
+
+        @callback
+        def _written(channel: int, name: str | None, group: str | None) -> None:
+            if channel != self._channel_id:
+                return
+            value = {SENSOR_TYPE_NAME: name, SENSOR_TYPE_GROUP: group}.get(self._sensor_type)
+            if value is not None:
+                self._attr_native_value = value
+                self.async_write_ha_state()
+
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, SIGNAL_CHANNEL_DESCRIPTOR.format(self._entry_id), _written
+            )
+        )
 
     @property
     def available(self) -> bool:
