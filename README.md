@@ -4,7 +4,7 @@
 
 Local control of [Feller Zeptrion Air](https://www.feller.ch/de/Produkte/Gebaeudeautomation/Zeptrion-Systeme/Zeptrion-Air) devices (zApps): blinds, awnings, switches and dimmers, wall keys and Smartfront sensors. No cloud; the zApp's local REST API and WebSocket are used.
 
-**All functions of the zeptrion Air devices are integrated**: every channel command, scenes, wall keys and Smartbuttons, Smartfront sensors and LEDs, names, restart and diagnostics. Only the zApp's own timers, clock and network setup are left to the zeptrion app on purpose; see [Feller API coverage](#feller-api-coverage). Languages: English, German, French, Italian.
+**All functions of the zeptrion Air devices are integrated**: every channel command, scenes, wall keys and Smartbuttons, Smartfront sensors and LEDs, names, restart and diagnostics. Languages: English, German, French, Italian.
 
 ## Installation
 
