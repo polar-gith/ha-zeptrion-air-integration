@@ -1,0 +1,124 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ajouter un zApp",
+        "description": "Nom d'hôte (p. ex. `zapp-21510211.local`) ou adresse IP du zApp.",
+        "data": {
+          "hostname": "Nom d'hôte ou adresse IP",
+          "step_duration_ms": "Durée d'un pas des stores (ms)"
+        }
+      },
+      "confirm": {
+        "description": "Voulez-vous ajouter {hostname} (`{ip_address}`) à Home Assistant ?",
+        "title": "Ajouter un zApp"
+      },
+      "reconfigure": {
+        "title": "Modifier l'adresse de {name}",
+        "description": "Nouveau nom d'hôte ou nouvelle adresse IP de ce zApp. Il doit s'agir du même appareil (même numéro de série) ; les entités et réglages sont conservés.",
+        "data": {
+          "hostname": "Nom d'hôte ou adresse IP"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de la connexion",
+      "unknown": "Erreur inattendue"
+    },
+    "abort": {
+      "already_configured": "L'appareil est déjà configuré",
+      "cannot_connect": "Échec de la connexion",
+      "not_zeptrion_device": "Pas un appareil Zeptrion Air",
+      "reconfigure_successful": "L'adresse a été modifiée.",
+      "wrong_device": "Cette adresse appartient à un autre zApp (autre numéro de série)."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Zeptrion Air",
+        "data": {
+          "step_duration_ms": "Durée d'un pas des stores (ms)",
+          "travel_up_ch1": "Canal 1 : temps de montée (s)",
+          "travel_down_ch1": "Canal 1 : temps de descente (s)",
+          "travel_up_ch2": "Canal 2 : temps de montée (s)",
+          "travel_down_ch2": "Canal 2 : temps de descente (s)",
+          "travel_up_ch3": "Canal 3 : temps de montée (s)",
+          "travel_down_ch3": "Canal 3 : temps de descente (s)",
+          "travel_up_ch4": "Canal 4 : temps de montée (s)",
+          "travel_down_ch4": "Canal 4 : temps de descente (s)",
+          "auto_travel_times": "Reprendre les temps de course du zApp",
+          "tilt_time_ch1": "Canal 1 : temps d'orientation des lamelles (s)",
+          "tilt_time_ch2": "Canal 2 : temps d'orientation des lamelles (s)",
+          "tilt_time_ch3": "Canal 3 : temps d'orientation des lamelles (s)",
+          "tilt_time_ch4": "Canal 4 : temps d'orientation des lamelles (s)"
+        },
+        "data_description": {
+          "step_duration_ms": "Durée d'un pas montée/descente des stores (100-32000 ms).",
+          "travel_up_ch1": "Temps de course complet du store ; 0 = inconnu (pas de position). Repris automatiquement des courses complètes ou mesuré avec le bouton « Calibrate ».",
+          "travel_down_ch1": "Temps de course complet du store ; 0 = inconnu (pas de position). Repris automatiquement des courses complètes ou mesuré avec le bouton « Calibrate ».",
+          "travel_up_ch2": "Temps de course complet du store ; 0 = inconnu (pas de position). Repris automatiquement des courses complètes ou mesuré avec le bouton « Calibrate ».",
+          "travel_down_ch2": "Temps de course complet du store ; 0 = inconnu (pas de position). Repris automatiquement des courses complètes ou mesuré avec le bouton « Calibrate ».",
+          "travel_up_ch3": "Temps de course complet du store ; 0 = inconnu (pas de position). Repris automatiquement des courses complètes ou mesuré avec le bouton « Calibrate ».",
+          "travel_down_ch3": "Temps de course complet du store ; 0 = inconnu (pas de position). Repris automatiquement des courses complètes ou mesuré avec le bouton « Calibrate ».",
+          "travel_up_ch4": "Temps de course complet du store ; 0 = inconnu (pas de position). Repris automatiquement des courses complètes ou mesuré avec le bouton « Calibrate ».",
+          "travel_down_ch4": "Temps de course complet du store ; 0 = inconnu (pas de position). Repris automatiquement des courses complètes ou mesuré avec le bouton « Calibrate ».",
+          "auto_travel_times": "Le zApp coupe un store lorsqu'il atteint sa butée. Une course complète d'une butée à l'autre que personne n'a arrêtée a donc duré exactement le temps de course ; il est repris automatiquement.",
+          "tilt_time_ch1": "Temps pendant lequel les lamelles d'un store vénitien tournent lors d'un changement de direction avant que la hauteur ne change ; 0 = pas de lamelles (ignoré).",
+          "tilt_time_ch2": "Temps pendant lequel les lamelles d'un store vénitien tournent lors d'un changement de direction avant que la hauteur ne change ; 0 = pas de lamelles (ignoré).",
+          "tilt_time_ch3": "Temps pendant lequel les lamelles d'un store vénitien tournent lors d'un changement de direction avant que la hauteur ne change ; 0 = pas de lamelles (ignoré).",
+          "tilt_time_ch4": "Temps pendant lequel les lamelles d'un store vénitien tournent lors d'un changement de direction avant que la hauteur ne change ; 0 = pas de lamelles (ignoré)."
+        }
+      }
+    }
+  },
+  "entity": {
+    "event": {
+      "wall_keys": {
+        "name": "Touches murales",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "key_1_press": "Touche 1 appuyée",
+              "key_1_release": "Touche 1 relâchée",
+              "key_2_press": "Touche 2 appuyée",
+              "key_2_release": "Touche 2 relâchée",
+              "key_3_press": "Touche 3 appuyée",
+              "key_3_release": "Touche 3 relâchée",
+              "key_4_press": "Touche 4 appuyée",
+              "key_4_release": "Touche 4 relâchée",
+              "key_5_press": "Touche 5 appuyée",
+              "key_5_release": "Touche 5 relâchée",
+              "key_6_press": "Touche 6 appuyée",
+              "key_6_release": "Touche 6 relâchée",
+              "key_7_press": "Touche 7 appuyée",
+              "key_7_release": "Touche 7 relâchée",
+              "key_8_press": "Touche 8 appuyée",
+              "key_8_release": "Touche 8 relâchée"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "smartfront_temperature": {
+        "name": "Température Smartfront"
+      },
+      "smartfront_illuminance": {
+        "name": "Luminosité Smartfront"
+      },
+      "smartfront_humidity": {
+        "name": "Humidité Smartfront"
+      },
+      "stream_connects": {
+        "name": "Connexions"
+      },
+      "stream_short_outages": {
+        "name": "Coupures courtes"
+      },
+      "stream_long_outages": {
+        "name": "Pannes longues"
+      }
+    }
+  }
+}

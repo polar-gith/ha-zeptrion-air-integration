@@ -17,7 +17,8 @@ CONF_HOSTNAME: str = "hostname"
 CONF_TYPE: str = "type"
 CONF_FIRMWARE: str = "firmware"
 CONF_STEP_DURATION_MS: str = "step_duration_ms"
-CONF_LIGHT_POLLING: str = "light_polling"
+# Removed options, dropped from config entries by the migration to 1.2
+OBSOLETE_OPTIONS: tuple[str, ...] = ("light_polling",)
 CONF_AUTO_TRAVEL_TIMES: str = "auto_travel_times"
 
 # Services

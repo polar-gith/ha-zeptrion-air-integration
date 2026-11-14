@@ -1,0 +1,5 @@
+# Lint in CI: syntax errors and pyflakes (undefined names, unused imports/variables).
+target-version = "py313"
+
+[lint]
+select = ["E9", "F"]

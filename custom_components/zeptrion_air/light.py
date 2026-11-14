@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
 from typing import Any
 
 from homeassistant.components.light import (
@@ -30,6 +29,7 @@ from .api import (
     ZeptrionAirApiClientCommunicationError,
     ZeptrionAirApiClientError,
 )
+from .areas import suggested_area_for_channel
 from .const import (
     DOMAIN,
     SERVICE_LIGHT_RECALL_SCENE,
@@ -106,6 +106,8 @@ async def async_setup_entry(
             "sw_version": hub_sw_version,
             "model": f"Zeptrion Air Channel {channel_id} - {'Dimmer' if is_dimmer else 'Switch'}",
         }
+        if area := suggested_area_for_channel(channel_info_dict):
+            light_device_info["suggested_area"] = area
 
         new_entities.append(
             ZeptrionAirLight(

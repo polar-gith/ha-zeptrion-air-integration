@@ -10,6 +10,18 @@ on:
       - "main"
 
 jobs:
+  lint:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-python@v5"
+        with:
+          python-version: "3.13"
+      - name: "Lint (ruff: syntax errors, undefined names, unused imports)"
+        run: |
+          pip install ruff
+          ruff check --output-format github .
+
   pytest:
     runs-on: "ubuntu-latest"
     steps:
@@ -19,5 +31,7 @@ jobs:
           python-version: "3.13"
       - name: "Install test requirements"
         run: pip install -r requirements_test.txt
+      - name: "Check translations and versions"
+        run: python -m pytest -q tests/test_metadata.py tests/test_init.py -k "translation or versions or services or setup_creates"
       - name: "Run tests against a simulated zApp"
         run: python -m pytest -q

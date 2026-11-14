@@ -10,7 +10,8 @@ Requires Home Assistant 2026.8 or newer.
 
 1. **Settings → Marketplace** (HACS on Home Assistant 2026.10 and older) → *Add from link*: `https://github.com/polar-gith/ha-zeptrion-air-integration`, category *Integration*.
 2. Install *Zeptrion Air* and restart Home Assistant.
-3. zApps (host names `zapp-*`) are discovered via mDNS and DHCP; confirm them under **Settings → Devices & services**. A changed IP address is taken over automatically.
+3. zApps (host names `zapp-*`) are discovered via mDNS (`_zapp._tcp`, `_http._tcp`) and DHCP; confirm them under **Settings → Devices & services**. A changed IP address is taken over automatically; to change the address by hand use **⋮ → Reconfigure** on the zApp (entities and settings are kept).
+4. The room stored in the zApp (channel group) is suggested as area when a device is created; areas you already assigned are not changed.
 
 ## What you get
 
@@ -21,7 +22,7 @@ Requires Home Assistant 2026.8 or newer.
 | Smartfront fitted | Event *Wall keys*, sensors temperature (module heat, reads above room temperature) and, if present, illuminance / humidity |
 | Always | Wi-Fi signal; hidden diagnostic counters *Connections*, *Short outages*, *Long outages*; sensors name / group / icon ID per channel (disabled) |
 
-Actions: `zeptrion_air.blind_up_step`, `blind_down_step`, `blind_recall_s1` … `s4`, `blind_store_scene` (`scene: 1-4`), `blind_calibrate`, `light_store_scene`, `light_recall_scene` (`scene: 1-4`).
+Actions: `zeptrion_air.blind_up_step`, `blind_down_step`, `blind_recall_s1`, `blind_recall_s2`, `blind_recall_s3`, `blind_recall_s4`, `blind_store_scene` (`scene: 1-4`), `blind_calibrate`, `light_store_scene`, `light_recall_scene` (`scene: 1-4`).
 
 ## Blinds
 

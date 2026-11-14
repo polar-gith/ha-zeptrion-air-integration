@@ -2,16 +2,35 @@
   "config": {
     "step": {
       "confirm": {
-        "description": "Möchtest du {hostname} (`{ip_address}`) zu Home Assistant hinzufügen?"
+        "description": "Möchtest du {hostname} (`{ip_address}`) zu Home Assistant hinzufügen?",
+        "title": "zApp hinzufügen"
+      },
+      "user": {
+        "title": "zApp hinzufügen",
+        "description": "Hostname (z. B. `zapp-21510211.local`) oder IP-Adresse der zApp.",
+        "data": {
+          "hostname": "Hostname oder IP-Adresse",
+          "step_duration_ms": "Schrittdauer der Storen (ms)"
+        }
+      },
+      "reconfigure": {
+        "title": "Adresse von {name} ändern",
+        "description": "Neuer Hostname oder neue IP-Adresse dieser zApp. Es muss dasselbe Gerät sein (gleiche Seriennummer); Entitäten und Einstellungen bleiben erhalten.",
+        "data": {
+          "hostname": "Hostname oder IP-Adresse"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Verbindung fehlgeschlagen"
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "unknown": "Unerwarteter Fehler"
     },
     "abort": {
       "already_configured": "Gerät ist bereits eingerichtet",
       "cannot_connect": "Verbindung fehlgeschlagen",
-      "not_zeptrion_device": "Kein Zeptrion-Air-Gerät"
+      "not_zeptrion_device": "Kein Zeptrion-Air-Gerät",
+      "reconfigure_successful": "Die Adresse wurde geändert.",
+      "wrong_device": "Diese Adresse gehört zu einer anderen zApp (andere Seriennummer)."
     }
   },
   "options": {

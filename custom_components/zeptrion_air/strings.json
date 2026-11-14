@@ -2,16 +2,35 @@
   "config": {
     "step": {
       "confirm": {
-        "description": "Do you want to add {hostname} (`{ip_address}`) to Home Assistant?"
+        "description": "Do you want to add {hostname} (`{ip_address}`) to Home Assistant?",
+        "title": "Add zApp"
+      },
+      "user": {
+        "title": "Add a zApp",
+        "description": "Host name (e.g. `zapp-21510211.local`) or IP address of the zApp.",
+        "data": {
+          "hostname": "Host name or IP address",
+          "step_duration_ms": "Blind step duration (ms)"
+        }
+      },
+      "reconfigure": {
+        "title": "Change the address of {name}",
+        "description": "New host name or IP address of this zApp. It must be the same device (same serial number); entities and settings are kept.",
+        "data": {
+          "hostname": "Host name or IP address"
+        }
       }
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
     },
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "not_zeptrion_device": "Not a Zeptrion Air device"
+      "not_zeptrion_device": "Not a Zeptrion Air device",
+      "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]",
+      "wrong_device": "This address belongs to another zApp (different serial number)."
     }
   },
   "options": {

@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import ipaddress
 from typing import Any
-import zeroconf
+from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 import voluptuous as vol
 from homeassistant import config_entries, data_entry_flow
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME 
 from homeassistant.core import callback 
-from homeassistant.components import onboarding 
-from homeassistant.helpers import selector 
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .api import (
@@ -41,6 +39,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Zeptrion Air."""
 
     VERSION: int = 1
+    MINOR_VERSION: int = 2
 
     @staticmethod
     @callback
@@ -113,10 +112,14 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
 
-    async def async_step_zeroconf(self, discovery_info: zeroconf.ZeroconfServiceInfo) -> data_entry_flow.FlowResult:
+    async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> data_entry_flow.FlowResult:
         """Prepare configuration for a discovered Zeptrion Air device."""
         
         hostname: str = discovery_info.hostname[:-1] if discovery_info.hostname.endswith('.') else discovery_info.hostname
+        if not hostname.lower().startswith("zapp-"):
+            # _http._tcp is announced by many devices; the manifest filters by name,
+            # this keeps anything else out.
+            return self.async_abort(reason="not_zeptrion_device")
         
         # Extract serial number from hostname
         unique_id_to_set: str = hostname # Fallback to full hostname
@@ -165,7 +168,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return await self.async_step_confirm()
 
-    async def async_step_dhcp(self, discovery_info: Any) -> data_entry_flow.FlowResult:
+    async def async_step_dhcp(self, discovery_info: DhcpServiceInfo) -> data_entry_flow.FlowResult:
         """Handle a zApp seen by DHCP (host name ``zapp-<serial>``).
 
         mDNS is unreliable on some zApps; DHCP also keeps the IP address of an
@@ -260,6 +263,47 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
             errors=errors,
         )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> data_entry_flow.FlowResult:
+        """Change the host name or IP address of a configured zApp."""
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            host = str(user_input[CONF_HOSTNAME]).strip()
+            serial: str | None = None
+            try:
+                api = ZeptrionAirApiClient(
+                    hostname=host, session=async_create_clientsession(self.hass)
+                )
+                ident = await api.async_get_device_identification()
+                id_data = ident.get("id", {}) if isinstance(ident, dict) else {}
+                serial = id_data.get("sn") if isinstance(id_data, dict) else None
+                if not serial:
+                    errors["base"] = "unknown"
+            except ZeptrionAirApiClientCommunicationError:
+                errors["base"] = "cannot_connect"
+            except ZeptrionAirApiClientError:
+                errors["base"] = "unknown"
+            if not errors:
+                await self.async_set_unique_id(str(serial))
+                self._abort_if_unique_id_mismatch(reason="wrong_device")
+                data_updates: dict[str, Any] = {CONF_HOSTNAME: host}
+                if _looks_like_ip(host):
+                    data_updates[CONF_IP_ADDRESS] = host
+                return self.async_update_reload_and_abort(entry, data_updates=data_updates)
+
+        schema = vol.Schema(
+            {vol.Required(CONF_HOSTNAME, default=entry.data.get(CONF_HOSTNAME, "")): str}
+        )
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"name": entry.title},
+        )
+
 
 def _looks_like_ip(host: str) -> bool:
     try:

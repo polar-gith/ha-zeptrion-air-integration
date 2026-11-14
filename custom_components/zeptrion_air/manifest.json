@@ -20,8 +20,12 @@
   "requirements": [
     "xmltodict>=0.13.0"
   ],
-  "version": "2026.11.14",
+  "version": "2026.11.15",
   "zeroconf": [
-    "_zapp._tcp.local."
+    "_zapp._tcp.local.",
+    {
+      "type": "_http._tcp.local.",
+      "name": "zapp-*"
+    }
   ]
 }
