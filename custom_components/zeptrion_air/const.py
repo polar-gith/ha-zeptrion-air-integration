@@ -30,6 +30,8 @@ SERVICE_BLIND_STORE_SCENE: str = "blind_store_scene"
 SERVICE_BLIND_CALIBRATE: str = "blind_calibrate"
 SERVICE_LIGHT_STORE_SCENE: str = "light_store_scene"
 SERVICE_LIGHT_RECALL_SCENE: str = "light_recall_scene"
+SERVICE_PROGRAM_SMARTBUTTON: str = "program_smartbutton"
+SERVICE_WRITE_NAME: str = "write_name_to_zapp"
 
 # Default values
 DEFAULT_STEP_DURATION_MS: int = 250
@@ -68,6 +70,13 @@ MAX_PARALLEL_REQUESTS: int = 2
 SIGNAL_AVAILABILITY: str = "zeptrion_air_availability_{}"
 SIGNAL_KEY_EVENT: str = "zeptrion_air_key_event_{}"
 SIGNAL_TRAVEL_TIMES: str = "zeptrion_air_travel_times_{}"
+SIGNAL_CHANNEL_DESCRIPTOR: str = "zeptrion_air_chdes_{}"
+
+# Wi-Fi: Feller recommends warning below -75 dBm; a repair issue is raised after
+# WEAK_WIFI_POLLS one-minute polls below it and cleared at WEAK_WIFI_CLEAR_DBM.
+WEAK_WIFI_DBM: int = -75
+WEAK_WIFI_CLEAR_DBM: int = -72
+WEAK_WIFI_POLLS: int = 30
 
 # Smartfront key events
 EVENT_PRESS: str = "press"

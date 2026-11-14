@@ -31,10 +31,18 @@ class FakeZapp:
     fail_commands_with_timeout: bool = False
     command_delay: float = 0.0
     http_down: bool = False
+    rssi_status: int = 200  # e.g. 500 like the 2018 firmware of zapp-22460015
+    rssi_dbm: int = -64
+    smartbutton_prefix: str = "/zapi/smartbt"
 
     def __post_init__(self) -> None:
         self.commands: list[tuple[int, str]] = []
-        self.scenes: dict[tuple[int, int], int] = {}  # (channel, scene) -> value, lights only
+        self.scenes: dict[tuple[int, int], int] = {}
+        self.reboots = 0
+        self.leds: dict[int, str] = {n: "#000000" for n in range(1, 9)}
+        self.smartbutton_programming = False
+        self.smartbutton_press: asyncio.Event = asyncio.Event()
+        self.smartbutton_programmes: list = []  # (channel, scene) -> value, lights only
         self.requests: list[str] = []
         self.in_flight = 0
         self.max_in_flight = 0
@@ -89,7 +97,44 @@ class FakeZapp:
             )
             return web.Response(text=body, content_type=xml)
         if path == "/zrap/rssi":
-            return web.Response(text="<rssi><dbm>-64</dbm></rssi>", content_type=xml)
+            if self.rssi_status != 200:
+                raise web.HTTPInternalServerError()
+            return web.Response(text=f"<rssi><dbm>{self.rssi_dbm}</dbm></rssi>", content_type=xml)
+        if path == "/zrap/sys" and request.method == "POST":
+            form = await request.post()
+            if form.get("cmd") == "reboot":
+                self.reboots += 1
+            raise web.HTTPFound(location="/")
+        if path.startswith("/zrap/chdes/ch") and request.method == "POST":
+            n = int(path.rsplit("ch", 1)[1])
+            form = await request.post()
+            for key in ("name", "group"):
+                if key in form:
+                    self.channels[n][key] = str(form[key])
+            raise web.HTTPFound(location="/")
+        if path == "/zapi/smartfront/led" and self.btfu is not None:
+            if request.method == "POST":
+                for item in json.loads(await request.text()):
+                    self.leds[int(item["id"])] = item["bg"]
+                return web.json_response({})
+            return web.json_response(
+                [{"id": n, "on": False, "rgb": "#000000", "effect": "#ffffff", "bg": bg}
+                 for n, bg in self.leds.items()]
+            )
+        sb = self.smartbutton_prefix
+        if path == f"{sb}/prgm" and self.btfu is not None:
+            if request.method == "POST":
+                self.smartbutton_programming = bool(json.loads(await request.text()).get("on"))
+            return web.json_response({"on": self.smartbutton_programming, "ntm": 60})
+        if path == f"{sb}/prgn" and self.btfu is not None:
+            try:
+                await asyncio.wait_for(self.smartbutton_press.wait(), timeout=2)
+                return web.json_response({"prg": True})
+            except TimeoutError:
+                return web.json_response({"prg": False})
+        if path == f"{sb}/prgs" and request.method == "POST" and self.btfu is not None:
+            self.smartbutton_programmes.append(json.loads(await request.text()))
+            return web.json_response({})
         if path == "/zrap/chdes":
             inner = "".join(
                 f"<ch{n}>" + "".join(f"<{k}>{v}</{k}>" for k, v in d.items()) + f"</ch{n}>"

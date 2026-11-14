@@ -28,6 +28,9 @@ from .api import (
 )
 from .coordinator import ZeptrionAirDataUpdateCoordinator
 from .data import ZeptrionAirData
+from homeassistant.helpers import config_validation as cv
+
+from .services import async_setup_services
 from .areas import suggested_area_for_channel, suggested_area_for_hub
 from .smartfront import KeyEvent, parse_btfu
 from .websocket_listener import ZeptrionAirWebsocketListener
@@ -50,6 +53,15 @@ from .const import (
 
 if TYPE_CHECKING:
     pass
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    """Register the integration-wide actions."""
+    async_setup_services(hass)
+    return True
+
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate old config entries.

@@ -119,6 +119,17 @@
       "stream_long_outages": {
         "name": "Lange Ausfälle"
       }
+    },
+    "light": {
+      "smartfront_led": {
+        "name": "Smartfront-LED {led}"
+      }
+    }
+  },
+  "issues": {
+    "weak_wifi": {
+      "title": "Schwaches WLAN-Signal: {name}",
+      "description": "Die zApp {name} hat seit über 30 Minuten ein WLAN-Signal von {rssi} dBm. Feller empfiehlt mindestens {limit} dBm; darunter wird die Verbindung unzuverlässig (Abbrüche, verzögerte Befehle). Access Point näher bringen oder einen weiteren aufstellen. Die Meldung verschwindet, sobald das Signal wieder besser ist."
     }
   }
 }
