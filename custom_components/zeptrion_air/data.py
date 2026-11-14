@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from homeassistant.loader import Integration
 
     from .api import ZeptrionAirApiClient
+    from .leds import SmartfrontLeds
     from .coordinator import ZeptrionAirDataUpdateCoordinator
     from .smartfront import KeyFunction
     from .websocket_listener import ZeptrionAirWebsocketListener
@@ -26,6 +27,7 @@ class ZeptrionAirData:
     # Smartfront (None if the zApp has no Smartfront fitted)
     smartfront: dict[str, Any] | None = None
     keys: tuple[KeyFunction, ...] = ()
+    leds: "SmartfrontLeds | None" = None
     # Event stream state: entities become unavailable only after the grace period
     available: bool = True
     stream_down: bool = False

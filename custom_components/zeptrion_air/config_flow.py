@@ -39,7 +39,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Zeptrion Air."""
 
     VERSION: int = 1
-    MINOR_VERSION: int = 2
+    MINOR_VERSION: int = 3
 
     @staticmethod
     @callback
