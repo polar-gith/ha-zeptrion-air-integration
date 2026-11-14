@@ -23,17 +23,19 @@ _LOGGER = logging.getLogger(__name__)
 
 SIGNAL_LED = "zeptrion_air_led_{}"
 
-# Colour presets for the colour select (full brightness; brightness is separate)
+# Colour presets as in the zeptrion app (same order). The app does not document
+# the values it sends; the hues are taken from the app, at full saturation for the
+# LEDs. "pink" is the zApp's factory background colour (#ff006d, read from the device).
 LED_COLORS: dict[str, tuple[int, int, int]] = {
-    "red": (255, 0, 0),
-    "orange": (255, 100, 0),
-    "yellow": (255, 200, 0),
-    "green": (0, 255, 0),
-    "cyan": (0, 255, 255),
-    "blue": (0, 0, 255),
-    "violet": (140, 0, 255),
-    "magenta": (255, 0, 160),
     "white": (255, 255, 255),
+    "red": (255, 0, 0),
+    "green": (0, 255, 0),
+    "blue": (0, 0, 255),
+    "yellow": (255, 220, 0),
+    "magenta": (238, 0, 255),
+    "orange": (255, 110, 0),
+    "pink": (255, 0, 109),
+    "cyan": (0, 255, 255),
 }
 COLOR_OFF = "off"
 COLOR_CUSTOM = "custom"  # shown when the colour was set otherwise (light, zeptrion app)

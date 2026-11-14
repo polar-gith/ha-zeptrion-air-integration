@@ -130,15 +130,15 @@
         "name": "Smartfront-LED {led} Farbe",
         "state": {
           "off": "Aus",
-          "red": "Rot",
-          "orange": "Orange",
-          "yellow": "Gelb",
-          "green": "Grün",
-          "cyan": "Cyan",
-          "blue": "Blau",
-          "violet": "Violett",
-          "magenta": "Magenta",
           "white": "Weiss",
+          "red": "Rot",
+          "green": "Grün",
+          "blue": "Blau",
+          "yellow": "Gelb",
+          "magenta": "Magenta",
+          "orange": "Orange",
+          "pink": "Pink",
+          "cyan": "Cyan",
           "custom": "Eigene"
         }
       },
