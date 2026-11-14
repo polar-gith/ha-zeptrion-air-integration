@@ -188,6 +188,8 @@ async def async_setup_entry(
         "model": model, # str
         "connections": hub_device_info_connections,
         "sw_version": hub_device_info_sw_version,
+        "hw_version": zrap_id_data.get('hw'),
+        "serial_number": serial_number,
     }
     
     LOGGER.debug(f"Constructed hub_device_info for {serial_number}: {hub_device_info}")

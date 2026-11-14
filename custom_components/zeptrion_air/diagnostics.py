@@ -17,6 +17,7 @@ TO_REDACT = {
     "ip",
     "sn",
     "serial",
+    "serial_number",
     "hub_serial",
     "unique_id",
     "title",
@@ -51,6 +52,13 @@ async def async_get_config_entry_diagnostics(
         diagnostics["device"] = runtime_data.coordinator.data
         diagnostics["smartfront"] = runtime_data.smartfront
         diagnostics["keys"] = [key.as_attributes() for key in runtime_data.keys]
+        diagnostics["smartfront_leds"] = (
+            {led: state.to_bg() for led, state in runtime_data.leds.states.items()}
+            if runtime_data.leds
+            else None
+        )
+        # which of the two Smartbutton paths of the PDF this zApp answers (after first use)
+        diagnostics["smartbutton_path"] = getattr(runtime_data.client, "_smartbutton_path", None)
         diagnostics["connection"] = {
             "available": runtime_data.available,
             "stream_down": runtime_data.stream_down,
