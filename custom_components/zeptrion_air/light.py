@@ -32,9 +32,8 @@ from .api import (
 )
 from .areas import suggested_area_for_channel
 from .leds import SIGNAL_LED
-from .services import WRITE_NAME_SCHEMA, async_write_name_to_zapp as _write_name
+from .services import async_write_name_to_zapp as _write_name
 from .const import (
-    SERVICE_WRITE_NAME,
     DOMAIN,
     SERVICE_LIGHT_RECALL_SCENE,
     SERVICE_LIGHT_STORE_SCENE,
@@ -136,9 +135,6 @@ async def async_setup_entry(
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(
         SERVICE_LIGHT_STORE_SCENE, SCENE_SCHEMA, "async_light_store_scene"
-    )
-    platform.async_register_entity_service(
-        SERVICE_WRITE_NAME, WRITE_NAME_SCHEMA, "async_write_name_to_zapp"
     )
     platform.async_register_entity_service(
         SERVICE_LIGHT_RECALL_SCENE, SCENE_SCHEMA, "async_light_recall_scene"

@@ -72,7 +72,7 @@ conditions:
 
 ## Smartfront LEDs
 
-Each key in use has an LED whose **background colour** can be set, e.g. as status display (window open = red). Per LED there is a light *Smartfront LED n* (any colour, brightness) and two dropdowns: *colour* (off, red, orange, yellow, green, cyan, blue, violet, magenta, white; *custom* shows a colour set otherwise) and *brightness* (5–100 %). Choosing a colour keeps the brightness and vice versa. The zApp keeps using the LEDs for its own indications and shows the background colour otherwise. The LEDs are bright: 10–25 % is usually enough.
+Each key in use has an LED whose **background colour** can be set, e.g. as status display (window open = red). Per LED there is a light *Smartfront LED n* (any colour, brightness) and two dropdowns: *colour* (off, red, orange, yellow, green, cyan, blue, violet, magenta, white; *custom* shows a colour set otherwise) and *brightness* (5–100 %). Choosing a colour keeps the brightness and vice versa. The button *Undo LED change* of the zApp steps back through the last 20 LED changes (made in Home Assistant since the last restart). The zApp keeps using the LEDs for its own indications and shows the background colour otherwise. The LEDs are bright: 10–25 % is usually enough.
 
 ## Smartbuttons
 

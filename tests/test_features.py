@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+from homeassistant.exceptions import HomeAssistantError
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
@@ -97,6 +100,22 @@ async def test_smartfront_leds(hass: HomeAssistant, fake_zapp) -> None:
     await hass.services.async_call("light", "turn_on", {"entity_id": led5}, blocking=True)
     assert device.leds[5] == "#0000ff"  # last colour and brightness again
     assert device.leds[6] == "#000000"  # others untouched
+
+    # Undo steps back through the changes: on -> off -> blue 50 % ...
+    undo = _eid(hass, "button", f"zapp_{device.serial}_led_undo")
+    await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
+    assert device.leds[5] == "#000000"
+    await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
+    assert device.leds[5] == "#0000ff"
+    await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
+    assert device.leds[5] == "#000080"
+    assert hass.states.get(color5).state == "blue"
+    assert hass.states.get(bright5).state == "50"
+    for _ in range(2):  # back to green 50 %, then the original #220000
+        await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
+    assert device.leds[5] == "#220000"
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
     await _unload(hass, entry)
 
 

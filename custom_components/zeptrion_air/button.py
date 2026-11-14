@@ -123,6 +123,8 @@ async def async_setup_entry(
             _LOGGER.debug("Skipping channel %s for buttons, no scenes.", channel_id_maybe)
             
     new_entities.append(ZeptrionAirRestartButton(entry, hub_serial))  # type: ignore[arg-type]
+    if entry.runtime_data is not None and entry.runtime_data.leds is not None:
+        new_entities.append(ZeptrionAirLedUndoButton(entry, hub_serial))  # type: ignore[arg-type]
 
     if new_entities:
         _LOGGER.info("Adding %s Zeptrion Air button entities.", len(new_entities))
@@ -288,3 +290,21 @@ class ZeptrionAirRestartButton(ButtonEntity):
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as err:
             raise HomeAssistantError(f"{self.config_entry.title}: restart failed: {err}") from err
         _LOGGER.info("%s: restart requested", self.config_entry.title)
+
+
+class ZeptrionAirLedUndoButton(ButtonEntity):
+    """Undo the last Smartfront LED change (up to 20 steps back)."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_translation_key = "smartfront_led_undo"
+    _attr_icon = "mdi:undo"
+
+    def __init__(self, config_entry: ConfigEntry, hub_serial: str) -> None:
+        self.config_entry = config_entry
+        self._attr_unique_id = f"zapp_{hub_serial}_led_undo"
+        self._attr_device_info = {"identifiers": {(DOMAIN, hub_serial)}}
+
+    async def async_press(self) -> None:
+        if not await self.config_entry.runtime_data.leds.async_undo():
+            raise HomeAssistantError(f"{self.config_entry.title}: no LED change to undo")

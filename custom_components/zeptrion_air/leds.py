@@ -41,6 +41,7 @@ COLOR_CUSTOM = "custom"  # shown when the colour was set otherwise (light, zeptr
 LED_BRIGHTNESS_STEPS: tuple[int, ...] = (5, 10, 25, 50, 75, 100)
 LED_DEFAULT_BRIGHTNESS = 64  # 25 %; the LEDs are bright, Feller's examples use #220000
 LED_DEFAULT_COLOR = LED_COLORS["white"]
+UNDO_DEPTH = 20
 
 
 def parse_hex(color: str) -> tuple[int, int, int]:
@@ -104,6 +105,8 @@ class SmartfrontLeds:
         self.client = client
         self.leds = leds
         self.states: dict[int, LedState] = {led: LedState() for led in leds}
+        # Undo: states before each change (newest last), at most UNDO_DEPTH
+        self.history: list[dict[int, LedState]] = []
 
     async def async_load(self) -> None:
         """Read the current colours once (setup)."""
@@ -131,9 +134,32 @@ class SmartfrontLeds:
             brightness=max(1, min(255, int(brightness))) if brightness is not None else old.brightness,
             is_on=on,
         )
+        if new == old:
+            return
         try:
             await self.client.async_set_led_backgrounds({led: new.to_bg()})
         except ZeptrionAirApiClientError as err:
             raise HomeAssistantError(f"Smartfront LED {led}: setting the colour failed: {err}") from err
+        self.history.append({led: old})
+        del self.history[:-UNDO_DEPTH]
         self.states[led] = new
         async_dispatcher_send(self.hass, SIGNAL_LED.format(self.entry_id), led)
+
+    @property
+    def can_undo(self) -> bool:
+        return bool(self.history)
+
+    async def async_undo(self) -> bool:
+        """Restore the LEDs as they were before the last change. False if nothing to undo."""
+        if not self.history:
+            return False
+        previous = self.history[-1]
+        try:
+            await self.client.async_set_led_backgrounds({led: st.to_bg() for led, st in previous.items()})
+        except ZeptrionAirApiClientError as err:
+            raise HomeAssistantError(f"Smartfront LEDs: undo failed: {err}") from err
+        self.history.pop()
+        for led, state in previous.items():
+            self.states[led] = state
+            async_dispatcher_send(self.hass, SIGNAL_LED.format(self.entry_id), led)
+        return True
