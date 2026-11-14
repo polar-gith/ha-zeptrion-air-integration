@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -69,6 +70,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     1.1 -> 1.2: drop options that no longer exist (``light_polling``).
     1.2 -> 1.3: enable the Smartfront LEDs that 2026.11.16 created disabled.
+    1.3 -> 1.4: remove the Restart buttons (the zApp ignores the reboot command).
     """
     if entry.version > 1:
         return False  # downgrade from a future version
@@ -83,6 +85,14 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if "_led_" in reg.unique_id and reg.disabled_by is er.RegistryEntryDisabler.INTEGRATION:
                 registry.async_update_entity(reg.entity_id, disabled_by=None)
         hass.config_entries.async_update_entry(entry, minor_version=3)
+    if entry.version == 1 and entry.minor_version < 4:
+        # 1.4: the zApp ignores /zrap/sys reboot (firmware 01.08.28, tested); the
+        # Restart buttons of 2026.11.16 are replaced by Reconnect.
+        registry = er.async_get(hass)
+        for reg in er.async_entries_for_config_entry(registry, entry.entry_id):
+            if reg.unique_id.endswith("_restart"):
+                registry.async_remove(reg.entity_id)
+        hass.config_entries.async_update_entry(entry, minor_version=4)
     return True
 
 
@@ -184,6 +194,8 @@ async def async_setup_entry(
 
 
     runtime_data: ZeptrionAirData = entry.runtime_data
+    # Weak Wi-Fi repair notices of 2026.11.16 are no longer raised: clear old ones.
+    ir.async_delete_issue(hass, DOMAIN, f"weak_wifi_{entry.unique_id or entry.entry_id}")
     runtime_data.base_options = {
         k: v for k, v in entry.options.items() if not is_travel_option(k)
     }

@@ -128,13 +128,10 @@
     "button": {
       "smartfront_led_undo": {
         "name": "Annuler la modification des LED"
+      },
+      "reconnect": {
+        "name": "Reconnecter"
       }
-    }
-  },
-  "issues": {
-    "weak_wifi": {
-      "title": "Signal Wi-Fi faible : {name}",
-      "description": "Le zApp {name} a un signal Wi-Fi de {rssi} dBm depuis plus de 30 minutes. Feller recommande au moins {limit} dBm ; en dessous, la connexion devient peu fiable (coupures, commandes retardées). Rapprochez le point d'accès ou ajoutez-en un. Ce message disparaît dès que le signal s'améliore."
     }
   }
 }

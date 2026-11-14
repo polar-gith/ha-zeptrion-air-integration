@@ -128,13 +128,10 @@
     "button": {
       "smartfront_led_undo": {
         "name": "Undo LED change"
+      },
+      "reconnect": {
+        "name": "Reconnect"
       }
-    }
-  },
-  "issues": {
-    "weak_wifi": {
-      "title": "Weak Wi-Fi signal: {name}",
-      "description": "The zApp {name} has had a Wi-Fi signal of {rssi} dBm for more than 30 minutes. Feller recommends at least {limit} dBm; below that the connection becomes unreliable (outages, delayed commands). Move the access point closer or add one. This message disappears once the signal is better again."
     }
   }
 }
