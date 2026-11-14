@@ -12,15 +12,18 @@ The notes below summarise what the integration relies on.
 
 | Endpoint | Method | Use |
 |---|---|---|
-| `/zrap/id` | GET | Device identification (serial, type, firmware) |
-| `/zrap/chdes`, `/zrap/chdes/chN` | GET | Channel name, group, icon, category (1 switch, 3 dimmer, 5 blind, 6 awning) |
-| `/zrap/chscan`, `/zrap/chscan/chN` | GET | Channel state 0–100; blinds always report `-1` (unknown) |
+| `/zrap/id` | GET | Device identification (serial, type, hardware and firmware version) |
+| `/zrap/chdes`, `/zrap/chdes/chN` | GET / POST | Channel name, group, icon, category (1 switch, 3 dimmer, 5 blind, 6 awning); name and group written by `write_name_to_zapp` (32 bytes each) |
+| `/zrap/chscan`, `/zrap/chscan/chN` | GET | Channel state 0–100 (`-1` unused channel) |
 | `/zrap/chctrl/chN` | POST `cmd=…` | Channel commands, see below |
-| `/zrap/chctrl` | POST `cmd1=…&cmd2=…` | Several channels in one request |
-| `/zrap/rssi` | GET | Wi-Fi signal |
+| `/zrap/rssi` | GET | Wi-Fi signal; also the liveness check |
 | `/zrap/ws` | WebSocket | Push of channel changes and key events (not in the PDF) |
-| `/zapi/smartfront/id`, `/zapi/smartfront/sensor` | GET | Smartfront keys and sensors |
-| `/zrap/sys` | POST `cmd=reboot` / `factorydefault` / `networkdefault` | Not used by the integration |
+| `/zapi/smartfront/id` | GET | Smartfront type, firmware and key functions (`btfu`) |
+| `/zapi/smartfront/sensors` | GET | Smartfront sensors (the PDF says `/sensor`; that path answers 404) |
+| `/zapi/smartfront/led` | GET / POST (JSON array) | LED background colours (`bg`) |
+| `/zapi/smartbt/prgm`, `prgn`, `prgs` (or `/zapi/smartfront/…`) | GET / POST (JSON) | Smartbutton programming; the PDF names both prefixes, the integration probes them |
+
+Not used: `/zrap/chnotify` (the WebSocket replaces it), `/zrap/chctrl` multicast, `/zrap/net`, `/zrap/netscan` (contain or change the Wi-Fi setup), `/zrap/loc`, `/zrap/date`, `/zrap/ntp`, `/zrap/scheduler` (left to the zeptrion app), `/zrap/sys` (see below).
 
 ## Channel commands (`/zrap/chctrl`, chapter 3.6.3)
 
@@ -35,6 +38,11 @@ The notes below summarise what the integration relies on.
 - No way to read which positions are stored in scenes S1–S4.
 
 ## Observed behaviour (firmware 01.08.x)
+
+- **Channel state of blinds:** `100` while the motor runs, `0` when it stands (the PDF says `-1`). Lit dimmers always report `100`, whatever the dim level.
+- **`/zrap/sys cmd=reboot` is ignored** (tested 14.11.2026 on two zApps, firmware 01.08.28): `POST cmd=reboot` answers 302 but the zApp does not restart (also with `Connection: close` or `/zrap/sys/`); `GET ?cmd=reboot` → 404; `POST /zrap/sys/reboot` or `cmd1=reboot` → 400.
+- **LEDs:** the factory background colour is `#ff006d`; the GET answer names the field `effect` (PDF: `effects`).
+- **Smartbutton programming** works (tested 14.11.2026): after `prgm` all Smartbuttons blink, the pressed one stores the requests sent with `prgs`.
 
 - **Scenes on a blind** (tested 13.11.2026, UG blind with 31 s travel): the zApp stores the end stop the blind came from (the reference) and the net motor time from there; the slat angle is not stored separately. On recall it runs to the reference end stop (ending by its own position estimate, not after the full run time), then right away the net time back.
   - Stored after: top → 16.0 s down → 0.6 s up (slats half open). Recall from the bottom: 31.7 s up, 15.5 s down; slats end closed.

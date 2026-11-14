@@ -60,23 +60,30 @@ One event entity per zApp with event types `key_<n>_press` / `key_<n>_release` f
 
 ```yaml
 triggers:
-  - trigger: state
-    entity_id: event.zapp_21510211_wall_keys
-    not_from: unavailable
-conditions:
-  - condition: state
-    entity_id: event.zapp_21510211_wall_keys
-    attribute: event_type
-    state: key_5_press
+  - trigger: event.received
+    target:
+      entity_id: event.zapp_21510211_wall_keys
+    options:
+      event_type:
+        - key_5_press
 ```
+
+(Before Home Assistant 2026.7: a `state` trigger on the entity with a condition on its `event_type` attribute.)
 
 ## Smartfront LEDs
 
-Each key in use has an LED whose **background colour** can be set, e.g. as status display (window open = red). Per LED there is a light *Smartfront LED n* with colour and brightness sliders. The button *Undo LED change* of the zApp steps back through the last 20 LED changes (made in Home Assistant since the last restart). The zApp keeps using the LEDs for its own indications and shows the background colour otherwise. The LEDs are bright: 10–25 % is usually enough.
+Each key in use has an LED whose **background colour** can be set, e.g. as status display (window open = red). Per LED there is a light *Smartfront LED n* with colour and brightness sliders. The button *Undo LED change* of the zApp steps back through the last 20 LED changes (made in Home Assistant since the last restart). The zApp keeps using the LEDs for its own indications and shows the background colour otherwise. Turning an LED light off clears its background colour; the zApps come with a pink background (`#ff006d`). The LEDs are bright: 10–25 % is usually enough.
 
 ## Smartbuttons
 
-`zeptrion_air.program_smartbutton` programs a Smartbutton like the zeptrion app: choose the zApp, the commands (blinds or lights of any zApp, e.g. `recall_s1`, `toggle`, `move_close_5000`) and/or raw HTTP requests in the Feller format. The Smartbuttons then blink; press the one to program within the wait time. A notification shows the result. The previous programme is replaced and cannot be read back. For automations in Home Assistant no programming is needed: every Smartbutton press already arrives as wall key event.
+Smartbuttons can be (re)programmed from Home Assistant, like with the zeptrion app: **Tools → Actions → Zeptrion Air: Program Smartbutton** (`zeptrion_air.program_smartbutton`). Choose the zApp that has the Smartbutton, the commands (blinds or lights of **any** zApp, e.g. `recall_s1`, `open`, `close`, `stop`, `toggle`, `on`, `off`, `move_close_5000`) and/or raw HTTP requests in the Feller format, then *Perform action*. The Smartbuttons blink; press the one to program within the wait time (default 60 s). A notification shows the result.
+
+- The programmed Smartbutton works directly between the zApps, also when Home Assistant is down.
+- The previous programme of that Smartbutton is replaced; it cannot be read back.
+- The zApp accepts about 560 bytes: three to six commands. A longer programme is refused before anything blinks.
+- For anything more complex, leave the Smartbutton as it is and use its press as trigger of an automation (see *Wall keys*): every press arrives as event.
+
+Example, one Smartbutton for scene S1 of all blinds downstairs:
 
 ```yaml
 action: zeptrion_air.program_smartbutton
@@ -85,8 +92,10 @@ data:
   actions:
     - entity_id: cover.play_blind
       command: recall_s1
-    - entity_id: light.kitchen_light
-      command: "off"
+    - entity_id: cover.corridor_ug_blind
+      command: recall_s1
+    - entity_id: cover.gym_sleep_blind
+      command: recall_s1
 ```
 
 ## Names in the zApp
@@ -95,7 +104,7 @@ data:
 
 ## Connection
 
-Push updates over the zApp WebSocket. After 60 s without a frame `GET /zrap/rssi` checks the zApp; reconnects back off from 1 to 60 s; after every reconnect all channels are read once. Entities turn unavailable only after 60 s without connection. Commands are sent exactly once (a repeated timed command would act twice), reads are retried, at most two requests run per zApp. *Download diagnostics* gives connection statistics with host, serial and names redacted.
+Push updates over the zApp WebSocket. After 60 s without a frame `GET /zrap/rssi` checks the zApp; reconnects back off from 1 to 60 s; after every reconnect all channels are read once. Entities turn unavailable only after 60 s without connection. Commands are sent exactly once (a repeated timed command would act twice), reads are retried, at most two requests run per zApp. The button *Reconnect* reloads a zApp in Home Assistant (connection, channel states, entities; they are unavailable for about half a minute, blind positions are kept); the zApp itself cannot be restarted remotely, a hanging zApp needs a short power cut. *Download diagnostics* gives connection statistics with host, serial and names redacted.
 
 ## Options (per hub)
 
@@ -132,8 +141,9 @@ Based on Feller's *zApp API* 10.ZEPAPI-E.1612 ([docs/api](docs/api)).
 ## Limitations
 
 - Blind positions and dimmer brightness are estimates; the zApp reports neither. Scenes cannot be read back.
-- Wall keys need a Smartfront.
-- Channel name / group / icon sensors are read once at setup.
+- Wall keys, Smartbuttons and LEDs need a Smartfront.
+- The zApp cannot be restarted remotely (firmware 01.08.28 ignores the reboot command).
+- Channel name / group / icon sensors are read at setup (and follow `write_name_to_zapp`).
 
 ## Reference
 
