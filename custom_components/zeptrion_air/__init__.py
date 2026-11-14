@@ -32,6 +32,7 @@ from homeassistant.helpers import config_validation as cv
 
 from .services import async_setup_services
 from .areas import suggested_area_for_channel, suggested_area_for_hub
+from .leds import SmartfrontLeds
 from .smartfront import KeyEvent, parse_btfu
 from .websocket_listener import ZeptrionAirWebsocketListener
 
@@ -67,6 +68,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate old config entries.
 
     1.1 -> 1.2: drop options that no longer exist (``light_polling``).
+    1.2 -> 1.3: enable the Smartfront LEDs that 2026.11.16 created disabled.
     """
     if entry.version > 1:
         return False  # downgrade from a future version
@@ -74,6 +76,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         options = {k: v for k, v in entry.options.items() if k not in OBSOLETE_OPTIONS}
         hass.config_entries.async_update_entry(entry, options=options, minor_version=2)
         LOGGER.debug("Migrated %s to 1.2 (removed obsolete options)", entry.title)
+    if entry.version == 1 and entry.minor_version < 3:
+        # 1.3: the Smartfront LEDs are shown by default (were disabled in 2026.11.16)
+        registry = er.async_get(hass)
+        for reg in er.async_entries_for_config_entry(registry, entry.entry_id):
+            if "_led_" in reg.unique_id and reg.disabled_by is er.RegistryEntryDisabler.INTEGRATION:
+                registry.async_update_entity(reg.entity_id, disabled_by=None)
+        hass.config_entries.async_update_entry(entry, minor_version=3)
     return True
 
 
@@ -195,6 +204,10 @@ async def async_setup_entry(
             sensors = None
         if coordinator.data is not None:
             coordinator.data["smartfront_sensors"] = sensors
+        led_keys = [k.key for k in runtime_data.keys if k.kind != "unused"]
+        if led_keys:
+            runtime_data.leds = SmartfrontLeds(hass, entry.entry_id, api_client, led_keys)
+            await runtime_data.leds.async_load()
 
     identified_channels: list[dict[str, Any]] = []
     

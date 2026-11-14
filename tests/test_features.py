@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+from homeassistant.exceptions import HomeAssistantError
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
@@ -24,7 +27,7 @@ async def _wait_for(predicate, timeout: float = 5.0) -> None:
 async def _setup(hass: HomeAssistant, device, host: str) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN, title=f"zapp-{device.serial}", unique_id=device.serial,
-        minor_version=2, data={CONF_HOSTNAME: host},
+        minor_version=3, data={CONF_HOSTNAME: host},
     )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -58,27 +61,81 @@ async def test_smartfront_leds(hass: HomeAssistant, fake_zapp) -> None:
     device.leds[5] = "#220000"
     entry = await _setup(hass, device, host)
     registry = er.async_get(hass)
-    # one LED per key in use (keys 1/2 unused), disabled by default
+    # one LED per key in use (keys 1/2 unused), shown by default
     assert registry.async_get_entity_id("light", DOMAIN, f"zapp_{device.serial}_led_1") is None
     led5 = _eid(hass, "light", f"zapp_{device.serial}_led_5")
-    assert registry.async_get(led5).disabled_by == er.RegistryEntryDisabler.INTEGRATION
-    registry.async_update_entity(led5, disabled_by=None)
-    await hass.config_entries.async_reload(entry.entry_id)
-    await hass.async_block_till_done()
+    color5 = _eid(hass, "select", f"zapp_{device.serial}_led_5_color")
+    bright5 = _eid(hass, "select", f"zapp_{device.serial}_led_5_brightness")
 
     state = hass.states.get(led5)
     assert state.state == "on"
     assert tuple(state.attributes["rgb_color"]) == (255, 0, 0)
     assert state.attributes["brightness"] == 0x22
+    assert hass.states.get(color5).state == "red"
+    assert hass.states.get(bright5).state == "10"
 
     await hass.services.async_call(
         "light", "turn_on", {"entity_id": led5, "rgb_color": [0, 255, 0], "brightness": 128}, blocking=True
     )
     assert device.leds[5] == "#008000"
-    await hass.services.async_call("light", "turn_off", {"entity_id": led5}, blocking=True)
+    assert hass.states.get(color5).state == "green"
+    assert hass.states.get(bright5).state == "50"
+
+    # dropdowns: colour keeps the brightness, brightness keeps the colour
+    await hass.services.async_call(
+        "select", "select_option", {"entity_id": color5, "option": "blue"}, blocking=True
+    )
+    assert device.leds[5] == "#000080"
+    await hass.services.async_call(
+        "select", "select_option", {"entity_id": bright5, "option": "100"}, blocking=True
+    )
+    assert device.leds[5] == "#0000ff"
+    assert hass.states.get(led5).attributes["brightness"] == 255
+
+    await hass.services.async_call(
+        "select", "select_option", {"entity_id": color5, "option": "off"}, blocking=True
+    )
     assert device.leds[5] == "#000000"
     assert hass.states.get(led5).state == "off"
+    await hass.services.async_call("light", "turn_on", {"entity_id": led5}, blocking=True)
+    assert device.leds[5] == "#0000ff"  # last colour and brightness again
     assert device.leds[6] == "#000000"  # others untouched
+
+    # Undo steps back through the changes: on -> off -> blue 50 % ...
+    undo = _eid(hass, "button", f"zapp_{device.serial}_led_undo")
+    await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
+    assert device.leds[5] == "#000000"
+    await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
+    assert device.leds[5] == "#0000ff"
+    await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
+    assert device.leds[5] == "#000080"
+    assert hass.states.get(color5).state == "blue"
+    assert hass.states.get(bright5).state == "50"
+    for _ in range(2):  # back to green 50 %, then the original #220000
+        await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
+    assert device.leds[5] == "#220000"
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
+    await _unload(hass, entry)
+
+
+async def test_leds_disabled_by_11_16_are_enabled(hass: HomeAssistant, fake_zapp) -> None:
+    device, host = fake_zapp
+    entry = MockConfigEntry(
+        domain=DOMAIN, title=f"zapp-{device.serial}", unique_id=device.serial,
+        minor_version=2, data={CONF_HOSTNAME: host},
+    )
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    old = registry.async_get_or_create(
+        "light", DOMAIN, f"zapp_{device.serial}_led_5", config_entry=entry,
+        disabled_by=er.RegistryEntryDisabler.INTEGRATION,
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.minor_version == 3
+    assert registry.async_get(old.entity_id).disabled_by is None
+    assert hass.states.get(old.entity_id) is not None
     await _unload(hass, entry)
 
 

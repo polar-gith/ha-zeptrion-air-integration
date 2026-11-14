@@ -16,6 +16,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.service import async_extract_entity_ids
 
 from .api import (
     CHDES_TEXT_BYTES,
@@ -29,6 +30,7 @@ from .const import (
     CONF_IP_ADDRESS,
     DOMAIN,
     SERVICE_PROGRAM_SMARTBUTTON,
+    SERVICE_WRITE_NAME,
     SIGNAL_CHANNEL_DESCRIPTOR,
 )
 
@@ -166,6 +168,26 @@ def async_setup_services(hass: HomeAssistant) -> None:
         await _async_program_smartbutton(hass, call)
 
     hass.services.async_register(DOMAIN, SERVICE_PROGRAM_SMARTBUTTON, program, schema=PROGRAM_SCHEMA)
+
+    async def write_name(call: ServiceCall) -> None:
+        # One integration-wide action for blinds and lights: an entity service
+        # registered by both platforms would be replaced by the later one.
+        entity_ids = await async_extract_entity_ids(call)
+        components = hass.data.get("entity_components", {})
+        found = 0
+        for entity_id in sorted(entity_ids):
+            component = components.get(entity_id.split(".", 1)[0])
+            entity = component.get_entity(entity_id) if component else None
+            if entity is None or getattr(entity, "platform", None) is None or entity.platform.platform_name != DOMAIN:
+                continue
+            await entity.async_write_name_to_zapp(call.data.get("name"), call.data.get("group"))
+            found += 1
+        if not found:
+            raise ServiceValidationError("No Zeptrion Air blind or light selected")
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_WRITE_NAME, write_name, schema=cv.make_entity_service_schema(WRITE_NAME_SCHEMA)
+    )
 
 
 WRITE_NAME_SCHEMA = {

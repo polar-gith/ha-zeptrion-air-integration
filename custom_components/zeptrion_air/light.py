@@ -13,7 +13,7 @@ from homeassistant.components.light import (
     LightEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import Event, HomeAssistant
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -31,9 +31,9 @@ from .api import (
     ZeptrionAirApiClientError,
 )
 from .areas import suggested_area_for_channel
-from .services import WRITE_NAME_SCHEMA, async_write_name_to_zapp as _write_name
+from .leds import SIGNAL_LED
+from .services import async_write_name_to_zapp as _write_name
 from .const import (
-    SERVICE_WRITE_NAME,
     DOMAIN,
     SERVICE_LIGHT_RECALL_SCENE,
     SERVICE_LIGHT_STORE_SCENE,
@@ -128,16 +128,13 @@ async def async_setup_entry(
     else:
         _LOGGER.info("No Zeptrion Air light entities to add.")
 
-    leds = await _async_smartfront_leds(entry, hub_serial)
+    leds = _async_smartfront_leds(entry, hub_serial)
     if leds:
         async_add_entities(leds)
 
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(
         SERVICE_LIGHT_STORE_SCENE, SCENE_SCHEMA, "async_light_store_scene"
-    )
-    platform.async_register_entity_service(
-        SERVICE_WRITE_NAME, WRITE_NAME_SCHEMA, "async_write_name_to_zapp"
     )
     platform.async_register_entity_service(
         SERVICE_LIGHT_RECALL_SCENE, SCENE_SCHEMA, "async_light_recall_scene"
@@ -460,31 +457,12 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
             ) from e
 
 
-LED_DEFAULT_BRIGHTNESS = 64  # the Smartfront LEDs are bright; Feller's examples use #220000
-
-
-async def _async_smartfront_leds(entry: ConfigEntry, hub_serial: str) -> list[LightEntity]:
-    """One light per Smartfront LED of a key in use (disabled by default)."""
+def _async_smartfront_leds(entry: ConfigEntry, hub_serial: str) -> list[LightEntity]:
+    """One light per Smartfront LED of a key in use."""
     runtime = entry.runtime_data
-    if runtime is None or not runtime.smartfront:
+    if runtime is None or runtime.leds is None:
         return []
-    keys = [k.key for k in runtime.keys if k.kind != "unused"]
-    if not keys:
-        return []
-    try:
-        current = {int(d.get("id", 0)): str(d.get("bg", "")) for d in await runtime.client.async_get_leds()}
-    except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError, ValueError) as err:
-        _LOGGER.debug("Smartfront LEDs of %s not readable: %s", entry.title, err)
-        current = {}
-    return [ZeptrionAirSmartfrontLed(entry, hub_serial, key, current.get(key, "")) for key in keys]
-
-
-def _parse_hex(color: str) -> tuple[int, int, int]:
-    try:
-        value = color.strip().lstrip("#")
-        return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
-    except (ValueError, IndexError):
-        return (0, 0, 0)
+    return [ZeptrionAirSmartfrontLed(entry, hub_serial, led) for led in runtime.leds.leds]
 
 
 class ZeptrionAirSmartfrontLed(LightEntity):
@@ -496,55 +474,47 @@ class ZeptrionAirSmartfrontLed(LightEntity):
 
     _attr_has_entity_name = True
     _attr_should_poll = False
-    _attr_entity_registry_enabled_default = False
     _attr_translation_key = "smartfront_led"
     _attr_supported_color_modes = {ColorMode.RGB}
     _attr_color_mode = ColorMode.RGB
 
-    def __init__(self, entry: ConfigEntry, hub_serial: str, led: int, bg: str) -> None:
+    def __init__(self, entry: ConfigEntry, hub_serial: str, led: int) -> None:
         self.config_entry = entry
         self._led = led
         self._attr_unique_id = f"zapp_{hub_serial}_led_{led}"
         self._attr_translation_placeholders = {"led": str(led)}
         self._attr_device_info = {"identifiers": {(DOMAIN, hub_serial)}}
-        self._rgb: tuple[int, int, int] = (255, 255, 255)
-        self._attr_brightness = LED_DEFAULT_BRIGHTNESS
-        self._apply_bg(bg)
 
-    def _apply_bg(self, bg: str) -> None:
-        r, g, b = _parse_hex(bg)
-        peak = max(r, g, b)
-        self._attr_is_on = peak > 0
-        if peak:
-            self._rgb = (round(r * 255 / peak), round(g * 255 / peak), round(b * 255 / peak))
-            self._attr_brightness = peak
-        self._attr_rgb_color = self._rgb
+    @property
+    def _state(self):
+        return self.config_entry.runtime_data.leds.states[self._led]
+
+    @property
+    def is_on(self) -> bool:
+        return self._state.is_on
+
+    @property
+    def rgb_color(self) -> tuple[int, int, int]:
+        return self._state.rgb
+
+    @property
+    def brightness(self) -> int:
+        return self._state.brightness
 
     @property
     def available(self) -> bool:
         runtime = self.config_entry.runtime_data
         return runtime is not None and getattr(runtime, "available", True)
 
-    async def _async_send(self, bg: str) -> None:
-        try:
-            await self.config_entry.runtime_data.client.async_set_led_backgrounds({self._led: bg})
-        except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as err:
-            raise HomeAssistantError(f"{self.name}: setting the LED failed: {err}") from err
-        self._apply_bg(bg)
-        self.async_write_ha_state()
-
     async def async_turn_on(self, **kwargs: Any) -> None:
-        if ATTR_RGB_COLOR in kwargs:
-            self._rgb = tuple(int(c) for c in kwargs[ATTR_RGB_COLOR])  # type: ignore[assignment]
-        brightness = int(kwargs.get(ATTR_BRIGHTNESS, self._attr_brightness or LED_DEFAULT_BRIGHTNESS))
-        brightness = max(1, min(255, brightness))
-        r, g, b = (round(c * brightness / 255) for c in self._rgb)
-        if max(r, g, b) == 0:
-            r = g = b = 1
-        await self._async_send(f"#{r:02x}{g:02x}{b:02x}")
+        await self.config_entry.runtime_data.leds.async_set(
+            self._led,
+            rgb=kwargs.get(ATTR_RGB_COLOR),
+            brightness=kwargs.get(ATTR_BRIGHTNESS),
+        )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self._async_send("#000000")
+        await self.config_entry.runtime_data.leds.async_set(self._led, on=False)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -554,4 +524,13 @@ class ZeptrionAirSmartfrontLed(LightEntity):
                 SIGNAL_AVAILABILITY.format(self.config_entry.entry_id),
                 self.async_write_ha_state,
             )
+        )
+
+        @callback
+        def _changed(led: int) -> None:
+            if led == self._led:
+                self.async_write_ha_state()
+
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, SIGNAL_LED.format(self.config_entry.entry_id), _changed)
         )

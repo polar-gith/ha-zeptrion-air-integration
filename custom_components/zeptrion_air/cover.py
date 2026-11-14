@@ -30,7 +30,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError
 from .const import (
-    SERVICE_WRITE_NAME,
     DOMAIN,
     SERVICE_BLIND_RECALL_S1,
     SERVICE_BLIND_RECALL_S2,
@@ -50,7 +49,7 @@ from .const import (
     travel_option_key,
 )
 from .areas import suggested_area_for_channel
-from .services import WRITE_NAME_SCHEMA, async_write_name_to_zapp as _write_name
+from .services import async_write_name_to_zapp as _write_name
 from .cover_motion import CoverMotion, Run, TravelTimes, TravelTimeSamples
 from .learning import async_store_travel_times
 
@@ -180,9 +179,6 @@ async def async_setup_entry(
     # setup (e.g. after an entity_id rename): "Cannot get non-set current platform".
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(SERVICE_BLIND_CALIBRATE, {}, "async_blind_calibrate")
-    platform.async_register_entity_service(
-        SERVICE_WRITE_NAME, WRITE_NAME_SCHEMA, "async_write_name_to_zapp"
-    )
     platform.async_register_entity_service(
         SERVICE_BLIND_STORE_SCENE,
         {vol.Required("scene"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4))},
