@@ -64,37 +64,28 @@ async def test_smartfront_leds(hass: HomeAssistant, fake_zapp) -> None:
     # one LED per key in use (keys 1/2 unused), shown by default
     assert registry.async_get_entity_id("light", DOMAIN, f"zapp_{device.serial}_led_1") is None
     led5 = _eid(hass, "light", f"zapp_{device.serial}_led_5")
-    color5 = _eid(hass, "select", f"zapp_{device.serial}_led_5_color")
-    bright5 = _eid(hass, "select", f"zapp_{device.serial}_led_5_brightness")
-
     state = hass.states.get(led5)
     assert state.state == "on"
     assert tuple(state.attributes["rgb_color"]) == (255, 0, 0)
     assert state.attributes["brightness"] == 0x22
-    assert hass.states.get(color5).state == "red"
-    assert hass.states.get(bright5).state == "10"
 
     await hass.services.async_call(
         "light", "turn_on", {"entity_id": led5, "rgb_color": [0, 255, 0], "brightness": 128}, blocking=True
     )
     assert device.leds[5] == "#008000"
-    assert hass.states.get(color5).state == "green"
-    assert hass.states.get(bright5).state == "50"
 
-    # dropdowns: colour keeps the brightness, brightness keeps the colour
+    # colour only keeps the brightness, brightness only keeps the colour
     await hass.services.async_call(
-        "select", "select_option", {"entity_id": color5, "option": "blue"}, blocking=True
+        "light", "turn_on", {"entity_id": led5, "rgb_color": [0, 0, 255]}, blocking=True
     )
     assert device.leds[5] == "#000080"
     await hass.services.async_call(
-        "select", "select_option", {"entity_id": bright5, "option": "100"}, blocking=True
+        "light", "turn_on", {"entity_id": led5, "brightness": 255}, blocking=True
     )
     assert device.leds[5] == "#0000ff"
     assert hass.states.get(led5).attributes["brightness"] == 255
 
-    await hass.services.async_call(
-        "select", "select_option", {"entity_id": color5, "option": "off"}, blocking=True
-    )
+    await hass.services.async_call("light", "turn_off", {"entity_id": led5}, blocking=True)
     assert device.leds[5] == "#000000"
     assert hass.states.get(led5).state == "off"
     await hass.services.async_call("light", "turn_on", {"entity_id": led5}, blocking=True)
@@ -109,8 +100,7 @@ async def test_smartfront_leds(hass: HomeAssistant, fake_zapp) -> None:
     assert device.leds[5] == "#0000ff"
     await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
     assert device.leds[5] == "#000080"
-    assert hass.states.get(color5).state == "blue"
-    assert hass.states.get(bright5).state == "50"
+    assert hass.states.get(led5).attributes["brightness"] == 128
     for _ in range(2):  # back to green 50 %, then the original #220000
         await hass.services.async_call("button", "press", {"entity_id": undo}, blocking=True)
     assert device.leds[5] == "#220000"

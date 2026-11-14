@@ -125,35 +125,6 @@
         "name": "Smartfront-LED {led}"
       }
     },
-    "select": {
-      "smartfront_led_color": {
-        "name": "Smartfront-LED {led} Farbe",
-        "state": {
-          "off": "Aus",
-          "white": "Weiss",
-          "red": "Rot",
-          "green": "Grün",
-          "blue": "Blau",
-          "yellow": "Gelb",
-          "magenta": "Magenta",
-          "orange": "Orange",
-          "pink": "Pink",
-          "cyan": "Cyan",
-          "custom": "Eigene"
-        }
-      },
-      "smartfront_led_brightness": {
-        "name": "Smartfront-LED {led} Helligkeit",
-        "state": {
-          "5": "5 %",
-          "10": "10 %",
-          "25": "25 %",
-          "50": "50 %",
-          "75": "75 %",
-          "100": "100 %"
-        }
-      }
-    },
     "button": {
       "smartfront_led_undo": {
         "name": "LED-Änderung rückgängig"

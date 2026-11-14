@@ -1,7 +1,6 @@
 """Smartfront LEDs: shared state of the background colours of one zApp.
 
-The light and the two selects (colour, brightness) of an LED all work on this
-state, so they always show the same. Only ``bg`` is written (Feller API 5.1.3).
+The light of an LED and the undo button work on this state. Only ``bg`` is written (Feller API 5.1.3).
 """
 
 from __future__ import annotations
@@ -23,26 +22,8 @@ _LOGGER = logging.getLogger(__name__)
 
 SIGNAL_LED = "zeptrion_air_led_{}"
 
-# Colour presets as in the zeptrion app (same order). The app does not document
-# the values it sends; the hues are taken from the app, at full saturation for the
-# LEDs. "pink" is the zApp's factory background colour (#ff006d, read from the device).
-LED_COLORS: dict[str, tuple[int, int, int]] = {
-    "white": (255, 255, 255),
-    "red": (255, 0, 0),
-    "green": (0, 255, 0),
-    "blue": (0, 0, 255),
-    "yellow": (255, 220, 0),
-    "magenta": (238, 0, 255),
-    "orange": (255, 110, 0),
-    "pink": (255, 0, 109),
-    "cyan": (0, 255, 255),
-}
-COLOR_OFF = "off"
-COLOR_CUSTOM = "custom"  # shown when the colour was set otherwise (light, zeptrion app)
-# Brightness steps of the brightness select, in percent
-LED_BRIGHTNESS_STEPS: tuple[int, ...] = (5, 10, 25, 50, 75, 100)
 LED_DEFAULT_BRIGHTNESS = 64  # 25 %; the LEDs are bright, Feller's examples use #220000
-LED_DEFAULT_COLOR = LED_COLORS["white"]
+LED_DEFAULT_COLOR = (255, 255, 255)
 UNDO_DEPTH = 20
 
 
@@ -82,20 +63,6 @@ class LedState:
         if max(r, g, b) == 0:
             r = g = b = 1
         return f"#{r:02x}{g:02x}{b:02x}"
-
-    @property
-    def color_name(self) -> str:
-        if not self.is_on:
-            return COLOR_OFF
-        for name, preset in LED_COLORS.items():
-            if all(abs(a - b) <= 24 for a, b in zip(self.rgb, preset)):
-                return name
-        return COLOR_CUSTOM
-
-    @property
-    def brightness_step(self) -> str:
-        percent = self.brightness * 100 / 255
-        return str(min(LED_BRIGHTNESS_STEPS, key=lambda step: abs(step - percent)))
 
 
 class SmartfrontLeds:
