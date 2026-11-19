@@ -29,7 +29,3 @@ jobs:
           uses: "hacs/action@main"
           with:
             category: "integration"
-            # brands: the integration ships its own brand images (custom_components/zeptrion_air/brand).
-            # issues/topics: repository settings, only required for the default HACS store;
-            # this repository is installed as a custom repository.
-            ignore: "brands issues topics"
