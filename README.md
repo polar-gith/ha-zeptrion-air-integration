@@ -138,6 +138,19 @@ Based on Feller's *zApp API* 10.ZEPAPI-E.1612 ([docs/api](docs/api)).
 | Smartbutton programming `prgm` / `prgn` / `prgs` | `program_smartbutton` |
 | mDNS `zapp-*` | discovery (plus DHCP) |
 
+## Tested installation
+
+Developed and tested against one real installation (November 2026):
+
+| | Count |
+|---|---|
+| zApp wall modules | 17 (15 × 3340-2-B, 2 × 3340-4-B), all firmware 01.08.28 |
+| Blinds | 10, on 7 zApps |
+| Lights | 13 channels: 7 dimmers, 6 on/off |
+| Smartfronts | 14, with 84 LEDs and wall keys on all 14 |
+
+Not tested: awnings and firmware older than 01.08.28.
+
 ## Limitations
 
 - Blind positions and dimmer brightness are estimates; the zApp reports neither. Scenes cannot be read back.
