@@ -1,3 +1,14 @@
+// Escape text before it is placed into innerHTML (element content or a
+// quoted attribute value), so card config cannot inject markup.
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 class ZeptrionAirBlindsCard extends HTMLElement {
   constructor() {
     super();
@@ -92,7 +103,7 @@ class ZeptrionAirBlindsCard extends HTMLElement {
       </style>
       
       <ha-card>
-        <div class="card-header"><div class="name">${this.config.name || 'Zeptrion Air Blinds'}</div></div>
+        <div class="card-header"><div class="name">${escapeHtml(this.config.name || 'Zeptrion Air Blinds')}</div></div>
         <div class="controls-container">
           <div class="button-row">
             <button class="control-button primary-button" id="up-btn">
@@ -222,11 +233,11 @@ class ZeptrionAirBlindsCardEditor extends HTMLElement {
     this.innerHTML = `
       <div style="padding: 16px;">
         <label style="display: block; margin-bottom: 8px;">Cover Entity:</label>
-        <input type="text" id="entity" value="${this.config.entity || ''}" 
+        <input type="text" id="entity" value="${escapeHtml(this.config.entity || '')}" 
                style="width: 100%; margin-bottom: 16px; padding: 8px;" />
         
         <label style="display: block; margin-bottom: 8px;">Name:</label>
-        <input type="text" id="name" value="${this.config.name || ''}" 
+        <input type="text" id="name" value="${escapeHtml(this.config.name || '')}" 
                style="width: 100%; margin-bottom: 16px; padding: 8px;" />
         
         <details style="margin-bottom: 16px;">
@@ -237,19 +248,19 @@ class ZeptrionAirBlindsCardEditor extends HTMLElement {
             </p>
             
             <label style="display: block; margin-bottom: 4px;">Scene 1 Button:</label>
-            <input type="text" id="scene1_entity" value="${this.config.scene1_entity || ''}" 
+            <input type="text" id="scene1_entity" value="${escapeHtml(this.config.scene1_entity || '')}" 
                    style="width: 100%; margin-bottom: 8px; padding: 6px;" />
             
             <label style="display: block; margin-bottom: 4px;">Scene 2 Button:</label>
-            <input type="text" id="scene2_entity" value="${this.config.scene2_entity || ''}" 
+            <input type="text" id="scene2_entity" value="${escapeHtml(this.config.scene2_entity || '')}" 
                    style="width: 100%; margin-bottom: 8px; padding: 6px;" />
             
             <label style="display: block; margin-bottom: 4px;">Scene 3 Button:</label>
-            <input type="text" id="scene3_entity" value="${this.config.scene3_entity || ''}" 
+            <input type="text" id="scene3_entity" value="${escapeHtml(this.config.scene3_entity || '')}" 
                    style="width: 100%; margin-bottom: 8px; padding: 6px;" />
             
             <label style="display: block; margin-bottom: 4px;">Scene 4 Button:</label>
-            <input type="text" id="scene4_entity" value="${this.config.scene4_entity || ''}" 
+            <input type="text" id="scene4_entity" value="${escapeHtml(this.config.scene4_entity || '')}" 
                    style="width: 100%; margin-bottom: 8px; padding: 6px;" />
           </div>
         </details>
