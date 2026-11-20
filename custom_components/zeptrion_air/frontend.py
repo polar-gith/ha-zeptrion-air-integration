@@ -7,10 +7,8 @@ import logging
 import os
 from typing import Any
 
-from aiohttp import web
-
 from homeassistant.components.frontend import add_extra_js_url
-from homeassistant.components.http import HomeAssistantView
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_call_later
 
@@ -26,41 +24,7 @@ CARD_URL = "/api/zeptrion_air/zeptrion-air-blinds-card.js"
 _FRONTEND_SETUP_KEY = "_frontend_setup_done"
 
 
-class ZeptrionAirCardView(HomeAssistantView):
-    """Serve the custom card."""
-
-    url = CARD_URL
-    name = "api:zeptrion_air:card"
-    requires_auth = False
-
-    async def get(self, request):
-        """Serve the card JS file."""
-        card_path = os.path.join(os.path.dirname(__file__), "www", "zeptrion-air-blinds-card.js")
-
-        if not os.path.exists(card_path):
-            return web.Response(status=404)
-
-        def _read_file():
-            """Read file in executor."""
-            with open(card_path, "r", encoding="utf-8") as f:
-                return f.read()
-
-        try:
-            content = await request.app["hass"].async_add_executor_job(_read_file)
-        except Exception as e:  # noqa: BLE001
-            _LOGGER.error("Error reading card file: %s", e)
-            return web.Response(status=500)
-
-        return web.Response(
-            text=content,
-            content_type="text/javascript",
-            headers={
-                "Cache-Control": "no-cache",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
-            },
-        )
+CARD_PATH = os.path.join(os.path.dirname(__file__), "www", "zeptrion-air-blinds-card.js")
 
 
 def _base_url(url: Any) -> str:
@@ -128,7 +92,11 @@ async def async_setup_frontend(hass: HomeAssistant, entry) -> None:
     domain_data[_FRONTEND_SETUP_KEY] = True
 
     _LOGGER.info("Setting up Zeptrion Air frontend")
-    hass.http.register_view(ZeptrionAirCardView())
+    # Served as a static file: no blocking I/O in the event loop and the same
+    # access rules as other frontend files.
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(CARD_URL, CARD_PATH, cache_headers=False)]
+    )
     add_extra_js_url(hass, CARD_URL)
 
     lock = asyncio.Lock()
