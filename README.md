@@ -145,6 +145,7 @@ Developed and tested against one real installation (November 2026):
 | | Count |
 |---|---|
 | zApp wall modules | 17 (15 × 3340-2-B, 2 × 3340-4-B), all firmware 01.08.28 |
+| Remote zApps in the distribution board | 3 of the 17, without Smartfront: 2 dimmers, 1 switch |
 | Blinds | 10, on 7 zApps |
 | Lights | 13 channels: 7 dimmers, 6 on/off |
 | Smartfronts | 14, with 84 LEDs and wall keys on all 14 |
