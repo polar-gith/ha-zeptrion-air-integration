@@ -14,6 +14,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .api import ZeptrionAirApiClientError
+from .const import DOMAIN
 
 if TYPE_CHECKING:
     from .api import ZeptrionAirApiClient
@@ -108,7 +109,7 @@ class SmartfrontLeds:
         try:
             await self.client.async_set_led_backgrounds({led: new.to_bg()})
         except ZeptrionAirApiClientError as err:
-            raise HomeAssistantError(f"Smartfront LED {led}: setting the colour failed: {err}") from err
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="led_failed", translation_placeholders={"led": str(led), "error": str(err)}) from err
         self.history.append({led: old})
         del self.history[:-UNDO_DEPTH]
         self.states[led] = new
@@ -126,7 +127,7 @@ class SmartfrontLeds:
         try:
             await self.client.async_set_led_backgrounds({led: st.to_bg() for led, st in previous.items()})
         except ZeptrionAirApiClientError as err:
-            raise HomeAssistantError(f"Smartfront LEDs: undo failed: {err}") from err
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="led_undo_failed", translation_placeholders={"error": str(err)}) from err
         self.history.pop()
         for led, state in previous.items():
             self.states[led] = state

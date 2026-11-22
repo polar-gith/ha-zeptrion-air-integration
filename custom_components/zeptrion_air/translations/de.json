@@ -131,6 +131,18 @@
       },
       "stream_long_outages": {
         "name": "Lange Ausfälle"
+      },
+      "channel_name": {
+        "name": "Name"
+      },
+      "channel_group": {
+        "name": "Gruppe"
+      },
+      "channel_icon_id": {
+        "name": "Symbol-ID"
+      },
+      "wifi_signal": {
+        "name": "WLAN-Signal"
       }
     },
     "light": {
@@ -144,6 +156,33 @@
       },
       "reconnect": {
         "name": "Neu verbinden"
+      },
+      "scene_s1": {
+        "name": "Szene S1"
+      },
+      "scene_s2": {
+        "name": "Szene S2"
+      },
+      "scene_s3": {
+        "name": "Szene S3"
+      },
+      "scene_s4": {
+        "name": "Szene S4"
+      },
+      "store_s1": {
+        "name": "S1 speichern"
+      },
+      "store_s2": {
+        "name": "S2 speichern"
+      },
+      "store_s3": {
+        "name": "S3 speichern"
+      },
+      "store_s4": {
+        "name": "S4 speichern"
+      },
+      "calibrate": {
+        "name": "Kalibrieren"
       }
     }
   },
@@ -241,6 +280,86 @@
           "description": "Zu schreibende Gruppe (Raum); leer = der Bereich des Geräts."
         }
       }
+    }
+  },
+  "exceptions": {
+    "blind_busy": {
+      "message": "{entity} ist beschäftigt (Kalibrierung oder Speichern einer Szene)."
+    },
+    "blind_command_failed": {
+      "message": "{entity}: Der Befehl ist fehlgeschlagen: {error}"
+    },
+    "blind_moving_calibrate": {
+      "message": "{entity} fährt: Vor dem Kalibrieren warten, bis die Store steht."
+    },
+    "blind_moving_store": {
+      "message": "{entity} fährt: Vor dem Speichern der Szene S{scene} an der gewünschten Position anhalten."
+    },
+    "blind_position_unknown": {
+      "message": "Die Position von {entity} ist unbekannt; die Store zuerst einmal ganz öffnen oder schliessen."
+    },
+    "blind_recall_scene_failed": {
+      "message": "{entity}: Abrufen der Szene S{scene} fehlgeschlagen: {error}"
+    },
+    "blind_store_scene_failed": {
+      "message": "{entity}: Speichern der Szene S{scene} fehlgeschlagen: {error}"
+    },
+    "button_failed": {
+      "message": "{entity}: Die Aktion ist fehlgeschlagen: {error}"
+    },
+    "calibration_running": {
+      "message": "Die Kalibrierung von {entity} läuft bereits."
+    },
+    "channel_entity_not_found": {
+      "message": "{entity}: Die Store oder das Licht dieses Kanals wurde nicht gefunden."
+    },
+    "device_not_found": {
+      "message": "Gerät {device_id} nicht gefunden."
+    },
+    "led_failed": {
+      "message": "Smartfront-LED {led}: Setzen der Farbe fehlgeschlagen: {error}"
+    },
+    "led_undo_failed": {
+      "message": "Smartfront-LEDs: Rückgängigmachen fehlgeschlagen: {error}"
+    },
+    "light_command_failed": {
+      "message": "{entity}: Der Befehl ist fehlgeschlagen: {error}"
+    },
+    "light_recall_scene_failed": {
+      "message": "{entity}: Abrufen der Szene S{scene} fehlgeschlagen: {error}"
+    },
+    "light_store_scene_failed": {
+      "message": "{entity}: Speichern der Szene S{scene} fehlgeschlagen: {error}"
+    },
+    "no_led_change": {
+      "message": "{zapp}: Es gibt keine LED-Änderung zum Rückgängigmachen."
+    },
+    "no_name": {
+      "message": "Es gibt keinen Namen zum Schreiben."
+    },
+    "no_smartbutton": {
+      "message": "{zapp} hat keinen Smartbutton."
+    },
+    "not_a_loaded_zapp": {
+      "message": "{device} ist kein geladener zApp."
+    },
+    "not_a_zeptrion_entity": {
+      "message": "{entity_id} ist keine Zeptrion-Air-Store und kein Zeptrion-Air-Licht."
+    },
+    "nothing_selected": {
+      "message": "Keine Zeptrion-Air-Store und kein Zeptrion-Air-Licht ausgewählt."
+    },
+    "setup_not_reachable": {
+      "message": "{host} ist nicht erreichbar: {error}"
+    },
+    "smartbutton_invalid": {
+      "message": "Das Smartbutton-Programm kann nicht geschrieben werden: {error}"
+    },
+    "store_position_unknown": {
+      "message": "{entity}: Position unbekannt. Die Store ganz hochfahren, dann an die gewünschte Position, dann Szene S{scene} speichern."
+    },
+    "write_name_failed": {
+      "message": "{entity}: Schreiben des Namens fehlgeschlagen: {error}"
     }
   }
 }

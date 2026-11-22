@@ -5,13 +5,17 @@ All notable changes to this integration. Versions follow Home Assistant style (`
 ## Unreleased
 
 - Actions are translated (German, French, Italian) and have icons.
+- Blinds and lights take their name from their channel device (no visible change: the name stays the same).
+- Scene, store and calibrate buttons, channel sensors and the Wi-Fi signal sensor are translated; their icons come from `icons.json`.
+- Error messages are translated (German, French, Italian, English).
+- *Zeptrion Air Blinds Card*: cleaner, more compact layout with the blind's name, state and position; the running direction is highlighted.
 - Setup dialogs explain their fields; the discovery dialog labels the step duration.
 - Fix: adding an already configured zApp by hand ended with "unknown error" instead of "already configured".
 - Generated dashboard in the user's language (German, French, Italian, English).
 - *Zeptrion Air Blinds Card* deprecated in favour of the tile card feature *Zeptrion scenes S1–S4*.
 - README: examples, troubleshooting, removal.
 - Self-assessment against the Home Assistant quality scale (`quality_scale.yaml`).
-- Tests: switching from heldchen/ha-zeptrion-air (entity IDs, devices, actions kept), config flow, card resource, diagnostics; coverage and strict type check in CI.
+- Tests: switching from heldchen/ha-zeptrion-air (entity IDs, devices, actions kept), config flow, card resource, diagnostics; coverage above 95 % and strict type check in CI.
 - Internal: parallel updates declared for every platform; type fixes.
 
 ## 2026.11.26 – 2026-11-22

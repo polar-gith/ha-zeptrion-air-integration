@@ -26,11 +26,7 @@ rules:
     comment: No triggers of its own; wall keys are event entities (documented with an example).
   entity-event-setup: done
   entity-unique-id: done
-  has-entity-name:
-    status: todo
-    comment: >-
-      Blinds and channel lights take the channel name from the zApp as entity name.
-      Switching them to has_entity_name changes their friendly names for existing users.
+  has-entity-name: done
   runtime-data: done
   test-before-configure: done
   test-before-setup: done
@@ -49,8 +45,8 @@ rules:
     status: exempt
     comment: The zApp API has no authentication.
   test-coverage:
-    status: todo
-    comment: 88 % (CI fails below 87 %); target above 95 %.
+    status: done
+    comment: Above 95 % (CI fails below 95 %).
 
   # Gold
   devices: done
@@ -72,15 +68,9 @@ rules:
   entity-category: done
   entity-device-class: done
   entity-disabled-by-default: done
-  entity-translations:
-    status: todo
-    comment: The scene and store buttons still have fixed English names.
-  exception-translations:
-    status: todo
-    comment: Error messages of actions are English only.
-  icon-translations:
-    status: todo
-    comment: Actions have icons in icons.json; entity icons are still set in code.
+  entity-translations: done
+  exception-translations: done
+  icon-translations: done
   reconfiguration-flow: done
   repair-issues:
     status: exempt

@@ -167,3 +167,40 @@ async def test_silent_dead_device_is_detected(fake_zapp) -> None:
             await _wait_for(lambda: connection[-1] is True and len(connection) >= 3, timeout=10)
         finally:
             await listener.stop()
+
+
+async def test_odd_frames_and_broken_consumer(fake_zapp) -> None:
+    """Malformed frames are skipped; a failing consumer does not stop the stream."""
+    from unittest.mock import AsyncMock, patch
+
+    from custom_components.zeptrion_air.api import ZeptrionAirApiClientError
+
+    device, host = fake_zapp
+    updates: list = []
+
+    def on_update(channel, value, snapshot):
+        updates.append((channel, value))
+        if value == 7:
+            raise RuntimeError("consumer broken")
+
+    async with aiohttp.ClientSession() as session:
+        client = ZeptrionAirApiClient(host, session)
+        listener = ZeptrionAirWebsocketListener(client, on_channel_update=on_update)
+        for frame in ("no json", "[1]", '{"eid1": {"ch": "x", "val": 1}}',
+                      '{"eid1": {"ch": 1, "val": 7}}', '{"eid1": {"ch": 2, "val": 0}}'):
+            listener._handle_frame(frame)
+        assert updates == [(1, 7), (2, 0)]
+        with patch.object(client, "async_get_all_channels_scan_info", AsyncMock(return_value={"chscan": "x"})):
+            await listener._snapshot()
+        with patch.object(client, "async_get_all_channels_scan_info",
+                          AsyncMock(return_value={"chscan": {"id": 1, "chx": {"val": 1}, "ch3": "x"}})):
+            await listener._snapshot()
+        with patch.object(client, "async_get_all_channels_scan_info", AsyncMock(side_effect=ZeptrionAirApiClientError("x"))):
+            with pytest.raises(Exception, match="cannot read channel states"):
+                await listener._snapshot()
+        assert updates == [(1, 7), (2, 0)]
+        await listener.start()
+        await listener.start()  # restart stops the running task first
+        assert listener.is_alive()
+        await listener.stop()
+        assert not listener.is_alive()

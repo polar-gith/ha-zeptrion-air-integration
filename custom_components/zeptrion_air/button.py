@@ -30,31 +30,37 @@ _LOGGER = logging.getLogger(__name__)
 # State comes pushed over the WebSocket; commands are limited per zApp by the API client.
 PARALLEL_UPDATES = 0
 
+def _translation_key(action_type_slug: str) -> str:
+    """blind_recall_s1 / light_recall_s1 -> scene_s1, *_store_s1 -> store_s1, blind_calibrate -> calibrate."""
+    if action_type_slug == "blind_calibrate":
+        return "calibrate"
+    kind, scene = action_type_slug.split("_", 1)[1].rsplit("_", 1)
+    return f"{'scene' if kind == 'recall' else 'store'}_{scene}"
+
+
 # Define action types and their corresponding labels and service names
 BUTTON_ACTIONS: list[dict[str, str]] = [
-    {"type": "blind_recall_s1", "label": "Scene S1", "service": SERVICE_BLIND_RECALL_S1, "icon": "mdi:numeric-1-box-outline"},
-    {"type": "blind_recall_s2", "label": "Scene S2", "service": SERVICE_BLIND_RECALL_S2, "icon": "mdi:numeric-2-box-outline"},
-    {"type": "blind_recall_s3", "label": "Scene S3", "service": SERVICE_BLIND_RECALL_S3, "icon": "mdi:numeric-3-box-outline"},
-    {"type": "blind_recall_s4", "label": "Scene S4", "service": SERVICE_BLIND_RECALL_S4, "icon": "mdi:numeric-4-box-outline"},
+    {"type": "blind_recall_s1", "service": SERVICE_BLIND_RECALL_S1},
+    {"type": "blind_recall_s2", "service": SERVICE_BLIND_RECALL_S2},
+    {"type": "blind_recall_s3", "service": SERVICE_BLIND_RECALL_S3},
+    {"type": "blind_recall_s4", "service": SERVICE_BLIND_RECALL_S4},
     # Store the current position as scene (like holding the scene key > 5 s)
-    {"type": "blind_store_s1", "label": "Store S1", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "1"},
-    {"type": "blind_store_s2", "label": "Store S2", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "2"},
-    {"type": "blind_store_s3", "label": "Store S3", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "3"},
-    {"type": "blind_store_s4", "label": "Store S4", "service": SERVICE_BLIND_STORE_SCENE, "icon": "mdi:content-save-outline", "scene": "4"},
+    {"type": "blind_store_s1", "service": SERVICE_BLIND_STORE_SCENE, "scene": "1"},
+    {"type": "blind_store_s2", "service": SERVICE_BLIND_STORE_SCENE, "scene": "2"},
+    {"type": "blind_store_s3", "service": SERVICE_BLIND_STORE_SCENE, "scene": "3"},
+    {"type": "blind_store_s4", "service": SERVICE_BLIND_STORE_SCENE, "scene": "4"},
     # Calibration run: up, down, up, back; measures the travel times
-    {"type": "blind_calibrate", "label": "Calibrate", "service": SERVICE_BLIND_CALIBRATE, "icon": "mdi:arrow-expand-vertical"},
+    {"type": "blind_calibrate", "service": SERVICE_BLIND_CALIBRATE},
 ]
 
 # Switch / dimmer channels: scenes store on/off and the dim level
 LIGHT_BUTTON_ACTIONS: list[dict[str, str]] = [
     *(
-        {"type": f"light_recall_s{n}", "label": f"Scene S{n}", "service": SERVICE_LIGHT_RECALL_SCENE,
-         "icon": f"mdi:numeric-{n}-box-outline", "scene": str(n)}
+        {"type": f"light_recall_s{n}", "service": SERVICE_LIGHT_RECALL_SCENE, "scene": str(n)}
         for n in range(1, 5)
     ),
     *(
-        {"type": f"light_store_s{n}", "label": f"Store S{n}", "service": SERVICE_LIGHT_STORE_SCENE,
-         "icon": "mdi:content-save-outline", "scene": str(n)}
+        {"type": f"light_store_s{n}", "service": SERVICE_LIGHT_STORE_SCENE, "scene": str(n)}
         for n in range(1, 5)
     ),
 ]
@@ -118,9 +124,7 @@ async def async_setup_entry(
                         channel_id=channel_id,
                         hub_serial=hub_serial,
                         action_type=action_def["service"], 
-                        action_label=action_def["label"],
                         action_type_slug=action_def["type"],
-                        icon=action_def["icon"],
                         scene=int(action_def.get("scene", 0)),
                     )
                 )
@@ -151,9 +155,7 @@ class ZeptrionAirActionButton(ButtonEntity):
         channel_id: int,
         hub_serial: str, 
         action_type: str, 
-        action_label: str,
         action_type_slug: str,
-        icon: str, 
         scene: int = 0,
     ) -> None:
         """Initialize the Zeptrion Air action button."""
@@ -164,9 +166,9 @@ class ZeptrionAirActionButton(ButtonEntity):
         self._action_type: str = action_type
         
         self._attr_has_entity_name = True
-        self._attr_name: str = f"{action_label}"
+        # Name and icon from strings.json / icons.json: scene_s1-4, store_s1-4, calibrate
+        self._attr_translation_key = _translation_key(action_type_slug)
         self._attr_unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}_{action_type_slug}"
-        self._attr_icon: str = icon
         self._scene = scene
         if action_type in (SERVICE_BLIND_STORE_SCENE, SERVICE_BLIND_CALIBRATE, SERVICE_LIGHT_STORE_SCENE):
             # Configuration: kept off the default dashboards
@@ -176,7 +178,6 @@ class ZeptrionAirActionButton(ButtonEntity):
             "Button __init__ for action '%s' on channel %s for hub_serial '%s' (entry_title: '%s'):",
             self._action_type, self._channel_id, self._hub_serial, self._hub_entry_title
         )
-        _LOGGER.debug("  Friendly name: '%s'", self._attr_name)
         _LOGGER.debug("  Unique ID: '%s'", self._attr_unique_id)
 
         # Link this button to the specific cover channel's device entry in HA
@@ -195,7 +196,7 @@ class ZeptrionAirActionButton(ButtonEntity):
             if self._action_type in (SERVICE_LIGHT_STORE_SCENE, SERVICE_LIGHT_RECALL_SCENE):
                 light = self._channel_entity("light", "_light")
                 if light is None:
-                    raise HomeAssistantError(f"Light of {self.name} not found")
+                    raise HomeAssistantError(translation_domain=DOMAIN, translation_key="channel_entity_not_found", translation_placeholders={"entity": str(self.name)})
                 await getattr(light, f"async_{self._action_type}")(self._scene)
                 return
             if self._action_type in (
@@ -218,7 +219,7 @@ class ZeptrionAirActionButton(ButtonEntity):
             elif self._action_type == SERVICE_BLIND_CALIBRATE:
                 blind = self._blind_entity()
                 if blind is None:
-                    raise HomeAssistantError(f"Blind of {self.name} not found")
+                    raise HomeAssistantError(translation_domain=DOMAIN, translation_key="channel_entity_not_found", translation_placeholders={"entity": str(self.name)})
                 await blind.async_blind_calibrate()
                 return
             elif self._action_type == SERVICE_BLIND_STORE_SCENE:
@@ -242,7 +243,7 @@ class ZeptrionAirActionButton(ButtonEntity):
                 "API error executing action '%s' for button '%s' on channel %s: %s",
                 self._action_type, self.name, self._channel_id, e
             )
-            raise HomeAssistantError(f"Failed to execute action {self._action_type} for button {self.name}: An API error occurred. {e}") from e
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="button_failed", translation_placeholders={"entity": str(self.name), "error": str(e)}) from e
         except HomeAssistantError:
             raise
         except Exception as e:
@@ -250,7 +251,7 @@ class ZeptrionAirActionButton(ButtonEntity):
                 "Unexpected error executing action '%s' for button '%s' on channel %s: %s",
                 self._action_type, self.name, self._channel_id, e
             )
-            raise HomeAssistantError(f"Failed to execute action {self._action_type} for button {self.name}: An unexpected error occurred. {e}") from e
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="button_failed", translation_placeholders={"entity": str(self.name), "error": str(e)}) from e
 
     async def _async_store_scene(self) -> None:
         """Store via the blind entity, so a moving blind is refused."""
@@ -283,7 +284,6 @@ class ZeptrionAirReconnectButton(ButtonEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
     _attr_translation_key = "reconnect"
-    _attr_icon = "mdi:lan-connect"
 
     def __init__(self, config_entry: ConfigEntry, hub_serial: str) -> None:
         self.config_entry = config_entry
@@ -301,7 +301,6 @@ class ZeptrionAirLedUndoButton(ButtonEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
     _attr_translation_key = "smartfront_led_undo"
-    _attr_icon = "mdi:undo"
 
     def __init__(self, config_entry: ConfigEntry, hub_serial: str) -> None:
         self.config_entry = config_entry
@@ -310,4 +309,4 @@ class ZeptrionAirLedUndoButton(ButtonEntity):
 
     async def async_press(self) -> None:
         if not await self.config_entry.runtime_data.leds.async_undo():
-            raise HomeAssistantError(f"{self.config_entry.title}: no LED change to undo")
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="no_led_change", translation_placeholders={"zapp": self.config_entry.title})

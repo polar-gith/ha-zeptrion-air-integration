@@ -236,7 +236,11 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         self._attr_device_info = cast(DeviceInfo, device_info_for_blind_entity)
 
         name_val = device_info_for_blind_entity.get("name")
-        self._attr_name: str = str(name_val) if name_val is not None else f"Channel {channel_id}"
+        # The entity takes the name of its channel device (has_entity_name, name None):
+        # same text as before, follows renames of the device.
+        self._channel_name: str = str(name_val) if name_val is not None else f"Channel {channel_id}"
+        self._attr_has_entity_name = True
+        self._attr_name = None
         self._attr_unique_id = f"zapp_{hub_serial}_ch{self._channel_id}"
         self._attr_device_class = CoverDeviceClass.SHUTTER
 
@@ -340,7 +344,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
     def _display_name(self) -> str:
         """Name as shown in Home Assistant (follows renames in the UI)."""
         state = self.hass.states.get(self.entity_id) if self.hass and self.entity_id else None
-        return state.name if state is not None else str(self.name)
+        return state.name if state is not None else self._channel_name
 
     def _at_end_now(self) -> bool:
         return self._motion.reached_end(time.monotonic())
@@ -419,8 +423,8 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         try:
             await coro_factory()
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-            _LOGGER.error("API error while %s blind %s (Channel %s): %s", label, self._attr_name, self._channel_id, e)
-            raise HomeAssistantError(f"Failed {label} blind {self.name} (Channel {self._channel_id}): {e}") from e
+            _LOGGER.error("API error while %s blind %s (Channel %s): %s", label, self._channel_name, self._channel_id, e)
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="blind_command_failed", translation_placeholders={"entity": self._display_name, "error": str(e)}) from e
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
@@ -456,9 +460,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         plan = self._motion.seconds_for(target)
         if plan is None:
             if self._motion.position is None:
-                raise HomeAssistantError(
-                    f"Position of {self.name} is unknown; open or close it fully once first."
-                )
+                raise HomeAssistantError(translation_domain=DOMAIN, translation_key="blind_position_unknown", translation_placeholders={"entity": self._display_name})
             return
         direction, seconds = plan
         milliseconds = int(round(seconds * 1000))
@@ -584,13 +586,13 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             if self._start_waiter is not None and not self._start_waiter.done():
                 self._start_waiter.set_result(None)
             if self._motion.direction is None:
-                _LOGGER.debug("Blind %s moves, direction unknown (scene or other device)", self._attr_name)
+                _LOGGER.debug("Blind %s moves, direction unknown (scene or other device)", self._channel_name)
             self._start_tick()
             self._arm_moving_check()
         elif value == 0:
             self._finish_run(self._motion.on_value(0, now))
         else:
-            _LOGGER.debug("Blind %s: ignoring value %s", self._attr_name, value)
+            _LOGGER.debug("Blind %s: ignoring value %s", self._channel_name, value)
             return
         self.async_write_ha_state()
 
@@ -652,7 +654,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         assert value is not None
         _LOGGER.info(
             "Blind %s: travel time %s learned from the zApp: %.1f s (was %s)",
-            self._attr_name, direction, value, current,
+            self._channel_name, direction, value, current,
         )
         async_store_travel_times(
             self.hass,
@@ -728,11 +730,11 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
                 data = await client.async_get_channel_scan_info(self._channel_id)
                 value = int(data["chscan"][f"ch{self._channel_id}"]["val"])
             except (ZeptrionAirApiClientError, KeyError, TypeError, ValueError) as err:
-                _LOGGER.debug("Blind %s: channel check failed: %s", self._attr_name, err)
+                _LOGGER.debug("Blind %s: channel check failed: %s", self._channel_name, err)
         if not self._motion.moving:
             return
         if value == 0:
-            _LOGGER.debug("Blind %s: missed the stop, the channel stands; ending the run", self._attr_name)
+            _LOGGER.debug("Blind %s: missed the stop, the channel stands; ending the run", self._channel_name)
             self._finish_run(self._motion.on_value(0, time.monotonic()))
             return
         self._arm_moving_check(MOVING_CHECK_MARGIN_S)
@@ -754,9 +756,9 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         (the zApp stops the motor at the end stop), which are stored for this blind.
         """
         if self._calibration_task is not None and not self._calibration_task.done():
-            raise HomeAssistantError(f"Calibration of {self._display_name} is already running")
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="calibration_running", translation_placeholders={"entity": self._display_name})
         if self._motion.moving:
-            raise HomeAssistantError(f"{self._display_name} is moving: wait until it stands before calibrating")
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="blind_moving_calibrate", translation_placeholders={"entity": self._display_name})
         self._calibration_task = self.config_entry.async_create_background_task(
             self.hass, self._async_calibrate(), name=f"zeptrion_air calibrate {self.entity_id}"
         )
@@ -782,7 +784,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
                     await self._start_waiter
             except TimeoutError as err:
                 if reference:
-                    _LOGGER.debug("%s: no motor start, already at the top", self._attr_name)
+                    _LOGGER.debug("%s: no motor start, already at the top", self._channel_name)
                     self._motion.mark_end_stop("top")
                     return None
                 raise _CalibrationAborted(
@@ -859,20 +861,15 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         runs to the top and back to the current position before storing.
         """
         if self._motion.moving:
-            raise HomeAssistantError(
-                f"{self._display_name} is moving: stop it at the wanted position before storing scene S{scene}"
-            )
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="blind_moving_store", translation_placeholders={"entity": self._display_name, "scene": str(scene)})
         if self._calibration_task is not None and not self._calibration_task.done():
-            raise HomeAssistantError(f"{self._display_name} is busy (calibration or storing a scene)")
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="blind_busy", translation_placeholders={"entity": self._display_name})
         if self._motion.last_end_stop == "top":
             await self._async_send_store(scene)
             return
         position = self._motion.position
         if position is None or not self._travel.complete:
-            raise HomeAssistantError(
-                f"{self._display_name}: position unknown. Move the blind fully up, then to the "
-                f"wanted position, then store scene S{scene}."
-            )
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="store_position_unknown", translation_placeholders={"entity": self._display_name, "scene": str(scene)})
         self._calibration_task = self.config_entry.async_create_background_task(
             self.hass,
             self._async_store_from_top(scene, position),
@@ -883,8 +880,8 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         try:
             await self.config_entry.runtime_data.client.async_channel_store_scene(self._channel_id, scene)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-            raise HomeAssistantError(f"Failed to store scene S{scene} for {self._display_name}: {e}") from e
-        _LOGGER.info("Stored scene S%s for blind %s (channel %s)", scene, self.name, self._channel_id)
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="blind_store_scene_failed", translation_placeholders={"entity": self._display_name, "scene": str(scene), "error": str(e)}) from e
+        _LOGGER.info("Stored scene S%s for blind %s (channel %s)", scene, self._channel_name, self._channel_id)
 
     async def _async_store_from_top(self, scene: int, position: float) -> None:
         """Run to the top (reference), back to ``position``, then store."""
@@ -919,61 +916,37 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             notification_id=f"zeptrion_air_scene_{self.config_entry.entry_id}_{self._channel_id}",
         )
 
-    async def async_blind_recall_s1(self) -> None:
-        """Recall scene S1 for the blind."""
-        _LOGGER.debug("Recalling S1 for blind %s (Channel %s)", self.name, self._channel_id)
+    async def _async_recall_scene(self, scene: int) -> None:
+        """Recall scene S1-S4 of the blind."""
+        _LOGGER.debug("Recalling S%s for blind %s (Channel %s)", scene, self._channel_name, self._channel_id)
         self._motion.scene_hint(time.monotonic())
         self._mark_source("home_assistant")
+        client = self.config_entry.runtime_data.client
         try:
-            await self.config_entry.runtime_data.client.async_channel_recall_s1(self._channel_id)
-        except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-            _LOGGER.error("API error while recalling S1 for blind %s (Channel %s): %s", self.name, self._channel_id, e)
-            raise HomeAssistantError(f"Failed to recall S1 for blind {self.name} (Channel {self._channel_id}): An API error occurred. {e}") from e
+            await getattr(client, f"async_channel_recall_s{scene}")(self._channel_id)
         except Exception as e:
-            _LOGGER.error("Unexpected error while recalling S1 for blind %s (Channel %s): %s", self.name, self._channel_id, e)
-            raise HomeAssistantError(f"Failed to recall S1 for blind {self.name} (Channel {self._channel_id}): An unexpected error occurred. {e}") from e
+            _LOGGER.error("Recalling S%s for blind %s failed: %s", scene, self._channel_name, e)
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="blind_recall_scene_failed",
+                translation_placeholders={"entity": self._display_name, "scene": str(scene), "error": str(e)},
+            ) from e
+
+    async def async_blind_recall_s1(self) -> None:
+        """Recall scene S1 for the blind."""
+        await self._async_recall_scene(1)
 
     async def async_blind_recall_s2(self) -> None:
         """Recall scene S2 for the blind."""
-        _LOGGER.debug("Recalling S2 for blind %s (Channel %s)", self.name, self._channel_id)
-        self._motion.scene_hint(time.monotonic())
-        self._mark_source("home_assistant")
-        try:
-            await self.config_entry.runtime_data.client.async_channel_recall_s2(self._channel_id)
-        except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-            _LOGGER.error("API error while recalling S2 for blind %s (Channel %s): %s", self.name, self._channel_id, e)
-            raise HomeAssistantError(f"Failed to recall S2 for blind {self.name} (Channel {self._channel_id}): An API error occurred. {e}") from e
-        except Exception as e:
-            _LOGGER.error("Unexpected error while recalling S2 for blind %s (Channel %s): %s", self.name, self._channel_id, e)
-            raise HomeAssistantError(f"Failed to recall S2 for blind {self.name} (Channel {self._channel_id}): An unexpected error occurred. {e}") from e
+        await self._async_recall_scene(2)
 
     async def async_blind_recall_s3(self) -> None:
         """Recall scene S3 for the blind."""
-        _LOGGER.debug("Recalling S3 for blind %s (Channel %s)", self.name, self._channel_id)
-        self._motion.scene_hint(time.monotonic())
-        self._mark_source("home_assistant")
-        try:
-            await self.config_entry.runtime_data.client.async_channel_recall_s3(self._channel_id)
-        except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-            _LOGGER.error("API error while recalling S3 for blind %s (Channel %s): %s", self.name, self._channel_id, e)
-            raise HomeAssistantError(f"Failed to recall S3 for blind {self.name} (Channel {self._channel_id}): An API error occurred. {e}") from e
-        except Exception as e:
-            _LOGGER.error("Unexpected error while recalling S3 for blind %s (Channel %s): %s", self.name, self._channel_id, e)
-            raise HomeAssistantError(f"Failed to recall S3 for blind {self.name} (Channel {self._channel_id}): An unexpected error occurred. {e}") from e
+        await self._async_recall_scene(3)
 
     async def async_blind_recall_s4(self) -> None:
         """Recall scene S4 for the blind."""
-        _LOGGER.debug("Recalling S4 for blind %s (Channel %s)", self.name, self._channel_id)
-        self._motion.scene_hint(time.monotonic())
-        self._mark_source("home_assistant")
-        try:
-            await self.config_entry.runtime_data.client.async_channel_recall_s4(self._channel_id)
-        except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-            _LOGGER.error("API error while recalling S4 for blind %s (Channel %s): %s", self.name, self._channel_id, e)
-            raise HomeAssistantError(f"Failed to recall S4 for blind {self.name} (Channel {self._channel_id}): An API error occurred. {e}") from e
-        except Exception as e:
-            _LOGGER.error("Unexpected error while recalling S4 for blind %s (Channel %s): %s", self.name, self._channel_id, e)
-            raise HomeAssistantError(f"Failed to recall S4 for blind {self.name} (Channel {self._channel_id}): An unexpected error occurred. {e}") from e
+        await self._async_recall_scene(4)
 
 
 def _positive(value: Any) -> float | None:

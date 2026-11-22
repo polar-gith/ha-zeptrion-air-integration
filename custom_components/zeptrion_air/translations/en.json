@@ -131,6 +131,18 @@
       },
       "stream_long_outages": {
         "name": "Long outages"
+      },
+      "channel_name": {
+        "name": "Name"
+      },
+      "channel_group": {
+        "name": "Group"
+      },
+      "channel_icon_id": {
+        "name": "Icon ID"
+      },
+      "wifi_signal": {
+        "name": "Wi-Fi Signal"
       }
     },
     "light": {
@@ -144,6 +156,33 @@
       },
       "reconnect": {
         "name": "Reconnect"
+      },
+      "scene_s1": {
+        "name": "Scene S1"
+      },
+      "scene_s2": {
+        "name": "Scene S2"
+      },
+      "scene_s3": {
+        "name": "Scene S3"
+      },
+      "scene_s4": {
+        "name": "Scene S4"
+      },
+      "store_s1": {
+        "name": "Store S1"
+      },
+      "store_s2": {
+        "name": "Store S2"
+      },
+      "store_s3": {
+        "name": "Store S3"
+      },
+      "store_s4": {
+        "name": "Store S4"
+      },
+      "calibrate": {
+        "name": "Calibrate"
       }
     }
   },
@@ -241,6 +280,86 @@
           "description": "Group (room) to write; empty = the area of the device."
         }
       }
+    }
+  },
+  "exceptions": {
+    "blind_busy": {
+      "message": "{entity} is busy (calibration or storing a scene)."
+    },
+    "blind_command_failed": {
+      "message": "{entity}: the command failed: {error}"
+    },
+    "blind_moving_calibrate": {
+      "message": "{entity} is moving: wait until it stands before calibrating."
+    },
+    "blind_moving_store": {
+      "message": "{entity} is moving: stop it at the wanted position before storing scene S{scene}."
+    },
+    "blind_position_unknown": {
+      "message": "The position of {entity} is unknown; open or close it fully once first."
+    },
+    "blind_recall_scene_failed": {
+      "message": "{entity}: recalling scene S{scene} failed: {error}"
+    },
+    "blind_store_scene_failed": {
+      "message": "{entity}: storing scene S{scene} failed: {error}"
+    },
+    "button_failed": {
+      "message": "{entity}: the action failed: {error}"
+    },
+    "calibration_running": {
+      "message": "The calibration of {entity} is already running."
+    },
+    "channel_entity_not_found": {
+      "message": "{entity}: the blind or light of this channel was not found."
+    },
+    "device_not_found": {
+      "message": "Device {device_id} not found."
+    },
+    "led_failed": {
+      "message": "Smartfront LED {led}: setting the colour failed: {error}"
+    },
+    "led_undo_failed": {
+      "message": "Smartfront LEDs: undo failed: {error}"
+    },
+    "light_command_failed": {
+      "message": "{entity}: the command failed: {error}"
+    },
+    "light_recall_scene_failed": {
+      "message": "{entity}: recalling scene S{scene} failed: {error}"
+    },
+    "light_store_scene_failed": {
+      "message": "{entity}: storing scene S{scene} failed: {error}"
+    },
+    "no_led_change": {
+      "message": "{zapp}: there is no LED change to undo."
+    },
+    "no_name": {
+      "message": "There is no name to write."
+    },
+    "no_smartbutton": {
+      "message": "{zapp} has no Smartbutton."
+    },
+    "not_a_loaded_zapp": {
+      "message": "{device} is not a loaded zApp."
+    },
+    "not_a_zeptrion_entity": {
+      "message": "{entity_id} is not a Zeptrion Air blind or light."
+    },
+    "nothing_selected": {
+      "message": "No Zeptrion Air blind or light selected."
+    },
+    "setup_not_reachable": {
+      "message": "{host} is not reachable: {error}"
+    },
+    "smartbutton_invalid": {
+      "message": "The Smartbutton programme cannot be written: {error}"
+    },
+    "store_position_unknown": {
+      "message": "{entity}: position unknown. Move the blind fully up, then to the wanted position, then store scene S{scene}."
+    },
+    "write_name_failed": {
+      "message": "{entity}: writing the name failed: {error}"
     }
   }
 }

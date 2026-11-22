@@ -166,7 +166,10 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
         self._is_dimmer = is_dimmer
 
         self._attr_device_info = cast(DeviceInfo, device_info_for_light_entity)
-        self._attr_name = str(device_info_for_light_entity.get("name") or f"Channel {channel_id}")
+        # The entity takes the name of its channel device (has_entity_name, name None).
+        self._channel_name = str(device_info_for_light_entity.get("name") or f"Channel {channel_id}")
+        self._attr_has_entity_name = True
+        self._attr_name = None
         self._attr_unique_id = f"zapp_{hub_serial}_ch{channel_id}_light"
 
         self._attr_is_on = False
@@ -247,7 +250,7 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
             if raw_value is None:
                 _LOGGER.debug(
                     "No scan value returned for light %s (Channel %s): %s",
-                    self._attr_name,
+                    self._channel_name,
                     self._channel_id,
                     scan_data,
                 )
@@ -259,10 +262,16 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
         except Exception as e:
             _LOGGER.debug(
                 "Could not refresh light state from scan for %s (Channel %s): %s",
-                self._attr_name,
+                self._channel_name,
                 self._channel_id,
                 e,
             )
+
+    @property
+    def _display_name(self) -> str:
+        """Name as shown in Home Assistant (follows renames in the UI)."""
+        state = self.hass.states.get(self.entity_id) if self.hass and self.entity_id else None
+        return state.name if state is not None else self._channel_name
 
     def _schedule_refresh(self, delay: float) -> None:
         """Schedule a delayed refresh from scan endpoint."""
@@ -340,7 +349,7 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
                 self._channel_id, scene
             )
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-            raise HomeAssistantError(f"{self.name}: storing scene S{scene} failed: {e}") from e
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="light_store_scene_failed", translation_placeholders={"entity": self._display_name, "scene": str(scene), "error": str(e)}) from e
         if not self._attr_is_on:
             self._scenes[scene] = 0
         else:
@@ -362,7 +371,7 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
                 self._channel_id, scene
             )
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
-            raise HomeAssistantError(f"{self.name}: recalling scene S{scene} failed: {e}") from e
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="light_recall_scene_failed", translation_placeholders={"entity": self._display_name, "scene": str(scene), "error": str(e)}) from e
         self._schedule_refresh(0.35 + (DIMMER_FULL_TRAVEL_MS / 1000 if self._is_dimmer else 0))
 
     async def async_handle_websocket_message(self, event: Event) -> None:
@@ -389,7 +398,7 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
         except (ValueError, TypeError):
             _LOGGER.debug(
                 "Ignoring non-integer websocket value for light %s (Channel %s): %s",
-                self._attr_name,
+                self._channel_name,
                 self._channel_id,
                 raw_value,
             )
@@ -429,12 +438,12 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
             _LOGGER.error(
                 "API error while turning on light %s (Channel %s): %s",
-                self._attr_name,
+                self._channel_name,
                 self._channel_id,
                 e,
             )
             raise HomeAssistantError(
-                f"Failed to turn on light {self.name} (Channel {self._channel_id}): {e}"
+                translation_domain=DOMAIN, translation_key="light_command_failed", translation_placeholders={"entity": self._display_name, "error": str(e)}
             ) from e
 
     async def async_turn_off(self, **kwargs: Any) -> None:
@@ -454,12 +463,12 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
             _LOGGER.error(
                 "API error while turning off light %s (Channel %s): %s",
-                self._attr_name,
+                self._channel_name,
                 self._channel_id,
                 e,
             )
             raise HomeAssistantError(
-                f"Failed to turn off light {self.name} (Channel {self._channel_id}): {e}"
+                translation_domain=DOMAIN, translation_key="light_command_failed", translation_placeholders={"entity": self._display_name, "error": str(e)}
             ) from e
 
 

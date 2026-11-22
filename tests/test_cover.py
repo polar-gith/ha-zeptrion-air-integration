@@ -309,11 +309,14 @@ async def test_store_scene_by_action_and_button(hass: HomeAssistant, fake_zapp, 
     button = _eid(hass, "button", f"zapp_{device.serial}_ch1_blind_store_s2")
     assert er.async_get(hass).async_get(button).entity_category == "config"
 
-    # position unknown: refused with a hint to move up first
-    with pytest.raises(HomeAssistantError):
+    # position unknown: refused with a hint to move up first (translated message)
+    with pytest.raises(HomeAssistantError) as err:
         await hass.services.async_call(
             DOMAIN, "blind_store_scene", {"entity_id": cover, "scene": 3}, blocking=True
         )
+    assert err.value.translation_key == "store_position_unknown"
+    assert err.value.translation_placeholders == {"entity": hass.states.get(cover).name, "scene": "3"}
+    assert "Move the blind fully up" in str(err.value)
     # coming from the top: stored right away
     await _key(hass, device, clock, 900.0, 5)
     await _value(hass, device, clock, 900.1, 100)

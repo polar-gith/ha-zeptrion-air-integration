@@ -131,6 +131,18 @@
       },
       "stream_long_outages": {
         "name": "Interruzioni lunghe"
+      },
+      "channel_name": {
+        "name": "Nome"
+      },
+      "channel_group": {
+        "name": "Gruppo"
+      },
+      "channel_icon_id": {
+        "name": "ID icona"
+      },
+      "wifi_signal": {
+        "name": "Segnale Wi-Fi"
       }
     },
     "light": {
@@ -144,6 +156,33 @@
       },
       "reconnect": {
         "name": "Riconnetti"
+      },
+      "scene_s1": {
+        "name": "Scena S1"
+      },
+      "scene_s2": {
+        "name": "Scena S2"
+      },
+      "scene_s3": {
+        "name": "Scena S3"
+      },
+      "scene_s4": {
+        "name": "Scena S4"
+      },
+      "store_s1": {
+        "name": "Salva S1"
+      },
+      "store_s2": {
+        "name": "Salva S2"
+      },
+      "store_s3": {
+        "name": "Salva S3"
+      },
+      "store_s4": {
+        "name": "Salva S4"
+      },
+      "calibrate": {
+        "name": "Calibra"
       }
     }
   },
@@ -241,6 +280,86 @@
           "description": "Gruppo (stanza) da scrivere; vuoto = l'area del dispositivo."
         }
       }
+    }
+  },
+  "exceptions": {
+    "blind_busy": {
+      "message": "{entity} è occupata (calibrazione o salvataggio di una scena)."
+    },
+    "blind_command_failed": {
+      "message": "{entity}: il comando non è riuscito: {error}"
+    },
+    "blind_moving_calibrate": {
+      "message": "{entity} è in movimento: attendere che sia ferma prima di calibrare."
+    },
+    "blind_moving_store": {
+      "message": "{entity} è in movimento: fermarla nella posizione desiderata prima di salvare la scena S{scene}."
+    },
+    "blind_position_unknown": {
+      "message": "La posizione di {entity} è sconosciuta; prima aprirla o chiuderla completamente una volta."
+    },
+    "blind_recall_scene_failed": {
+      "message": "{entity}: richiamo della scena S{scene} non riuscito: {error}"
+    },
+    "blind_store_scene_failed": {
+      "message": "{entity}: salvataggio della scena S{scene} non riuscito: {error}"
+    },
+    "button_failed": {
+      "message": "{entity}: l'azione non è riuscita: {error}"
+    },
+    "calibration_running": {
+      "message": "La calibrazione di {entity} è già in corso."
+    },
+    "channel_entity_not_found": {
+      "message": "{entity}: la tenda o la luce di questo canale non è stata trovata."
+    },
+    "device_not_found": {
+      "message": "Dispositivo {device_id} non trovato."
+    },
+    "led_failed": {
+      "message": "LED Smartfront {led}: impostazione del colore non riuscita: {error}"
+    },
+    "led_undo_failed": {
+      "message": "LED Smartfront: annullamento non riuscito: {error}"
+    },
+    "light_command_failed": {
+      "message": "{entity}: il comando non è riuscito: {error}"
+    },
+    "light_recall_scene_failed": {
+      "message": "{entity}: richiamo della scena S{scene} non riuscito: {error}"
+    },
+    "light_store_scene_failed": {
+      "message": "{entity}: salvataggio della scena S{scene} non riuscito: {error}"
+    },
+    "no_led_change": {
+      "message": "{zapp}: nessuna modifica dei LED da annullare."
+    },
+    "no_name": {
+      "message": "Non c'è alcun nome da scrivere."
+    },
+    "no_smartbutton": {
+      "message": "{zapp} non ha uno Smartbutton."
+    },
+    "not_a_loaded_zapp": {
+      "message": "{device} non è uno zApp caricato."
+    },
+    "not_a_zeptrion_entity": {
+      "message": "{entity_id} non è una tenda né una luce Zeptrion Air."
+    },
+    "nothing_selected": {
+      "message": "Nessuna tenda o luce Zeptrion Air selezionata."
+    },
+    "setup_not_reachable": {
+      "message": "{host} non è raggiungibile: {error}"
+    },
+    "smartbutton_invalid": {
+      "message": "Il programma dello Smartbutton non può essere scritto: {error}"
+    },
+    "store_position_unknown": {
+      "message": "{entity}: posizione sconosciuta. Alzare completamente la tenda, poi portarla nella posizione desiderata, poi salvare la scena S{scene}."
+    },
+    "write_name_failed": {
+      "message": "{entity}: scrittura del nome non riuscita: {error}"
     }
   }
 }

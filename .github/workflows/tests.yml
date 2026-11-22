@@ -36,7 +36,7 @@ jobs:
       - name: "Run tests against a simulated zApp (with coverage)"
         run: |
           pip install pytest-cov
-          python -m pytest -q --cov=custom_components.zeptrion_air --cov-report=term --cov-fail-under=87
+          python -m pytest -q --cov=custom_components.zeptrion_air --cov-report=term --cov-fail-under=95
 
   typing:
     runs-on: "ubuntu-latest"

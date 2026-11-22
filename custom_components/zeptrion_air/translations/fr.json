@@ -131,6 +131,18 @@
       },
       "stream_long_outages": {
         "name": "Pannes longues"
+      },
+      "channel_name": {
+        "name": "Nom"
+      },
+      "channel_group": {
+        "name": "Groupe"
+      },
+      "channel_icon_id": {
+        "name": "ID d'icône"
+      },
+      "wifi_signal": {
+        "name": "Signal Wi-Fi"
       }
     },
     "light": {
@@ -144,6 +156,33 @@
       },
       "reconnect": {
         "name": "Reconnecter"
+      },
+      "scene_s1": {
+        "name": "Scène S1"
+      },
+      "scene_s2": {
+        "name": "Scène S2"
+      },
+      "scene_s3": {
+        "name": "Scène S3"
+      },
+      "scene_s4": {
+        "name": "Scène S4"
+      },
+      "store_s1": {
+        "name": "Enregistrer S1"
+      },
+      "store_s2": {
+        "name": "Enregistrer S2"
+      },
+      "store_s3": {
+        "name": "Enregistrer S3"
+      },
+      "store_s4": {
+        "name": "Enregistrer S4"
+      },
+      "calibrate": {
+        "name": "Calibrer"
       }
     }
   },
@@ -241,6 +280,86 @@
           "description": "Groupe (pièce) à écrire ; vide = la pièce de l'appareil."
         }
       }
+    }
+  },
+  "exceptions": {
+    "blind_busy": {
+      "message": "{entity} est occupé (calibrage ou enregistrement d'une scène)."
+    },
+    "blind_command_failed": {
+      "message": "{entity} : la commande a échoué : {error}"
+    },
+    "blind_moving_calibrate": {
+      "message": "{entity} est en mouvement : attendez qu'il soit arrêté avant de calibrer."
+    },
+    "blind_moving_store": {
+      "message": "{entity} est en mouvement : arrêtez-le à la position voulue avant d'enregistrer la scène S{scene}."
+    },
+    "blind_position_unknown": {
+      "message": "La position de {entity} est inconnue ; ouvrez-le ou fermez-le d'abord complètement une fois."
+    },
+    "blind_recall_scene_failed": {
+      "message": "{entity} : le rappel de la scène S{scene} a échoué : {error}"
+    },
+    "blind_store_scene_failed": {
+      "message": "{entity} : l'enregistrement de la scène S{scene} a échoué : {error}"
+    },
+    "button_failed": {
+      "message": "{entity} : l'action a échoué : {error}"
+    },
+    "calibration_running": {
+      "message": "Le calibrage de {entity} est déjà en cours."
+    },
+    "channel_entity_not_found": {
+      "message": "{entity} : le store ou la lumière de ce canal est introuvable."
+    },
+    "device_not_found": {
+      "message": "Appareil {device_id} introuvable."
+    },
+    "led_failed": {
+      "message": "LED Smartfront {led} : le réglage de la couleur a échoué : {error}"
+    },
+    "led_undo_failed": {
+      "message": "LED Smartfront : l'annulation a échoué : {error}"
+    },
+    "light_command_failed": {
+      "message": "{entity} : la commande a échoué : {error}"
+    },
+    "light_recall_scene_failed": {
+      "message": "{entity} : le rappel de la scène S{scene} a échoué : {error}"
+    },
+    "light_store_scene_failed": {
+      "message": "{entity} : l'enregistrement de la scène S{scene} a échoué : {error}"
+    },
+    "no_led_change": {
+      "message": "{zapp} : aucune modification de LED à annuler."
+    },
+    "no_name": {
+      "message": "Il n'y a aucun nom à écrire."
+    },
+    "no_smartbutton": {
+      "message": "{zapp} n'a pas de Smartbutton."
+    },
+    "not_a_loaded_zapp": {
+      "message": "{device} n'est pas un zApp chargé."
+    },
+    "not_a_zeptrion_entity": {
+      "message": "{entity_id} n'est ni un store ni une lumière Zeptrion Air."
+    },
+    "nothing_selected": {
+      "message": "Aucun store ni aucune lumière Zeptrion Air sélectionné."
+    },
+    "setup_not_reachable": {
+      "message": "{host} n'est pas joignable : {error}"
+    },
+    "smartbutton_invalid": {
+      "message": "Le programme du Smartbutton ne peut pas être écrit : {error}"
+    },
+    "store_position_unknown": {
+      "message": "{entity} : position inconnue. Montez entièrement le store, puis amenez-le à la position voulue, puis enregistrez la scène S{scene}."
+    },
+    "write_name_failed": {
+      "message": "{entity} : l'écriture du nom a échoué : {error}"
     }
   }
 }

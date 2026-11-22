@@ -46,90 +46,59 @@ class ZeptrionAirBlindsCard extends HTMLElement {
       return;
     }
     
+    const scenes = [1, 2, 3, 4]
+      .map((n) => `<button class="btn scene" id="scene${n}-btn" title="S${n}">${n}</button>`)
+      .join('');
     this.shadowRoot.innerHTML = `
       <style>
-        .card-header {
-          font-weight: 500;
-          color: var(--primary-text-color);
+        ha-card { padding: 10px 12px 12px; }
+        .head { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+        .badge {
+          width: 36px; height: 36px; border-radius: 50%; flex: none;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--state-cover-active-color, var(--primary-color));
+          background: color-mix(in srgb, var(--state-cover-active-color, var(--primary-color)) 18%, transparent);
+          --mdc-icon-size: 20px;
         }
-        .controls-container {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
+        .badge.closed { color: var(--secondary-text-color); background: var(--secondary-background-color); }
+        .text { min-width: 0; flex: 1; line-height: 18px; }
+        .name { font-size: 14px; font-weight: 500; color: var(--primary-text-color);
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .state { font-size: 12px; color: var(--secondary-text-color); }
+        .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .group { display: flex; flex: 5 1 180px; gap: 2px; padding: 2px; border-radius: 12px;
+                 background: var(--secondary-background-color); }
+        .group.scenes { flex: 4 1 140px; }
+        .btn {
+          flex: 1; height: 36px; min-width: 0; border: none; border-radius: 10px; padding: 0;
+          background: transparent; color: var(--primary-text-color); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          font: 500 14px/1 var(--ha-font-family-body, inherit); --mdc-icon-size: 20px;
+          transition: background-color 0.15s ease, color 0.15s ease;
         }
-        .button-row {
-          display: flex;
-          gap: 8px;
-          justify-content: center;
-        }
-        .control-button {
-          flex: 1;
-          min-height: 44px;
-          border: none;
-          border-radius: 8px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          font-size: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-        }
-        .primary-button {
-          background: var(--primary-color);
-          color: var(--text-primary-color);
-        }
-        .primary-button:hover {
-          background: var(--primary-color);
-          opacity: 0.8;
-        }
-        .secondary-button {
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          border: 1px solid var(--divider-color);
-        }
-        .secondary-button:hover {
-          background: var(--secondary-background-color);
-        }
-        .tilt-button {
-          background: var(--light-primary-color, #e3f2fd);
-          color: var(--primary-color);
-          border: 1px solid var(--primary-color);
-        }
-        .tilt-button:hover {
-          background: var(--primary-color);
-          color: var(--text-primary-color);
-        }
+        .btn:hover { background: color-mix(in srgb, var(--primary-text-color) 8%, transparent); }
+        .btn:active { background: color-mix(in srgb, var(--primary-text-color) 14%, transparent); }
+        .btn.step { --mdc-icon-size: 18px; color: var(--secondary-text-color); }
+        .btn.active { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+        .btn:disabled { opacity: 0.35; cursor: default; background: transparent; }
       </style>
-      
       <ha-card>
-        <div class="card-header"><div class="name">${escapeHtml(this.config.name || 'Zeptrion Air Blinds')}</div></div>
-        <div class="controls-container">
-          <div class="button-row">
-            <button class="control-button primary-button" id="up-btn">
-              <ha-icon icon="mdi:arrow-up-bold"></ha-icon>
-            </button>
-            <button class="control-button tilt-button" id="tilt-open-btn">
-              <ha-icon icon="mdi:arrow-up-thin"></ha-icon>
-            </button>
-            <button class="control-button secondary-button" id="stop-btn">
-              <ha-icon icon="mdi:stop"></ha-icon>
-            </button>
-            <button class="control-button tilt-button" id="tilt-close-btn">
-              <ha-icon icon="mdi:arrow-down-thin"></ha-icon>
-            </button>
-            <button class="control-button primary-button" id="down-btn">
-              <ha-icon icon="mdi:arrow-down-bold"></ha-icon>
-            </button>
+        <div class="head">
+          <div class="badge" id="badge"><ha-icon id="icon" icon="mdi:window-shutter-open"></ha-icon></div>
+          <div class="text">
+            <div class="name" id="name">${escapeHtml(this.config.name || this.config.entity)}</div>
+            <div class="state" id="state"></div>
           </div>
-          
-          <div class="button-row">
-            <button class="control-button scene-button" id="scene1-btn"><ha-icon icon="mdi:numeric-1-box-outline"></ha-icon></button>
-            <button class="control-button scene-button" id="scene2-btn"><ha-icon icon="mdi:numeric-2-box-outline"></ha-icon></button>
-            <button class="control-button scene-button" id="scene3-btn"><ha-icon icon="mdi:numeric-3-box-outline"></ha-icon></button>
-            <button class="control-button scene-button" id="scene4-btn"><ha-icon icon="mdi:numeric-4-box-outline"></ha-icon></button>
+        </div>
+        <div class="row">
+          <div class="group">
+            <button class="btn" id="up-btn" title="Open"><ha-icon icon="mdi:arrow-up"></ha-icon></button>
+            <button class="btn step" id="tilt-open-btn" title="Step up"><ha-icon icon="mdi:chevron-up"></ha-icon></button>
+            <button class="btn" id="stop-btn" title="Stop"><ha-icon icon="mdi:stop"></ha-icon></button>
+            <button class="btn step" id="tilt-close-btn" title="Step down"><ha-icon icon="mdi:chevron-down"></ha-icon></button>
+            <button class="btn" id="down-btn" title="Close"><ha-icon icon="mdi:arrow-down"></ha-icon></button>
           </div>
+          <div class="group scenes">${scenes}</div>
         </div>
       </ha-card>
     `;
@@ -212,12 +181,38 @@ class ZeptrionAirBlindsCard extends HTMLElement {
   }
 
   updateCard() {
-    if (!this._hass || !this.config.entity) return;
-    // do nothing for now
+    if (!this._hass || !this.config || !this.config.entity) return;
+    const root = this.shadowRoot;
+    const stateObj = this._hass.states[this.config.entity];
+    const unavailable = !stateObj || stateObj.state === 'unavailable';
+    root.querySelectorAll('button').forEach((b) => { b.disabled = unavailable; });
+    if (!stateObj) {
+      root.getElementById('state').textContent = this.config.entity;
+      return;
+    }
+    const attrs = stateObj.attributes || {};
+    root.getElementById('name').textContent = this.config.name || attrs.friendly_name || this.config.entity;
+    const position = attrs.current_position;
+    const label = this._hass.formatEntityState
+      ? this._hass.formatEntityState(stateObj)
+      : stateObj.state;
+    root.getElementById('state').textContent =
+      position !== undefined && !['opening', 'closing'].includes(stateObj.state) && stateObj.state !== 'unavailable'
+        ? `${label} · ${position} %`
+        : label;
+    const closed = stateObj.state === 'closed';
+    root.getElementById('badge').className = closed ? 'badge closed' : 'badge';
+    root.getElementById('icon').setAttribute?.('icon', closed ? 'mdi:window-shutter' : 'mdi:window-shutter-open');
+    root.getElementById('up-btn').classList?.toggle('active', stateObj.state === 'opening');
+    root.getElementById('down-btn').classList?.toggle('active', stateObj.state === 'closing');
   }
-  
+
   getCardSize() {
-    return 3;
+    return 2;
+  }
+
+  getGridOptions() {
+    return { columns: 6, min_columns: 6, rows: 2, min_rows: 2 };
   }
   
   static getConfigElement() {
@@ -226,8 +221,7 @@ class ZeptrionAirBlindsCard extends HTMLElement {
   
   static getStubConfig() {
     return {
-      entity: 'cover.zeptrion_air_blinds',
-      name: 'Zeptrion Air Blinds'
+      entity: 'cover.zeptrion_air_blinds'
     };
   }
 }

@@ -1,4 +1,61 @@
 {
+  "entity": {
+    "button": {
+      "scene_s1": {
+        "default": "mdi:numeric-1-box-outline"
+      },
+      "scene_s2": {
+        "default": "mdi:numeric-2-box-outline"
+      },
+      "scene_s3": {
+        "default": "mdi:numeric-3-box-outline"
+      },
+      "scene_s4": {
+        "default": "mdi:numeric-4-box-outline"
+      },
+      "store_s1": {
+        "default": "mdi:content-save-outline"
+      },
+      "store_s2": {
+        "default": "mdi:content-save-outline"
+      },
+      "store_s3": {
+        "default": "mdi:content-save-outline"
+      },
+      "store_s4": {
+        "default": "mdi:content-save-outline"
+      },
+      "calibrate": {
+        "default": "mdi:arrow-expand-vertical"
+      },
+      "reconnect": {
+        "default": "mdi:lan-connect"
+      },
+      "smartfront_led_undo": {
+        "default": "mdi:undo"
+      }
+    },
+    "sensor": {
+      "channel_name": {
+        "default": "mdi:information-outline"
+      },
+      "channel_group": {
+        "default": "mdi:folder-outline"
+      },
+      "channel_icon_id": {
+        "default": "mdi:image-outline"
+      },
+      "stream_connects": {
+        "default": "mdi:lan-connect"
+      },
+      "stream_short_outages": {
+        "default": "mdi:lan-pending"
+      },
+      "stream_long_outages": {
+        "default": "mdi:lan-disconnect"
+      }
+    }
+  },
   "services": {
     "blind_up_step": {
       "service": "mdi:arrow-up-thin"

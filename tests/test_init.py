@@ -294,3 +294,37 @@ async def test_wall_keys_of_older_button_face(hass: HomeAssistant, fake_zapp) ->
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_entity_names(hass: HomeAssistant, fake_zapp) -> None:
+    """Names from the channel device and from the translations, as before the switch to translation keys."""
+    device, host = fake_zapp
+    entry = await _setup(hass, host, device.serial)
+    serial = device.serial
+
+    def name(domain: str, unique_id: str) -> str:
+        return hass.states.get(_entity_id(hass, unique_id, domain)).name
+
+    # blind and light take the name of their channel device, without a device class suffix
+    from homeassistant.helpers import device_registry as dr
+
+    registry = er.async_get(hass)
+    devices = dr.async_get(hass)
+    for domain, unique_id in (("cover", f"zapp_{serial}_ch1"), ("light", f"zapp_{serial}_ch2_light")):
+        reg = registry.async_get(_entity_id(hass, unique_id, domain))
+        assert name(domain, unique_id) == devices.async_get(reg.device_id).name
+    blind = name("cover", f"zapp_{serial}_ch1")
+    light = name("light", f"zapp_{serial}_ch2_light")
+    assert "Blind" in blind and not blind.endswith(("Shutter", "Rollladen"))
+    assert registry.async_get(_entity_id(hass, f"zapp_{serial}_ch1", "cover")).has_entity_name
+    # buttons and sensors: channel device name + translated name
+    assert name("button", f"zapp_{serial}_ch1_blind_recall_s1") == f"{blind} Scene S1"
+    assert name("button", f"zapp_{serial}_ch1_blind_store_s2") == f"{blind} Store S2"
+    assert name("button", f"zapp_{serial}_ch1_blind_calibrate") == f"{blind} Calibrate"
+    assert name("button", f"zapp_{serial}_ch2_light_recall_s3") == f"{light} Scene S3"
+    group = registry.async_get(_entity_id(hass, f"zapp_{serial}_ch1_group", "sensor"))
+    assert group.translation_key == "channel_group" and group.disabled_by is not None  # off by default
+    assert name("sensor", f"zapp_{serial}_rssi").endswith("Wi-Fi Signal")
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

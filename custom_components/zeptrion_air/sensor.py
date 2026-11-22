@@ -80,9 +80,9 @@ async def async_setup_entry(
         entity_base_slug = '_'.join(filter(None, entity_base_slug.split('_')))
 
         details_map: dict[str, dict[str, str]] = {
-            SENSOR_TYPE_NAME: {"name": "Name", "value": channel_api_name, "icon": "mdi:information-outline", "slug": "name"},
-            SENSOR_TYPE_GROUP: {"name": "Group", "value": channel_api_group, "icon": "mdi:folder-outline", "slug": "group"},
-            SENSOR_TYPE_ICON_ID: {"name": "Icon ID", "value": channel_api_icon_id, "icon": "mdi:image-outline", "slug": "icon_id"},
+            SENSOR_TYPE_NAME: {"name": "Name", "value": channel_api_name, "slug": "name"},
+            SENSOR_TYPE_GROUP: {"name": "Group", "value": channel_api_group, "slug": "group"},
+            SENSOR_TYPE_ICON_ID: {"name": "Icon ID", "value": channel_api_icon_id, "slug": "icon_id"},
         }
 
         for sensor_type, info_data in details_map.items():
@@ -95,10 +95,8 @@ async def async_setup_entry(
                         channel_id=channel_id,
                         channel_device_identifier=channel_device_identifier, 
                         sensor_type=sensor_type,
-                        sensor_name_suffix=info_data["name"],
                         sensor_type_slug=info_data["slug"],
                         initial_value=info_data["value"],
-                        icon_val=info_data["icon"],
                         # Base name for the channel, e.g., "Living Room Blind CH1" (friendly name)
                         channel_base_name=parent_device_name,
                         # Stable base slug for entity ID generation
@@ -176,10 +174,8 @@ class ZeptrionAirChannelSensor(SensorEntity):
         channel_id: int,
         channel_device_identifier: tuple[str, str],
         sensor_type: str,
-        sensor_name_suffix: str,
         sensor_type_slug: str,
         initial_value: str,
-        icon_val: str | None,
         channel_base_name: str,
         entity_base_slug: str
     ) -> None:
@@ -189,10 +185,10 @@ class ZeptrionAirChannelSensor(SensorEntity):
         self._channel_id: int = channel_id
         self._sensor_type: str = sensor_type
         self._attr_native_value: str = initial_value
-        self._attr_icon: str | None = icon_val
+        # Name and icon from strings.json / icons.json (channel_name, channel_group, channel_icon_id)
+        self._attr_translation_key = f"channel_{sensor_type}"
 
         self._attr_has_entity_name = True
-        self._attr_name = f"{sensor_name_suffix}"
         self._attr_unique_id = f"zapp_{self._hub_serial}_ch{self._channel_id}_{sensor_type}"
 
         # Device info to link this sensor to its respective channel device
@@ -208,7 +204,6 @@ class ZeptrionAirChannelSensor(SensorEntity):
             "Sensor initialized for channel %s of hub_serial '%s':",
             self._channel_id, self._hub_serial
         )
-        _LOGGER.debug("  Friendly name: '%s'", self._attr_name)
         _LOGGER.debug("  Unique ID: '%s'", self._attr_unique_id)
         
 
@@ -269,14 +264,13 @@ class ZeptrionAirRssiSensor(ZeptrionAirEntity, SensorEntity):
         self._hub_serial: str = hub_serial
         
         self._attr_has_entity_name = True
-        self._attr_name = "Wi-Fi Signal"
+        self._attr_translation_key = "wifi_signal"
         self._attr_unique_id = f"zapp_{self._hub_serial}_rssi"
 
         _LOGGER.debug(
             "RSSI Sensor initialized for hub_serial '%s'",
             self._hub_serial
         )
-        _LOGGER.debug("  Friendly name: '%s'", self._attr_name)
         _LOGGER.debug("  Unique ID: '%s'", self._attr_unique_id)
         
         # Set initial state:
@@ -375,7 +369,6 @@ CONNECTION_SENSORS: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key="connects",
         translation_key="stream_connects",
-        icon="mdi:lan-connect",
         state_class=SensorStateClass.TOTAL_INCREASING,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_visible_default=False,
@@ -383,7 +376,6 @@ CONNECTION_SENSORS: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key="short_outages",
         translation_key="stream_short_outages",
-        icon="mdi:lan-pending",
         state_class=SensorStateClass.TOTAL_INCREASING,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_visible_default=False,
@@ -391,7 +383,6 @@ CONNECTION_SENSORS: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key="long_outages",
         translation_key="stream_long_outages",
-        icon="mdi:lan-disconnect",
         state_class=SensorStateClass.TOTAL_INCREASING,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_visible_default=False,

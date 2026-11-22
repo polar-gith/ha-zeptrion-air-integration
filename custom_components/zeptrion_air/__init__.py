@@ -152,7 +152,7 @@ async def async_setup_entry(
     except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
         # Let Home Assistant retry the setup later (device offline or busy at start).
         entry.runtime_data = None
-        raise ConfigEntryNotReady(f"Zeptrion Air device {hostname} not reachable: {e}") from e
+        raise ConfigEntryNotReady(translation_domain=DOMAIN, translation_key="setup_not_reachable", translation_placeholders={"host": hostname, "error": str(e)}) from e
     except Exception as e:
         LOGGER.error(f"Unexpected error setting up Zeptrion Air device {hostname}: {e}")
         entry.runtime_data = None

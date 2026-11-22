@@ -86,11 +86,11 @@ def _loaded_entry(hass: HomeAssistant, entry_id: str) -> ConfigEntry | None:
 def _entry_of_device(hass: HomeAssistant, device_id: str) -> ConfigEntry:
     device = dr.async_get(hass).async_get(device_id)
     if device is None:
-        raise ServiceValidationError(f"Device {device_id} not found")
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="device_not_found", translation_placeholders={"device_id": device_id})
     for entry_id in device.config_entries:
         if (entry := _loaded_entry(hass, entry_id)) is not None:
             return entry
-    raise ServiceValidationError(f"{device.name_by_user or device.name} is not a loaded zApp")
+    raise ServiceValidationError(translation_domain=DOMAIN, translation_key="not_a_loaded_zapp", translation_placeholders={"device": str(device.name_by_user or device.name)})
 
 
 def _host_of(entry: ConfigEntry) -> str:
@@ -101,11 +101,11 @@ def _host_of(entry: ConfigEntry) -> str:
 def _request_for_action(hass: HomeAssistant, entity_id: str, command: str) -> dict[str, str]:
     reg_entry = er.async_get(hass).async_get(entity_id)
     if reg_entry is None or reg_entry.platform != DOMAIN or not reg_entry.config_entry_id:
-        raise ServiceValidationError(f"{entity_id} is not a Zeptrion Air blind or light")
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="not_a_zeptrion_entity", translation_placeholders={"entity_id": entity_id})
     match = _CHANNEL_UID.fullmatch(reg_entry.unique_id)
     target = _loaded_entry(hass, reg_entry.config_entry_id)
     if match is None or target is None:
-        raise ServiceValidationError(f"{entity_id} is not a Zeptrion Air blind or light")
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="not_a_zeptrion_entity", translation_placeholders={"entity_id": entity_id})
     return {
         "req": "POST",
         "loc": _host_of(target),
@@ -119,7 +119,7 @@ async def _async_program_smartbutton(hass: HomeAssistant, call: ServiceCall) -> 
     entry = _entry_of_device(hass, call.data["device_id"])
     runtime = entry.runtime_data
     if not runtime.smartfront or not any(k.kind == "smartbutton" for k in runtime.keys):
-        raise ServiceValidationError(f"{entry.title} has no Smartbutton")
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_smartbutton", translation_placeholders={"zapp": entry.title})
     requests: list[dict[str, str]] = [
         _request_for_action(hass, a["entity_id"], a["command"]) for a in call.data.get("actions", [])
     ]
@@ -127,7 +127,7 @@ async def _async_program_smartbutton(hass: HomeAssistant, call: ServiceCall) -> 
     try:
         compact_smartbutton_requests(requests)  # size check before anything blinks
     except ValueError as err:
-        raise ServiceValidationError(str(err)) from err
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="smartbutton_invalid", translation_placeholders={"error": str(err)}) from err
     wait = int(call.data["wait"])
     notification_id = f"{DOMAIN}_smartbutton_{entry.entry_id}"
     persistent_notification.async_create(
@@ -183,7 +183,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
             await entity.async_write_name_to_zapp(call.data.get("name"), call.data.get("group"))
             found += 1
         if not found:
-            raise ServiceValidationError("No Zeptrion Air blind or light selected")
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="nothing_selected")
 
     hass.services.async_register(
         DOMAIN, SERVICE_WRITE_NAME, write_name, schema=cv.make_entity_service_schema(WRITE_NAME_SCHEMA)
@@ -210,12 +210,12 @@ async def async_write_name_to_zapp(entity: Any, channel: int, name: str | None, 
         else None
     )
     if name is None:
-        name = (device.name_by_user or device.name) if device else entity.name
+        name = (device.name_by_user or device.name) if device else getattr(entity, "_display_name", None)
     if group is None and device is not None and device.area_id:
         area = ar.async_get(hass).async_get_area(device.area_id)
         group = area.name if area else None
     if not name:
-        raise ServiceValidationError("No name to write")
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_name")
     name = truncate_utf8(str(name), CHDES_TEXT_BYTES)
     group = truncate_utf8(str(group), CHDES_TEXT_BYTES) if group else None
     try:
@@ -223,7 +223,7 @@ async def async_write_name_to_zapp(entity: Any, channel: int, name: str | None, 
             channel, name=name, group=group
         )
     except ZeptrionAirApiClientError as err:
-        raise HomeAssistantError(f"{entity.name}: writing the name failed: {err}") from err
+        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="write_name_failed", translation_placeholders={"entity": str(getattr(entity, "_display_name", entity.entity_id)), "error": str(err)}) from err
     async_dispatcher_send(
         hass, SIGNAL_CHANNEL_DESCRIPTOR.format(entity.config_entry.entry_id), channel, name, group
     )
