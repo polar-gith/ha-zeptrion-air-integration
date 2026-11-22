@@ -249,8 +249,8 @@ async def test_migration_drops_light_polling_and_rooms_become_areas(
     area = ar.async_get(hass).async_get_area_by_name("Living")
     assert area is not None
     registry = dr.async_get(hass)
-    hub = registry.async_get_device(identifiers={(DOMAIN, device.serial)})
-    blind = registry.async_get_device(identifiers={(DOMAIN, f"{device.serial}_ch1")})
+    hub = registry.async_get_device_by_identifier((DOMAIN, device.serial), entry.entry_id)
+    blind = registry.async_get_device_by_identifier((DOMAIN, f"{device.serial}_ch1"), entry.entry_id)
     assert hub.area_id == area.id
     assert blind.area_id == area.id
     assert await hass.config_entries.async_unload(entry.entry_id)

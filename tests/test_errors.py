@@ -96,7 +96,7 @@ async def test_write_name_errors(hass: HomeAssistant, fake_zapp) -> None:
 async def test_program_smartbutton_validation(hass: HomeAssistant, fake_zapp) -> None:
     device, host = fake_zapp
     entry = await _setup(hass, device, host)
-    hub = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, device.serial)})
+    hub = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, device.serial), entry.entry_id)
     light = _eid(hass, "light", f"zapp_{device.serial}_ch2_light")
 
     async def call(data):
@@ -136,7 +136,7 @@ async def test_program_smartbutton_without_smartbutton(hass: HomeAssistant, fake
     device, host = fake_zapp
     device.btfu = None  # no Smartfront fitted
     entry = await _setup(hass, device, host)
-    hub = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, device.serial)})
+    hub = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, device.serial), entry.entry_id)
     light = _eid(hass, "light", f"zapp_{device.serial}_ch2_light")
     with pytest.raises(ServiceValidationError) as err:
         await hass.services.async_call(
@@ -314,10 +314,10 @@ async def test_odd_channel_descriptions(hass: HomeAssistant, fake_zapp) -> None:
     with patch(f"{CLIENT}.async_get_smartfront_sensors", AsyncMock(side_effect=ZeptrionAirApiClientError("x"))):
         entry = await _setup(hass, device, host)
     devices = dr.async_get(hass)
-    assert devices.async_get_device(identifiers={(DOMAIN, f"{device.serial}_ch1")}).name == "Living"
-    assert devices.async_get_device(identifiers={(DOMAIN, f"{device.serial}_ch2")}).name == "Channel 2"
+    assert devices.async_get_device_by_identifier((DOMAIN, f"{device.serial}_ch1"), entry.entry_id).name == "Living"
+    assert devices.async_get_device_by_identifier((DOMAIN, f"{device.serial}_ch2"), entry.entry_id).name == "Channel 2"
     for n in (3, 4, 5):
-        assert devices.async_get_device(identifiers={(DOMAIN, f"{device.serial}_ch{n}")}) is None
+        assert devices.async_get_device_by_identifier((DOMAIN, f"{device.serial}_ch{n}"), entry.entry_id) is None
     await _unload(hass, entry)
 
 

@@ -1,2 +1,5 @@
-pytest-homeassistant-custom-component
-xmltodict>=0.13.0
+# Pinned so that Dependabot proposes updates (each one runs the full CI).
+# pytest-homeassistant-custom-component pins the matching Home Assistant release.
+pytest-homeassistant-custom-component==0.13.375
+pytest-cov==7.1.0
+xmltodict==1.0.4

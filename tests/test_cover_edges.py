@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.core import HomeAssistant, State
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
     async_fire_time_changed,
@@ -155,6 +156,9 @@ async def test_store_scene_from_top_fails(hass: HomeAssistant, fake_zapp, clock)
 
 async def test_restored_state_and_tilt_option(hass: HomeAssistant, fake_zapp, clock) -> None:
     device, host = fake_zapp
+    er.async_get(hass).async_get_or_create(
+        "cover", DOMAIN, f"zapp_{device.serial}_ch1", suggested_object_id="living_blind"
+    )
     mock_restore_cache(hass, [State("cover.living_blind", "open", {
         "current_position": 60, "end_stop": "top", "current_tilt_position": 30,
     })])

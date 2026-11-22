@@ -98,8 +98,7 @@ async def async_setup_entry(
     # child entities via the modern `via_device_id` field instead of the
     # deprecated `via_device` identifiers-tuple field.
     dev_reg = dr.async_get(hass)
-    # HA 2026.8+ API (the test environment shims it, see tests/conftest.py)
-    hub_device_entry = dev_reg.async_get_device_by_identifier(  # type: ignore[attr-defined]
+    hub_device_entry = dev_reg.async_get_device_by_identifier(
         (DOMAIN, hub_serial_for_blinds), entry.entry_id
     )
     hub_device_id: str | None = hub_device_entry.id if hub_device_entry else None

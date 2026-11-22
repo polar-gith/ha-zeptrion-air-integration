@@ -334,7 +334,7 @@ async def async_setup_entry(
                 identifiers={(DOMAIN, f"{serial_number}_ch{channel['id']}")},
                 name=channel.get("entity_base_name"),
                 manufacturer="Feller AG",
-                via_device_id=hub_device.id,  # type: ignore[call-arg]  # HA 2026.8+
+                via_device_id=hub_device.id,
                 suggested_area=area,
             )
 

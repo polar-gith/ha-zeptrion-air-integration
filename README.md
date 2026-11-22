@@ -2,6 +2,10 @@
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=polar-gith&repository=ha-zeptrion-air-integration&category=integration)
 
+[![Quality scale: Platinum (self-assessed)](https://img.shields.io/badge/quality%20scale-platinum%20%28self--assessed%29-E5E4E2)](#quality)
+[![Tests](https://github.com/polar-gith/ha-zeptrion-air-integration/actions/workflows/tests.yml/badge.svg)](https://github.com/polar-gith/ha-zeptrion-air-integration/actions/workflows/tests.yml)
+[![Validate](https://github.com/polar-gith/ha-zeptrion-air-integration/actions/workflows/validate.yml/badge.svg)](https://github.com/polar-gith/ha-zeptrion-air-integration/actions/workflows/validate.yml)
+
 Local control of [Feller Zeptrion Air](https://www.feller.ch/de/Produkte/Gebaeudeautomation/Zeptrion-Systeme/Zeptrion-Air) devices (zApps): blinds, awnings, switches and dimmers, wall keys and Smartfront sensors. No cloud; the zApp's local REST API and WebSocket are used.
 
 **All functions of the zeptrion Air devices are integrated**: every channel command, scenes, wall keys and Smartbuttons, Smartfront sensors and LEDs, names, reconnect and diagnostics. Languages: English, German, French, Italian.
@@ -205,6 +209,12 @@ Not tested: awnings and firmware older than 01.08.28.
 2. Remove the integration in HACS (Settings → Marketplace) and restart Home Assistant.
 3. Optional: remove dashboard cards that use `custom:zeptrion-air-blinds-card`, `custom:zeptrion-air-scenes` or the `custom:zeptrion-air` dashboard; the card resource is no longer served after the restart.
 
+## Quality
+
+- Meets every rule of the [Home Assistant integration quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/) up to **Platinum**: fully async, Home Assistant's web session shared, strict typing, translated entities, errors and actions, diagnostics, reconfiguration and discovery. Each rule with its status in [quality_scale.yaml](custom_components/zeptrion_air/quality_scale.yaml) (done, or exempt with the reason).
+- Self-assessed: Home Assistant awards the tiers to core integrations only. This integration stays a custom integration (HACS / Marketplace); it is not planned for Home Assistant core.
+- Every change runs the full test suite (more than 97 % coverage, against a simulated zApp) on the newest Home Assistant release, strict type checking and the HACS and hassfest validation. Dependencies and actions are kept current by weekly Dependabot pull requests.
+
 ## Limitations
 
 - Blind positions and dimmer brightness are estimates; the zApp reports neither. Scenes cannot be read back. Position estimates rely on the timing of the WebSocket messages and get less accurate on zApps with a weak Wi-Fi signal.
@@ -218,7 +228,6 @@ Not tested: awnings and firmware older than 01.08.28.
 - Protocol notes by diaznet: [zeptrionair-api `docs/protocol.md`](https://github.com/diaznet/zeptrionair-api/blob/main/docs/protocol.md).
 - The blinds card is served at `/api/zeptrion_air/zeptrion-air-blinds-card.js` and registered once as a dashboard resource.
 - Versions follow `YEAR.MONTH.PATCH`, released as tags `vYYYY.M.PATCH`; changes per version in [CHANGELOG.md](CHANGELOG.md).
-- Self-assessment against the [Home Assistant integration quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/): [quality_scale.yaml](custom_components/zeptrion_air/quality_scale.yaml).
 - Bugs and ideas: [issue forms](https://github.com/polar-gith/ha-zeptrion-air-integration/issues/new/choose); contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits

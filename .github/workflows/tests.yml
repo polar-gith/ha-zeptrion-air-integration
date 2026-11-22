@@ -16,7 +16,7 @@ jobs:
       - uses: "actions/checkout@v4"
       - uses: "actions/setup-python@v5"
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - name: "Lint (ruff: syntax errors, undefined names, unused imports)"
         run: |
           pip install ruff
@@ -28,15 +28,13 @@ jobs:
       - uses: "actions/checkout@v4"
       - uses: "actions/setup-python@v5"
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - name: "Install test requirements"
         run: pip install -r requirements_test.txt
       - name: "Check translations and versions"
         run: python -m pytest -q tests/test_metadata.py tests/test_init.py -k "translation or versions or services or setup_creates"
       - name: "Run tests against a simulated zApp (with coverage)"
-        run: |
-          pip install pytest-cov
-          python -m pytest -q --cov=custom_components.zeptrion_air --cov-report=term --cov-fail-under=97
+        run: python -m pytest -q --cov=custom_components.zeptrion_air --cov-report=term --cov-fail-under=97
 
   typing:
     runs-on: "ubuntu-latest"
@@ -44,7 +42,7 @@ jobs:
       - uses: "actions/checkout@v4"
       - uses: "actions/setup-python@v5"
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - name: "Install requirements"
         run: pip install -r requirements_test.txt mypy
       - name: "Strict type check (mypy.ini)"

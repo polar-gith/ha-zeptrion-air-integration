@@ -9,6 +9,19 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+// Button tooltips of the blinds card, by the user's language (English otherwise).
+const ZEPTRION_CARD_TEXTS = {
+  en: { up: 'Open', step_up: 'Step up', stop: 'Stop', step_down: 'Step down', down: 'Close', scene: 'Scene' },
+  de: { up: 'Öffnen', step_up: 'Schritt hoch', stop: 'Stopp', step_down: 'Schritt runter', down: 'Schliessen', scene: 'Szene' },
+  fr: { up: 'Ouvrir', step_up: 'Pas vers le haut', stop: 'Arrêt', step_down: 'Pas vers le bas', down: 'Fermer', scene: 'Scène' },
+  it: { up: 'Apri', step_up: 'Passo su', stop: 'Stop', step_down: 'Passo giù', down: 'Chiudi', scene: 'Scena' },
+};
+
+function zeptrionCardTexts(hass) {
+  const language = String((hass && ((hass.locale && hass.locale.language) || hass.language)) || 'en').split('-')[0];
+  return ZEPTRION_CARD_TEXTS[language] || ZEPTRION_CARD_TEXTS.en;
+}
+
 class ZeptrionAirBlindsCard extends HTMLElement {
   constructor() {
     super();
@@ -47,7 +60,7 @@ class ZeptrionAirBlindsCard extends HTMLElement {
     }
     
     const scenes = [1, 2, 3, 4]
-      .map((n) => `<button class="btn scene" id="scene${n}-btn" title="S${n}">${n}</button>`)
+      .map((n) => `<button class="btn scene" id="scene${n}-btn">${n}</button>`)
       .join('');
     this.shadowRoot.innerHTML = `
       <style>
@@ -92,11 +105,11 @@ class ZeptrionAirBlindsCard extends HTMLElement {
         </div>
         <div class="row">
           <div class="group">
-            <button class="btn" id="up-btn" title="Open"><ha-icon icon="mdi:arrow-up"></ha-icon></button>
-            <button class="btn step" id="tilt-open-btn" title="Step up"><ha-icon icon="mdi:chevron-up"></ha-icon></button>
-            <button class="btn" id="stop-btn" title="Stop"><ha-icon icon="mdi:stop"></ha-icon></button>
-            <button class="btn step" id="tilt-close-btn" title="Step down"><ha-icon icon="mdi:chevron-down"></ha-icon></button>
-            <button class="btn" id="down-btn" title="Close"><ha-icon icon="mdi:arrow-down"></ha-icon></button>
+            <button class="btn" id="up-btn"><ha-icon icon="mdi:arrow-up"></ha-icon></button>
+            <button class="btn step" id="tilt-open-btn"><ha-icon icon="mdi:chevron-up"></ha-icon></button>
+            <button class="btn" id="stop-btn"><ha-icon icon="mdi:stop"></ha-icon></button>
+            <button class="btn step" id="tilt-close-btn"><ha-icon icon="mdi:chevron-down"></ha-icon></button>
+            <button class="btn" id="down-btn"><ha-icon icon="mdi:arrow-down"></ha-icon></button>
           </div>
           <div class="group scenes">${scenes}</div>
         </div>
@@ -186,6 +199,12 @@ class ZeptrionAirBlindsCard extends HTMLElement {
     const stateObj = this._hass.states[this.config.entity];
     const unavailable = !stateObj || stateObj.state === 'unavailable';
     root.querySelectorAll('button').forEach((b) => { b.disabled = unavailable; });
+    const texts = zeptrionCardTexts(this._hass);
+    for (const [id, key] of [['up-btn', 'up'], ['tilt-open-btn', 'step_up'], ['stop-btn', 'stop'],
+      ['tilt-close-btn', 'step_down'], ['down-btn', 'down']]) {
+      this._label(id, texts[key]);
+    }
+    [1, 2, 3, 4].forEach((n) => this._label(`scene${n}-btn`, `${texts.scene} S${n}`));
     if (!stateObj) {
       root.getElementById('state').textContent = this.config.entity;
       return;
@@ -205,6 +224,12 @@ class ZeptrionAirBlindsCard extends HTMLElement {
     root.getElementById('icon').setAttribute?.('icon', closed ? 'mdi:window-shutter' : 'mdi:window-shutter-open');
     root.getElementById('up-btn').classList?.toggle('active', stateObj.state === 'opening');
     root.getElementById('down-btn').classList?.toggle('active', stateObj.state === 'closing');
+  }
+
+  _label(id, text) {
+    const button = this.shadowRoot.getElementById(id);
+    button.title = text;
+    if (button.setAttribute) button.setAttribute('aria-label', text);
   }
 
   getCardSize() {

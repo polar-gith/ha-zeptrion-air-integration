@@ -243,3 +243,15 @@ test('the old blinds card warns once that it is deprecated', () => {
   assert.match(warnings[0], /deprecated/);
   assert.match(window.customCards.find((c) => c.type === 'zeptrion-air-blinds-card').name, /deprecated/);
 });
+
+test('blinds card labels its buttons in the user language', () => {
+  const { registry } = load();
+  const Card = registry.get('zeptrion-air-blinds-card');
+  const card = new Card();
+  card.setConfig({ entity: 'cover.blind' });
+  card.hass = { ...fakeHass(), locale: { language: 'de' } };
+  assert.equal(card.shadowRoot.getElementById('up-btn').title, 'Öffnen');
+  assert.equal(card.shadowRoot.getElementById('scene3-btn').title, 'Szene S3');
+  card.hass = { ...fakeHass(), locale: { language: 'xx' } };
+  assert.equal(card.shadowRoot.getElementById('down-btn').title, 'Close');
+});

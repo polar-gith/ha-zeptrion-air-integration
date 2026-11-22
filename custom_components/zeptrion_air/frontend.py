@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 
 from homeassistant.components.frontend import add_extra_js_url
-from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.http import StaticPathConfig  # type: ignore[attr-defined]  # re-exported, not in __all__
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_call_later

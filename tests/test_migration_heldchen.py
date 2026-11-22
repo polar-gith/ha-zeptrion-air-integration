@@ -55,7 +55,7 @@ async def test_switch_from_heldchen_keeps_entities(hass: HomeAssistant, fake_zap
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, f"{serial}_ch1")},
         name="Blind",
-        via_device=(DOMAIN, serial),
+        via_device_id=hub.id,
     )
 
     entities = er.async_get(hass)
@@ -115,8 +115,8 @@ async def test_switch_from_heldchen_keeps_entities(hass: HomeAssistant, fake_zap
     assert before <= {e.entity_id for e in er.async_entries_for_config_entry(entities, entry.entry_id)}
 
     # the existing devices are reused, not duplicated
-    assert devices.async_get_device(identifiers={(DOMAIN, serial)}).id == hub.id
-    assert devices.async_get_device(identifiers={(DOMAIN, f"{serial}_ch1")}).id == channel.id
+    assert devices.async_get_device_by_identifier((DOMAIN, serial), entry.entry_id).id == hub.id
+    assert devices.async_get_device_by_identifier((DOMAIN, f"{serial}_ch1"), entry.entry_id).id == channel.id
     assert entities.async_get("cover.living_blind").device_id == channel.id
 
     # heldchen's actions work on the kept entity IDs, with the stored step duration

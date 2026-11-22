@@ -1,15 +1,27 @@
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Weekly pull requests for the GitHub Actions and the test requirements; every
+# pull request runs the full CI (lint, tests against the newest Home Assistant,
+# typing, frontend, HACS and hassfest validation).
 version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "CI"
 
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
-    ignore:
-      # Dependabot should not update Home Assistant as that should match the homeassistant key in hacs.json
-      - dependency-name: "homeassistant"
+      day: "monday"
+    groups:
+      test-requirements:
+        patterns: ["*"]
+    commit-message:
+      prefix: "Tests"

@@ -41,34 +41,6 @@ def skip_frontend():
         yield
 
 
-@pytest.fixture(autouse=True)
-def device_registry_compat():
-    """Test-only shim: the test environment runs an older Home Assistant (2026.2,
-    the newest available for Python 3.13) than the integration requires
-    (2026.8, for ``async_get_device_by_identifier`` and ``via_device_id``)."""
-    from homeassistant.helpers import device_registry as dr
-
-    if hasattr(dr.DeviceRegistry, "async_get_device_by_identifier"):
-        yield
-        return
-
-    def _by_identifier(self, identifier, config_entry_id=None):
-        return self.async_get_device(identifiers={identifier})
-
-    original_get_or_create = dr.DeviceRegistry.async_get_or_create
-
-    def _get_or_create(self, *args, via_device_id=None, **kwargs):
-        return original_get_or_create(self, *args, **kwargs)
-
-    dr.DeviceRegistry.async_get_device_by_identifier = _by_identifier
-    dr.DeviceRegistry.async_get_or_create = _get_or_create
-    try:
-        yield
-    finally:
-        del dr.DeviceRegistry.async_get_device_by_identifier
-        dr.DeviceRegistry.async_get_or_create = original_get_or_create
-
-
 class Clock:
     def __init__(self) -> None:
         self.now = 1000.0

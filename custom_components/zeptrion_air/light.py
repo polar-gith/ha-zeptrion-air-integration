@@ -8,12 +8,8 @@ from typing import Any, cast
 
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from homeassistant.components.light import (
-    ATTR_BRIGHTNESS,
-    ATTR_RGB_COLOR,
-    LightEntity,
-)
-from homeassistant.components.light.const import ColorMode
+from homeassistant.components.light import LightEntity
+from homeassistant.components.light.const import ATTR_BRIGHTNESS, ATTR_RGB_COLOR, ColorMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
@@ -74,8 +70,7 @@ async def async_setup_entry(
     # child entities via the modern `via_device_id` field instead of the
     # deprecated `via_device` identifiers-tuple field.
     dev_reg = dr.async_get(hass)
-    # HA 2026.8+ API (the test environment shims it, see tests/conftest.py)
-    hub_device_entry = dev_reg.async_get_device_by_identifier(  # type: ignore[attr-defined]
+    hub_device_entry = dev_reg.async_get_device_by_identifier(
         (DOMAIN, hub_serial), entry.entry_id
     )
     hub_device_id: str | None = hub_device_entry.id if hub_device_entry else None

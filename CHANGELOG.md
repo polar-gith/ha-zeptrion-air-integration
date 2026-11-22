@@ -5,17 +5,17 @@ All notable changes to this integration. Versions follow Home Assistant style (`
 ## Unreleased
 
 - Actions are translated (German, French, Italian) and have icons.
-- Blinds and lights take their name from their channel device (no visible change: the name stays the same).
+- Blinds and lights take their name from their channel device (Home Assistant naming rule). Names you set yourself are kept; otherwise a blind or light now shows the name of its device where the two differed.
 - Scene, store and calibrate buttons, channel sensors and the Wi-Fi signal sensor are translated; their icons come from `icons.json`.
 - Error messages are translated (German, French, Italian, English).
-- *Zeptrion Air Blinds Card*: cleaner, more compact layout with the blind's name, state and position; the running direction is highlighted.
+- *Zeptrion Air Blinds Card*: cleaner, more compact layout with the blind's name, state and position; the running direction is highlighted; button tooltips in the user's language.
 - Setup dialogs explain their fields; the discovery dialog labels the step duration.
 - Fix: adding an already configured zApp by hand ended with "unknown error" instead of "already configured".
 - Generated dashboard in the user's language (German, French, Italian, English).
 - *Zeptrion Air Blinds Card* deprecated in favour of the tile card feature *Zeptrion scenes S1–S4*.
 - README: examples, troubleshooting, removal; hint to update the zApp firmware with Feller's zeptrion app.
-- Self-assessment against the Home Assistant quality scale (`quality_scale.yaml`).
-- Tests: switching from heldchen/ha-zeptrion-air (entity IDs, devices, actions kept), config flow, card resource, diagnostics; coverage above 97 % and strict type check in CI.
+- Quality scale: every rule up to Platinum met (self-assessed, `quality_scale.yaml`); README section *Quality*.
+- Tests: switching from heldchen/ha-zeptrion-air (entity IDs, devices, actions kept), config flow, card resource, diagnostics; coverage above 97 % and strict type check in CI, now against the newest Home Assistant release (Python 3.14); weekly Dependabot updates for the test requirements and GitHub Actions.
 - Internal: parallel updates declared for every platform; type fixes; unreachable checks and an unused dim command removed.
 
 ## 2026.11.26 – 2026-11-22

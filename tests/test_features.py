@@ -164,7 +164,7 @@ async def test_rssi_error_keeps_other_diagnostics(hass: HomeAssistant, fake_zapp
 async def test_program_smartbutton(hass: HomeAssistant, fake_zapp) -> None:
     device, host = fake_zapp
     entry = await _setup(hass, device, host)
-    hub = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, device.serial)})
+    hub = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, device.serial), entry.entry_id)
     cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
     light = _eid(hass, "light", f"zapp_{device.serial}_ch2_light")
 
@@ -199,7 +199,7 @@ async def test_program_smartbutton_without_press_changes_nothing(hass: HomeAssis
     device, host = fake_zapp
     device.smartbutton_prefix = "/zapi/smartfront"  # the other path named in the PDF
     entry = await _setup(hass, device, host)
-    hub = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, device.serial)})
+    hub = dr.async_get(hass).async_get_device_by_identifier((DOMAIN, device.serial), entry.entry_id)
     await hass.services.async_call(
         DOMAIN, "program_smartbutton",
         {"device_id": hub.id, "requests": [{"req": "GET", "loc": "192.168.1.5", "pth": "/x"}], "wait": 10},
@@ -216,7 +216,7 @@ async def test_write_name_to_zapp(hass: HomeAssistant, fake_zapp) -> None:
     entry = await _setup(hass, device, host)
     cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
     devices = dr.async_get(hass)
-    blind = devices.async_get_device(identifiers={(DOMAIN, f"{device.serial}_ch1")})
+    blind = devices.async_get_device_by_identifier((DOMAIN, f"{device.serial}_ch1"), entry.entry_id)
     area = ar.async_get(hass).async_create("Wohnzimmer Süd")
     devices.async_update_device(blind.id, name_by_user="Fenster Süd", area_id=area.id)
 
