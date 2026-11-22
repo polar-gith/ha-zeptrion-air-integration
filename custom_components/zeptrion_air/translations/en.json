@@ -3,7 +3,13 @@
     "step": {
       "confirm": {
         "description": "Do you want to add {hostname} (`{ip_address}`) to Home Assistant?",
-        "title": "Add zApp"
+        "title": "Add zApp",
+        "data": {
+          "step_duration_ms": "Blind step duration (ms)"
+        },
+        "data_description": {
+          "step_duration_ms": "Duration of a single up/down step for blinds (100-32000 ms). Can be changed later in the options."
+        }
       },
       "user": {
         "title": "Add a zApp",
@@ -11,6 +17,10 @@
         "data": {
           "hostname": "Host name or IP address",
           "step_duration_ms": "Blind step duration (ms)"
+        },
+        "data_description": {
+          "hostname": "Host name of the zApp (`zapp-<serial>.local`, on the sticker of the device) or its IP address.",
+          "step_duration_ms": "Duration of a single up/down step for blinds (100-32000 ms). Can be changed later in the options."
         }
       },
       "reconfigure": {
@@ -18,6 +28,9 @@
         "description": "New host name or IP address of this zApp. It must be the same device (same serial number); entities and settings are kept.",
         "data": {
           "hostname": "Host name or IP address"
+        },
+        "data_description": {
+          "hostname": "New host name or IP address of the same zApp."
         }
       }
     },
@@ -131,6 +144,102 @@
       },
       "reconnect": {
         "name": "Reconnect"
+      }
+    }
+  },
+  "services": {
+    "blind_up_step": {
+      "name": "Blind step up",
+      "description": "Moves the blind one step up (option step duration, default 250 ms); with slats this turns them one step."
+    },
+    "blind_down_step": {
+      "name": "Blind step down",
+      "description": "Moves the blind one step down (option step duration, default 250 ms); with slats this turns them one step."
+    },
+    "blind_recall_s1": {
+      "name": "Recall blind scene S1",
+      "description": "Recalls scene S1 of the blind."
+    },
+    "blind_recall_s2": {
+      "name": "Recall blind scene S2",
+      "description": "Recalls scene S2 of the blind."
+    },
+    "blind_recall_s3": {
+      "name": "Recall blind scene S3",
+      "description": "Recalls scene S3 of the blind."
+    },
+    "blind_recall_s4": {
+      "name": "Recall blind scene S4",
+      "description": "Recalls scene S4 of the blind."
+    },
+    "blind_store_scene": {
+      "name": "Store blind scene",
+      "description": "Stores the blind's current position on the zApp as scene S1-S4 (same as holding the scene key). Stop the blind at the wanted position first.",
+      "fields": {
+        "scene": {
+          "name": "Scene",
+          "description": "Scene number 1-4."
+        }
+      }
+    },
+    "blind_calibrate": {
+      "name": "Calibrate blind",
+      "description": "Calibration run, e.g. after a new blind was installed. Moves the blind fully up, down and up, measures and stores the travel times, then returns to the previous position. A notification shows the result."
+    },
+    "light_store_scene": {
+      "name": "Store light scene",
+      "description": "Stores the light's current state (on/off and dim level) on the zApp as scene S1-S4, like holding the scene key.",
+      "fields": {
+        "scene": {
+          "name": "Scene",
+          "description": "Scene number 1-4."
+        }
+      }
+    },
+    "light_recall_scene": {
+      "name": "Recall light scene",
+      "description": "Recalls scene S1-S4 of the light (on/off and dim level as stored on the zApp).",
+      "fields": {
+        "scene": {
+          "name": "Scene",
+          "description": "Scene number 1-4."
+        }
+      }
+    },
+    "program_smartbutton": {
+      "name": "Program Smartbutton",
+      "description": "Programs a Smartbutton of a zApp with commands (same as the zeptrion app). The Smartbuttons blink; press the one to program within the wait time. Its previous programme is replaced and cannot be read back. Notifications show progress and result.",
+      "fields": {
+        "device_id": {
+          "name": "zApp",
+          "description": "The zApp (wall device) whose Smartbutton is programmed."
+        },
+        "actions": {
+          "name": "Commands",
+          "description": "List of blinds or lights of any zApp, each with entity_id and command, e.g. entity_id cover.play_blind with command recall_s1. Commands: on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close, and timed move_open_<ms>, move_close_<ms>, dim_up_<ms>, dim_down_<ms>."
+        },
+        "requests": {
+          "name": "HTTP requests",
+          "description": "Additional HTTP requests in the Feller format (req, loc, pth, typ, hdr, prt, bdy), e.g. for other devices. At most about 560 bytes in total."
+        },
+        "wait": {
+          "name": "Wait time",
+          "description": "Seconds to press the Smartbutton (10-120)."
+        }
+      }
+    },
+    "write_name_to_zapp": {
+      "name": "Write name to zApp",
+      "description": "Writes the name shown in Home Assistant (and the area as group) into the zApp, so the zeptrion app shows it too. At most 32 bytes each; longer names are cut.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name to write; empty = the device name shown in Home Assistant."
+        },
+        "group": {
+          "name": "Group",
+          "description": "Group (room) to write; empty = the area of the device."
+        }
       }
     }
   }

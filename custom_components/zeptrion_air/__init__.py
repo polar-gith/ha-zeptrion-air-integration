@@ -116,7 +116,7 @@ async def async_setup_entry(
         coordinator=coordinator,
         integration=integration_obj
     )
-    coordinator.config_entry = entry
+    coordinator.config_entry = entry  # type: ignore[assignment]  # ZeptrionAirConfigEntry is the same entry, typed
 
     try:
         # We need to perform an initial data fetch to get device_id for setup
@@ -323,7 +323,7 @@ async def async_setup_entry(
     hub_device = registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         **hub_device_info,
-        **({"suggested_area": hub_area} if hub_area else {}),
+        **({"suggested_area": hub_area} if hub_area else {}),  # type: ignore[arg-type]
     )
     # Channel devices are created here (before the platforms), so the room of
     # each channel reaches Home Assistant while the device is new.
@@ -334,12 +334,10 @@ async def async_setup_entry(
                 identifiers={(DOMAIN, f"{serial_number}_ch{channel['id']}")},
                 name=channel.get("entity_base_name"),
                 manufacturer="Feller AG",
-                via_device_id=hub_device.id,
+                via_device_id=hub_device.id,  # type: ignore[call-arg]  # HA 2026.8+
                 suggested_area=area,
             )
 
-    integration_obj: Integration = async_get_loaded_integration(hass, entry.domain)
-    
     platform_setup_data: dict[str, Any] = {
         "hub_device_info": hub_device_info, 
         "identified_channels": identified_channels, 

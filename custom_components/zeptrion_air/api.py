@@ -89,7 +89,7 @@ class ZeptrionAirApiClient:
         delay = self._base_delay * (2**attempt)
         if self._enable_jitter:
             delay += random.uniform(0, 0.1)
-        return delay
+        return float(delay)
 
     async def _request(
         self,
@@ -407,7 +407,8 @@ class ZeptrionAirApiClient:
 
     async def async_channel_recall_s(self, channel: int, scene: int) -> dict[str, Any]:
         """Recall scene S1-S4 of a channel."""
-        return await getattr(self, f"async_channel_recall_s{int(scene)}")(channel)
+        result: dict[str, Any] = await getattr(self, f"async_channel_recall_s{int(scene)}")(channel)
+        return result
 
     async def async_channel_recall_s1(self, channel: int) -> dict[str, Any]:
         """Send 'recall_s1' command to a channel."""

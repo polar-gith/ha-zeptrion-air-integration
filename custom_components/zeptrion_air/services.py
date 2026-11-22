@@ -8,7 +8,7 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant.components import persistent_notification
-from homeassistant.config_entries import ConfigEntryState
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import area_registry as ar
@@ -76,14 +76,14 @@ PROGRAM_SCHEMA = vol.All(
 )
 
 
-def _loaded_entry(hass: HomeAssistant, entry_id: str):
+def _loaded_entry(hass: HomeAssistant, entry_id: str) -> ConfigEntry | None:
     entry = hass.config_entries.async_get_entry(entry_id)
     if entry is None or entry.domain != DOMAIN or entry.state is not ConfigEntryState.LOADED:
         return None
     return entry
 
 
-def _entry_of_device(hass: HomeAssistant, device_id: str):
+def _entry_of_device(hass: HomeAssistant, device_id: str) -> ConfigEntry:
     device = dr.async_get(hass).async_get(device_id)
     if device is None:
         raise ServiceValidationError(f"Device {device_id} not found")
@@ -93,7 +93,7 @@ def _entry_of_device(hass: HomeAssistant, device_id: str):
     raise ServiceValidationError(f"{device.name_by_user or device.name} is not a loaded zApp")
 
 
-def _host_of(entry) -> str:
+def _host_of(entry: ConfigEntry) -> str:
     """Address another zApp is reached at: the IP address when known."""
     return str(entry.data.get(CONF_IP_ADDRESS) or entry.data.get(CONF_HOSTNAME))
 

@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, cast
+
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_RGB_COLOR,
-    ColorMode,
     LightEntity,
 )
+from homeassistant.components.light.const import ColorMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
@@ -31,7 +33,7 @@ from .api import (
     ZeptrionAirApiClientError,
 )
 from .areas import suggested_area_for_channel
-from .leds import SIGNAL_LED
+from .leds import SIGNAL_LED, LedState
 from .services import async_write_name_to_zapp as _write_name
 from .const import (
     DOMAIN,
@@ -43,8 +45,11 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# State comes pushed over the WebSocket; commands are limited per zApp by the API client.
+PARALLEL_UPDATES = 0
+
 DIMMER_FULL_TRAVEL_MS = 3400
-SCENE_SCHEMA = {vol.Required("scene"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4))}
+SCENE_SCHEMA: dict[str | vol.Marker, Any] = {vol.Required("scene"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4))}
 
 # Lights are not polled (the event stream re-reads all channels after a reconnect).
 
@@ -75,7 +80,8 @@ async def async_setup_entry(
     # child entities via the modern `via_device_id` field instead of the
     # deprecated `via_device` identifiers-tuple field.
     dev_reg = dr.async_get(hass)
-    hub_device_entry = dev_reg.async_get_device_by_identifier(
+    # HA 2026.8+ API (the test environment shims it, see tests/conftest.py)
+    hub_device_entry = dev_reg.async_get_device_by_identifier(  # type: ignore[attr-defined]
         (DOMAIN, hub_serial), entry.entry_id
     )
     hub_device_id: str | None = hub_device_entry.id if hub_device_entry else None
@@ -159,14 +165,14 @@ class ZeptrionAirLight(LightEntity, RestoreEntity):
         self._channel_id = channel_id
         self._is_dimmer = is_dimmer
 
-        self._attr_device_info = device_info_for_light_entity
+        self._attr_device_info = cast(DeviceInfo, device_info_for_light_entity)
         self._attr_name = str(device_info_for_light_entity.get("name") or f"Channel {channel_id}")
         self._attr_unique_id = f"zapp_{hub_serial}_ch{channel_id}_light"
 
         self._attr_is_on = False
         self._attr_brightness = 255 if is_dimmer else None
         self._last_nonzero_brightness = 255
-        self._pending_refresh_task: asyncio.Task | None = None
+        self._pending_refresh_task: asyncio.Task[None] | None = None
         # Scenes S1-S4 as stored through Home Assistant: 0 = off, else the
         # brightness (255 for switches). The zApp keeps the real scene; this
         # only lets a recall show the stored brightness (the zApp reports 100).
@@ -486,8 +492,9 @@ class ZeptrionAirSmartfrontLed(LightEntity):
         self._attr_device_info = {"identifiers": {(DOMAIN, hub_serial)}}
 
     @property
-    def _state(self):
-        return self.config_entry.runtime_data.leds.states[self._led]
+    def _state(self) -> LedState:
+        state: LedState = self.config_entry.runtime_data.leds.states[self._led]
+        return state
 
     @property
     def is_on(self) -> bool:

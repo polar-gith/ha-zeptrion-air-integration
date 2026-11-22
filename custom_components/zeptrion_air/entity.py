@@ -23,7 +23,7 @@ class ZeptrionAirEntity(CoordinatorEntity[ZeptrionAirDataUpdateCoordinator]):
             identifiers={
                 (
                     coordinator.config_entry.domain,
-                    coordinator.config_entry.unique_id, # Corrected: use unique_id (serial number)
+                    str(coordinator.config_entry.unique_id),  # serial number
                 ),
             },
             name=coordinator.config_entry.title, # Use the hub's name

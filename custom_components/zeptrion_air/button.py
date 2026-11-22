@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from homeassistant.helpers.device_registry import DeviceInfo
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -24,6 +26,9 @@ from .const import (
 from .api import ZeptrionAirApiClientError, ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClient
 
 _LOGGER = logging.getLogger(__name__)
+
+# State comes pushed over the WebSocket; commands are limited per zApp by the API client.
+PARALLEL_UPDATES = 0
 
 # Define action types and their corresponding labels and service names
 BUTTON_ACTIONS: list[dict[str, str]] = [
@@ -175,9 +180,7 @@ class ZeptrionAirActionButton(ButtonEntity):
         _LOGGER.debug("  Unique ID: '%s'", self._attr_unique_id)
 
         # Link this button to the specific cover channel's device entry in HA
-        self._attr_device_info: dict[str, set[tuple[str, str]]] = {
-            "identifiers": {(DOMAIN, f"{hub_serial}_ch{channel_id}")},
-        }
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, f"{hub_serial}_ch{channel_id}")})
 
     async def async_press(self) -> None:
         """Handle the button press by making a direct API call."""

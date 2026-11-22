@@ -1,0 +1,99 @@
+# Self-assessment against the Home Assistant integration quality scale
+# (https://developers.home-assistant.io/docs/core/integration-quality-scale/).
+# Status: done, todo or exempt (with the reason).
+rules:
+  # Bronze
+  action-setup:
+    status: done
+    comment: Integration-wide actions in async_setup, entity actions at platform setup.
+  appropriate-polling:
+    status: done
+    comment: States are pushed over the WebSocket; only the Wi-Fi signal is read once a minute.
+  brands: done
+  common-modules: done
+  config-flow: done
+  config-flow-test-coverage: done
+  dependency-transparency: done
+  docs-actions: done
+  docs-conditions:
+    status: exempt
+    comment: The integration provides no conditions of its own.
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
+  docs-triggers:
+    status: exempt
+    comment: No triggers of its own; wall keys are event entities (documented with an example).
+  entity-event-setup: done
+  entity-unique-id: done
+  has-entity-name:
+    status: todo
+    comment: >-
+      Blinds and channel lights take the channel name from the zApp as entity name.
+      Switching them to has_entity_name changes their friendly names for existing users.
+  runtime-data: done
+  test-before-configure: done
+  test-before-setup: done
+  unique-config-entry: done
+
+  # Silver
+  action-exceptions: done
+  config-entry-unloading: done
+  docs-configuration-parameters: done
+  docs-installation-parameters: done
+  entity-unavailable: done
+  integration-owner: done
+  log-when-unavailable: done
+  parallel-updates: done
+  reauthentication-flow:
+    status: exempt
+    comment: The zApp API has no authentication.
+  test-coverage:
+    status: todo
+    comment: 88 % (CI fails below 87 %); target above 95 %.
+
+  # Gold
+  devices: done
+  diagnostics: done
+  discovery: done
+  discovery-update-info: done
+  docs-data-update: done
+  docs-examples: done
+  docs-known-limitations: done
+  docs-supported-devices: done
+  docs-supported-functions: done
+  docs-troubleshooting: done
+  docs-use-cases: done
+  dynamic-devices:
+    status: exempt
+    comment: >-
+      Each zApp is its own config entry, added by discovery; its channels are fixed
+      by the hardware.
+  entity-category: done
+  entity-device-class: done
+  entity-disabled-by-default: done
+  entity-translations:
+    status: todo
+    comment: The scene and store buttons still have fixed English names.
+  exception-translations:
+    status: todo
+    comment: Error messages of actions are English only.
+  icon-translations:
+    status: todo
+    comment: Actions have icons in icons.json; entity icons are still set in code.
+  reconfiguration-flow: done
+  repair-issues:
+    status: exempt
+    comment: No problem needs a repair flow; the Wi-Fi notices were removed on purpose.
+  stale-devices:
+    status: exempt
+    comment: >-
+      Devices are the zApp and its hardware channels; a removed zApp is removed with
+      its config entry.
+
+  # Platinum
+  async-dependency: done
+  inject-websession: done
+  strict-typing:
+    status: done
+    comment: mypy --strict in CI (mypy.ini).

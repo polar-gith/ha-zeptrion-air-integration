@@ -18,7 +18,8 @@ Use the [issue forms](../../issues/new/choose). For bugs they ask for the integr
 ```bash
 pip install -r requirements_test.txt
 ruff check .                              # lint
-python -m pytest -q                       # integration tests against a simulated zApp
+mypy custom_components/zeptrion_air       # strict type check (mypy.ini)
+python -m pytest -q --cov=custom_components.zeptrion_air   # tests against a simulated zApp, with coverage
 node --test tests/js/*.test.mjs           # dashboard parts (Node.js 22, no packages needed)
 ```
 

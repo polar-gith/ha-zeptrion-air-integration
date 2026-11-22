@@ -1,62 +1,46 @@
 blind_up_step:
-  name: Blind Up Step
-  description: Moves the blind one step up (option "step duration", default 250 ms); with slats this turns them one step.
   target:
     entity:
       integration: zeptrion_air
       domain: cover
 
 blind_down_step:
-  name: Blind Down Step
-  description: Moves the blind one step down (option "step duration", default 250 ms); with slats this turns them one step.
   target:
     entity:
       integration: zeptrion_air
       domain: cover
 
 blind_recall_s1:
-  name: Blind Recall S1
-  description: Recalls scene S1 for the blind.
   target:
     entity:
       integration: zeptrion_air
       domain: cover
 
 blind_recall_s2:
-  name: Blind Recall S2
-  description: Recalls scene S2 for the blind.
   target:
     entity:
       integration: zeptrion_air
       domain: cover
 
 blind_recall_s3:
-  name: Blind Recall S3
-  description: Recalls scene S3 for the blind.
   target:
     entity:
       integration: zeptrion_air
       domain: cover
 
 blind_recall_s4:
-  name: Blind Recall S4
-  description: Recalls scene S4 for the blind.
   target:
     entity:
       integration: zeptrion_air
       domain: cover
 
 blind_store_scene:
-  name: Blind Store Scene
-  description: Stores the blind's current position on the zApp as scene S1-S4 (same as holding the scene key). Stop the blind at the wanted position first.
   target:
     entity:
       integration: zeptrion_air
       domain: cover
   fields:
     scene:
-      name: Scene
-      description: Scene number 1-4.
       required: true
       example: 1
       selector:
@@ -66,24 +50,18 @@ blind_store_scene:
           mode: box
 
 blind_calibrate:
-  name: Blind Calibrate
-  description: Calibration run, e.g. after a new blind was installed. Moves the blind fully up, down and up, measures and stores the travel times, then returns to the previous position. A notification shows the result.
   target:
     entity:
       integration: zeptrion_air
       domain: cover
 
 light_store_scene:
-  name: Light Store Scene
-  description: Stores the light's current state (on/off and dim level) on the zApp as scene S1-S4, like holding the scene key.
   target:
     entity:
       integration: zeptrion_air
       domain: light
   fields:
     scene:
-      name: Scene
-      description: Scene number 1-4.
       required: true
       example: 1
       selector:
@@ -93,16 +71,12 @@ light_store_scene:
           mode: box
 
 light_recall_scene:
-  name: Light Recall Scene
-  description: Recalls scene S1-S4 of the light (on/off and dim level as stored on the zApp).
   target:
     entity:
       integration: zeptrion_air
       domain: light
   fields:
     scene:
-      name: Scene
-      description: Scene number 1-4.
       required: true
       example: 1
       selector:
@@ -112,39 +86,20 @@ light_recall_scene:
           mode: box
 
 program_smartbutton:
-  name: Program Smartbutton
-  description: >-
-    Programs a Smartbutton of a zApp with commands (same as the zeptrion app). The Smartbuttons blink;
-    press the one to program within the wait time. Its previous programme is replaced and cannot be read back.
-    Notifications show progress and result.
   fields:
     device_id:
-      name: zApp
-      description: The zApp (wall device) whose Smartbutton is programmed.
       required: true
       selector:
         device:
           integration: zeptrion_air
     actions:
-      name: Commands
-      description: >-
-        List of blinds or lights of any zApp and the command to send, e.g.
-        [{entity_id: cover.play_blind, command: recall_s1}, {entity_id: light.kitchen_light, command: toggle}].
-        Commands: on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close,
-        and timed move_open_<ms>, move_close_<ms>, dim_up_<ms>, dim_down_<ms>.
       example: "[{entity_id: cover.play_blind, command: recall_s1}]"
       selector:
         object:
     requests:
-      name: HTTP requests
-      description: >-
-        Additional HTTP requests in the Feller format (req, loc, pth, typ, hdr, prt, bdy), e.g. for other devices.
-        At most about 560 bytes in total.
       selector:
         object:
     wait:
-      name: Wait time
-      description: Seconds to press the Smartbutton (10-120).
       default: 60
       selector:
         number:
@@ -153,10 +108,6 @@ program_smartbutton:
           unit_of_measurement: s
 
 write_name_to_zapp:
-  name: Write name to zApp
-  description: >-
-    Writes the name shown in Home Assistant (and the area as group) into the zApp, so the zeptrion app shows it too.
-    At most 32 bytes each; longer names are cut.
   target:
     entity:
       integration: zeptrion_air
@@ -165,12 +116,8 @@ write_name_to_zapp:
         - light
   fields:
     name:
-      name: Name
-      description: Name to write; empty = the device name shown in Home Assistant.
       selector:
         text:
     group:
-      name: Group
-      description: Group (room) to write; empty = the area of the device.
       selector:
         text:

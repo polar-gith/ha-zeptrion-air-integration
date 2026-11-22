@@ -7,12 +7,15 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, SIGNAL_CHANNEL_DESCRIPTOR
 
 _LOGGER = logging.getLogger(__name__)
+
+# State comes pushed over the WebSocket; commands are limited per zApp by the API client.
+PARALLEL_UPDATES = 0
 
 # Define constants for sensor types to avoid magic strings
 SENSOR_TYPE_NAME: str = "name"
@@ -425,7 +428,8 @@ class ZeptrionAirConnectionSensor(ZeptrionAirEntity, SensorEntity):
         if self.entity_description.key == "connects":
             listener = runtime_data.websocket_listener
             return listener.connects if listener else 0
-        return getattr(runtime_data, self.entity_description.key)
+        value: int | None = getattr(runtime_data, self.entity_description.key)
+        return value
 
     @property
     def available(self) -> bool:

@@ -1,0 +1,40 @@
+{
+  "services": {
+    "blind_up_step": {
+      "service": "mdi:arrow-up-thin"
+    },
+    "blind_down_step": {
+      "service": "mdi:arrow-down-thin"
+    },
+    "blind_recall_s1": {
+      "service": "mdi:numeric-1-box-outline"
+    },
+    "blind_recall_s2": {
+      "service": "mdi:numeric-2-box-outline"
+    },
+    "blind_recall_s3": {
+      "service": "mdi:numeric-3-box-outline"
+    },
+    "blind_recall_s4": {
+      "service": "mdi:numeric-4-box-outline"
+    },
+    "blind_store_scene": {
+      "service": "mdi:content-save-outline"
+    },
+    "blind_calibrate": {
+      "service": "mdi:tune-vertical"
+    },
+    "light_store_scene": {
+      "service": "mdi:content-save-outline"
+    },
+    "light_recall_scene": {
+      "service": "mdi:palette-outline"
+    },
+    "program_smartbutton": {
+      "service": "mdi:gesture-tap-button"
+    },
+    "write_name_to_zapp": {
+      "service": "mdi:rename-outline"
+    }
+  }
+}

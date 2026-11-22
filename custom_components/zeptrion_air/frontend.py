@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_call_later
 
@@ -84,7 +86,7 @@ async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
             )
 
 
-async def async_setup_frontend(hass: HomeAssistant, entry) -> None:
+async def async_setup_frontend(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Set up frontend components once per Home Assistant run."""
     domain_data: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
     if domain_data.get(_FRONTEND_SETUP_KEY):
@@ -101,7 +103,7 @@ async def async_setup_frontend(hass: HomeAssistant, entry) -> None:
 
     lock = asyncio.Lock()
 
-    async def delayed_setup(_now) -> None:
+    async def delayed_setup(_now: datetime) -> None:
         async with lock:
             try:
                 await _async_ensure_lovelace_resource(hass)

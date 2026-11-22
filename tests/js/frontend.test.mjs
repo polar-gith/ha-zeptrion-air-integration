@@ -219,3 +219,27 @@ test('dashboard strategy without Zeptrion entities shows a hint', async () => {
   assert.equal(dashboard.views.length, 1);
   assert.equal(dashboard.views[0].cards[0].type, 'markdown');
 });
+
+test('dashboard strategy speaks the user language', async () => {
+  const { registry } = load();
+  const Strategy = registry.get('ll-strategy-dashboard-zeptrion-air');
+  const hass = { ...fakeHass(), locale: { language: 'de' } };
+  const dashboard = await Strategy.generate({}, hass);
+  assert.equal(dashboard.views[2].title, 'Weitere');
+  assert.equal(dashboard.views[2].sections[0].cards[0].heading, 'Weitere');
+  const empty = await Strategy.generate({}, { language: 'fr', entities: {}, states: {}, areas: {}, floors: {}, devices: {} });
+  assert.match(empty.views[0].cards[0].content, /Aucun store/);
+});
+
+test('the old blinds card warns once that it is deprecated', () => {
+  const { registry, window, context } = load();
+  const warnings = [];
+  context.console = { ...console, warn: (message) => warnings.push(message) };
+  vm.runInContext('console = this.console', context);
+  const Card = registry.get('zeptrion-air-blinds-card');
+  new Card().setConfig({ entity: 'cover.blind' });
+  new Card().setConfig({ entity: 'cover.blind' });
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /deprecated/);
+  assert.match(window.customCards.find((c) => c.type === 'zeptrion-air-blinds-card').name, /deprecated/);
+});

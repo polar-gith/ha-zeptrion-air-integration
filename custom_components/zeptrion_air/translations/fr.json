@@ -7,17 +7,30 @@
         "data": {
           "hostname": "Nom d'hôte ou adresse IP",
           "step_duration_ms": "Durée d'un pas des stores (ms)"
+        },
+        "data_description": {
+          "hostname": "Nom d'hôte du zApp (`zapp-<serial>.local`, sur l'étiquette de l'appareil) ou son adresse IP.",
+          "step_duration_ms": "Durée d'un pas vers le haut ou le bas pour les stores (100-32000 ms). Modifiable plus tard dans les options."
         }
       },
       "confirm": {
         "description": "Voulez-vous ajouter {hostname} (`{ip_address}`) à Home Assistant ?",
-        "title": "Ajouter un zApp"
+        "title": "Ajouter un zApp",
+        "data": {
+          "step_duration_ms": "Durée d'un pas des stores (ms)"
+        },
+        "data_description": {
+          "step_duration_ms": "Durée d'un pas vers le haut ou le bas pour les stores (100-32000 ms). Modifiable plus tard dans les options."
+        }
       },
       "reconfigure": {
         "title": "Modifier l'adresse de {name}",
         "description": "Nouveau nom d'hôte ou nouvelle adresse IP de ce zApp. Il doit s'agir du même appareil (même numéro de série) ; les entités et réglages sont conservés.",
         "data": {
           "hostname": "Nom d'hôte ou adresse IP"
+        },
+        "data_description": {
+          "hostname": "Nouveau nom d'hôte ou nouvelle adresse IP du même zApp."
         }
       }
     },
@@ -131,6 +144,102 @@
       },
       "reconnect": {
         "name": "Reconnecter"
+      }
+    }
+  },
+  "services": {
+    "blind_up_step": {
+      "name": "Store un pas vers le haut",
+      "description": "Monte le store d'un pas (option durée du pas, 250 ms par défaut) ; avec des lamelles, cela les tourne d'un pas."
+    },
+    "blind_down_step": {
+      "name": "Store un pas vers le bas",
+      "description": "Descend le store d'un pas (option durée du pas, 250 ms par défaut) ; avec des lamelles, cela les tourne d'un pas."
+    },
+    "blind_recall_s1": {
+      "name": "Rappeler la scène S1 du store",
+      "description": "Rappelle la scène S1 du store."
+    },
+    "blind_recall_s2": {
+      "name": "Rappeler la scène S2 du store",
+      "description": "Rappelle la scène S2 du store."
+    },
+    "blind_recall_s3": {
+      "name": "Rappeler la scène S3 du store",
+      "description": "Rappelle la scène S3 du store."
+    },
+    "blind_recall_s4": {
+      "name": "Rappeler la scène S4 du store",
+      "description": "Rappelle la scène S4 du store."
+    },
+    "blind_store_scene": {
+      "name": "Enregistrer la scène du store",
+      "description": "Enregistre la position actuelle du store dans le zApp comme scène S1-S4 (comme un appui long sur la touche de scène). Arrêtez d'abord le store à la position voulue.",
+      "fields": {
+        "scene": {
+          "name": "Scène",
+          "description": "Numéro de scène 1-4."
+        }
+      }
+    },
+    "blind_calibrate": {
+      "name": "Calibrer le store",
+      "description": "Course de calibrage, p. ex. après l'installation d'un nouveau store. Monte, descend et remonte entièrement, mesure et enregistre les durées de course, puis revient à la position précédente. Une notification indique le résultat."
+    },
+    "light_store_scene": {
+      "name": "Enregistrer la scène de la lumière",
+      "description": "Enregistre l'état actuel de la lumière (allumée/éteinte et niveau de variation) dans le zApp comme scène S1-S4, comme un appui long sur la touche de scène.",
+      "fields": {
+        "scene": {
+          "name": "Scène",
+          "description": "Numéro de scène 1-4."
+        }
+      }
+    },
+    "light_recall_scene": {
+      "name": "Rappeler la scène de la lumière",
+      "description": "Rappelle la scène S1-S4 de la lumière (allumée/éteinte et niveau de variation enregistrés dans le zApp).",
+      "fields": {
+        "scene": {
+          "name": "Scène",
+          "description": "Numéro de scène 1-4."
+        }
+      }
+    },
+    "program_smartbutton": {
+      "name": "Programmer un Smartbutton",
+      "description": "Programme un Smartbutton d'un zApp avec des commandes (comme l'app zeptrion). Les Smartbuttons clignotent ; appuyez sur celui à programmer pendant le temps d'attente. Son programme précédent est remplacé et ne peut pas être relu. Des notifications indiquent la progression et le résultat.",
+      "fields": {
+        "device_id": {
+          "name": "zApp",
+          "description": "Le zApp (appareil mural) dont le Smartbutton est programmé."
+        },
+        "actions": {
+          "name": "Commandes",
+          "description": "Liste de stores ou de lumières de n'importe quel zApp, chacun avec entity_id et command, p. ex. entity_id cover.play_blind avec command recall_s1. Commandes : on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close, et temporisées move_open_<ms>, move_close_<ms>, dim_up_<ms>, dim_down_<ms>."
+        },
+        "requests": {
+          "name": "Requêtes HTTP",
+          "description": "Requêtes HTTP supplémentaires au format Feller (req, loc, pth, typ, hdr, prt, bdy), p. ex. pour d'autres appareils. Environ 560 octets au maximum au total."
+        },
+        "wait": {
+          "name": "Temps d'attente",
+          "description": "Secondes pour appuyer sur le Smartbutton (10-120)."
+        }
+      }
+    },
+    "write_name_to_zapp": {
+      "name": "Écrire le nom dans le zApp",
+      "description": "Écrit le nom affiché dans Home Assistant (et la pièce comme groupe) dans le zApp, pour que l'app zeptrion l'affiche aussi. 32 octets au maximum chacun ; les noms plus longs sont coupés.",
+      "fields": {
+        "name": {
+          "name": "Nom",
+          "description": "Nom à écrire ; vide = le nom de l'appareil affiché dans Home Assistant."
+        },
+        "group": {
+          "name": "Groupe",
+          "description": "Groupe (pièce) à écrire ; vide = la pièce de l'appareil."
+        }
       }
     }
   }

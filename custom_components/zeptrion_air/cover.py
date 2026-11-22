@@ -4,8 +4,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
+
+from homeassistant.helpers.device_registry import DeviceInfo
 
 import voluptuous as vol
 from homeassistant.components.cover import (
@@ -67,6 +70,9 @@ MOVING_CHECK_MARGIN_S = 15.0
 
 _LOGGER = logging.getLogger(__name__)
 
+# State comes pushed over the WebSocket; commands are limited per zApp by the API client.
+PARALLEL_UPDATES = 0
+
 # A command or key press counts as the start of a run that begins within this time.
 SOURCE_HINT_S = 5.0
 
@@ -99,7 +105,8 @@ async def async_setup_entry(
     # child entities via the modern `via_device_id` field instead of the
     # deprecated `via_device` identifiers-tuple field.
     dev_reg = dr.async_get(hass)
-    hub_device_entry = dev_reg.async_get_device_by_identifier(
+    # HA 2026.8+ API (the test environment shims it, see tests/conftest.py)
+    hub_device_entry = dev_reg.async_get_device_by_identifier(  # type: ignore[attr-defined]
         (DOMAIN, hub_serial_for_blinds), entry.entry_id
     )
     hub_device_id: str | None = hub_device_entry.id if hub_device_entry else None
@@ -226,7 +233,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         self.config_entry: ConfigEntry = config_entry
         self._channel_id: int = channel_id
 
-        self._attr_device_info: dict[str, Any] = device_info_for_blind_entity
+        self._attr_device_info = cast(DeviceInfo, device_info_for_blind_entity)
 
         name_val = device_info_for_blind_entity.get("name")
         self._attr_name: str = str(name_val) if name_val is not None else f"Channel {channel_id}"
@@ -407,7 +414,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         """Remember who is about to start a run (matched with the next start)."""
         self._source_hint = (source, time.monotonic())
 
-    async def _send(self, label: str, coro_factory) -> None:
+    async def _send(self, label: str, coro_factory: Callable[[], Awaitable[Any]]) -> None:
         self._mark_source("home_assistant")
         try:
             await coro_factory()
@@ -633,6 +640,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         samples.append(round(duration, 2))
         del samples[:-AUTO_SAMPLES_KEPT]
         current = self._travel.for_direction(direction)  # type: ignore[arg-type]
+        value: float | None
         if current is None:
             value = round(duration, 1)
         else:
@@ -641,6 +649,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             value = pool.result(direction)  # type: ignore[arg-type]
             if value is None or abs(value - current) <= 0.5:
                 return
+        assert value is not None
         _LOGGER.info(
             "Blind %s: travel time %s learned from the zApp: %.1f s (was %s)",
             self._attr_name, direction, value, current,

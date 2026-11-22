@@ -7,17 +7,30 @@
         "data": {
           "hostname": "Nome host o indirizzo IP",
           "step_duration_ms": "Durata di un passo delle tende (ms)"
+        },
+        "data_description": {
+          "hostname": "Nome host dello zApp (`zapp-<serial>.local`, sull'etichetta del dispositivo) o il suo indirizzo IP.",
+          "step_duration_ms": "Durata di un singolo passo su/giù per le tende (100-32000 ms). Modificabile più tardi nelle opzioni."
         }
       },
       "confirm": {
         "description": "Vuoi aggiungere {hostname} (`{ip_address}`) a Home Assistant?",
-        "title": "Aggiungi zApp"
+        "title": "Aggiungi zApp",
+        "data": {
+          "step_duration_ms": "Durata di un passo delle tende (ms)"
+        },
+        "data_description": {
+          "step_duration_ms": "Durata di un singolo passo su/giù per le tende (100-32000 ms). Modificabile più tardi nelle opzioni."
+        }
       },
       "reconfigure": {
         "title": "Modifica l'indirizzo di {name}",
         "description": "Nuovo nome host o nuovo indirizzo IP di questo zApp. Deve essere lo stesso dispositivo (stesso numero di serie); entità e impostazioni vengono mantenute.",
         "data": {
           "hostname": "Nome host o indirizzo IP"
+        },
+        "data_description": {
+          "hostname": "Nuovo nome host o nuovo indirizzo IP dello stesso zApp."
         }
       }
     },
@@ -131,6 +144,102 @@
       },
       "reconnect": {
         "name": "Riconnetti"
+      }
+    }
+  },
+  "services": {
+    "blind_up_step": {
+      "name": "Tenda un passo su",
+      "description": "Alza la tenda di un passo (opzione durata del passo, predefinito 250 ms); con le lamelle le ruota di un passo."
+    },
+    "blind_down_step": {
+      "name": "Tenda un passo giù",
+      "description": "Abbassa la tenda di un passo (opzione durata del passo, predefinito 250 ms); con le lamelle le ruota di un passo."
+    },
+    "blind_recall_s1": {
+      "name": "Richiama scena S1 della tenda",
+      "description": "Richiama la scena S1 della tenda."
+    },
+    "blind_recall_s2": {
+      "name": "Richiama scena S2 della tenda",
+      "description": "Richiama la scena S2 della tenda."
+    },
+    "blind_recall_s3": {
+      "name": "Richiama scena S3 della tenda",
+      "description": "Richiama la scena S3 della tenda."
+    },
+    "blind_recall_s4": {
+      "name": "Richiama scena S4 della tenda",
+      "description": "Richiama la scena S4 della tenda."
+    },
+    "blind_store_scene": {
+      "name": "Salva scena della tenda",
+      "description": "Salva la posizione attuale della tenda nello zApp come scena S1-S4 (come tenere premuto il tasto scena). Prima fermare la tenda nella posizione desiderata.",
+      "fields": {
+        "scene": {
+          "name": "Scena",
+          "description": "Numero della scena 1-4."
+        }
+      }
+    },
+    "blind_calibrate": {
+      "name": "Calibra tenda",
+      "description": "Corsa di calibrazione, ad es. dopo l'installazione di una nuova tenda. Sale, scende e risale completamente, misura e salva i tempi di corsa, poi torna alla posizione precedente. Una notifica mostra il risultato."
+    },
+    "light_store_scene": {
+      "name": "Salva scena della luce",
+      "description": "Salva lo stato attuale della luce (accesa/spenta e livello di regolazione) nello zApp come scena S1-S4, come tenere premuto il tasto scena.",
+      "fields": {
+        "scene": {
+          "name": "Scena",
+          "description": "Numero della scena 1-4."
+        }
+      }
+    },
+    "light_recall_scene": {
+      "name": "Richiama scena della luce",
+      "description": "Richiama la scena S1-S4 della luce (accesa/spenta e livello di regolazione salvati nello zApp).",
+      "fields": {
+        "scene": {
+          "name": "Scena",
+          "description": "Numero della scena 1-4."
+        }
+      }
+    },
+    "program_smartbutton": {
+      "name": "Programma Smartbutton",
+      "description": "Programma uno Smartbutton di uno zApp con comandi (come l'app zeptrion). Gli Smartbutton lampeggiano; premere quello da programmare entro il tempo di attesa. Il programma precedente viene sostituito e non può essere riletto. Le notifiche mostrano avanzamento e risultato.",
+      "fields": {
+        "device_id": {
+          "name": "zApp",
+          "description": "Lo zApp (apparecchio a parete) il cui Smartbutton viene programmato."
+        },
+        "actions": {
+          "name": "Comandi",
+          "description": "Elenco di tende o luci di qualsiasi zApp, ciascuna con entity_id e command, ad es. entity_id cover.play_blind con command recall_s1. Comandi: on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close e temporizzati move_open_<ms>, move_close_<ms>, dim_up_<ms>, dim_down_<ms>."
+        },
+        "requests": {
+          "name": "Richieste HTTP",
+          "description": "Richieste HTTP aggiuntive nel formato Feller (req, loc, pth, typ, hdr, prt, bdy), ad es. per altri dispositivi. Al massimo circa 560 byte in totale."
+        },
+        "wait": {
+          "name": "Tempo di attesa",
+          "description": "Secondi per premere lo Smartbutton (10-120)."
+        }
+      }
+    },
+    "write_name_to_zapp": {
+      "name": "Scrivi nome nello zApp",
+      "description": "Scrive il nome mostrato in Home Assistant (e l'area come gruppo) nello zApp, così anche l'app zeptrion lo mostra. Al massimo 32 byte ciascuno; i nomi più lunghi vengono troncati.",
+      "fields": {
+        "name": {
+          "name": "Nome",
+          "description": "Nome da scrivere; vuoto = il nome del dispositivo mostrato in Home Assistant."
+        },
+        "group": {
+          "name": "Gruppo",
+          "description": "Gruppo (stanza) da scrivere; vuoto = l'area del dispositivo."
+        }
       }
     }
   }

@@ -70,7 +70,7 @@ features:
   - type: custom:zeptrion-air-scenes
 ```
 
-Blinds call `blind_recall_s1`–`s4`, lights `light_recall_scene`, always on the tile's own entity. The feature is offered for Zeptrion Air blinds and lights only. The older *Zeptrion Air Blinds Card* (`custom:zeptrion-air-blinds-card`) is still there for existing dashboards.
+Blinds call `blind_recall_s1`–`s4`, lights `light_recall_scene`, always on the tile's own entity. The feature is offered for Zeptrion Air blinds and lights only. The older *Zeptrion Air Blinds Card* (`custom:zeptrion-air-blinds-card`) is **deprecated**: it still works in existing dashboards but will be removed in a future version; replace it by a tile card with this feature.
 
 **Ready-made dashboard:** the dashboard strategy *Zeptrion Air* builds a dashboard from all Zeptrion Air blinds and lights, one view per floor and one section per area, with tiles for open/close, tilt, brightness and scenes. It is generated on every load, so new zApps and area changes show up without editing. Create a new dashboard, open its raw configuration editor and enter:
 
@@ -182,6 +182,27 @@ Developed and tested against one real installation (November 2026):
 
 Not tested: awnings and firmware older than 01.08.28.
 
+## Examples
+
+- **Shade at the wall only:** react to `last_run.started_by: other` or `wall_key` to pause a sun automation for a while after someone moved a blind by hand.
+- **Smartbutton as scene key:** program a Smartbutton with `program_smartbutton` to recall S1 on all blinds of a floor; it works between the zApps also when Home Assistant is down.
+- **Status LED:** set a Smartfront LED red while a window is open (light *Smartfront LED n*, colour and brightness).
+- **Wall key as trigger:** start any automation from a key press (`event.received` on *Wall keys*, see above).
+
+## Troubleshooting
+
+- **zApp not found:** it must be reachable from Home Assistant under its host name `zapp-<serial>` or its IP address; add it by hand with the IP address if mDNS does not cross your network segments.
+- **Entities unavailable:** the WebSocket to the zApp is down for more than 60 s. Check the Wi-Fi signal sensor of the zApp (a weak signal causes drops) and use the button *Reconnect*; a zApp that does not answer at all needs a short power cut.
+- **Blind position wrong or unknown:** run *Calibrate* once, or set the travel times in the options. Runs started elsewhere without a known direction make the position unknown until the next full run.
+- **Card or scenes feature missing in the dashboard:** reload the browser page (clear the cache once after an update).
+- **Report a problem:** enable debug logging for the integration, reproduce the problem and attach the log and the diagnostics download (Settings → Devices & services → Zeptrion Air → ⋮ next to the zApp → Download diagnostics) to an [issue](https://github.com/polar-gith/ha-zeptrion-air-integration/issues/new/choose).
+
+## Removal
+
+1. Settings → Devices & services → Zeptrion Air: delete every zApp entry (⋮ → Delete). Its devices and entities are removed with it.
+2. Remove the integration in HACS (Settings → Marketplace) and restart Home Assistant.
+3. Optional: remove dashboard cards that use `custom:zeptrion-air-blinds-card`, `custom:zeptrion-air-scenes` or the `custom:zeptrion-air` dashboard; the card resource is no longer served after the restart.
+
 ## Limitations
 
 - Blind positions and dimmer brightness are estimates; the zApp reports neither. Scenes cannot be read back. Position estimates rely on the timing of the WebSocket messages and get less accurate on zApps with a weak Wi-Fi signal.
@@ -195,6 +216,7 @@ Not tested: awnings and firmware older than 01.08.28.
 - Protocol notes by diaznet: [zeptrionair-api `docs/protocol.md`](https://github.com/diaznet/zeptrionair-api/blob/main/docs/protocol.md).
 - The blinds card is served at `/api/zeptrion_air/zeptrion-air-blinds-card.js` and registered once as a dashboard resource.
 - Versions follow `YEAR.MONTH.PATCH`, released as tags `vYYYY.M.PATCH`; changes per version in [CHANGELOG.md](CHANGELOG.md).
+- Self-assessment against the [Home Assistant integration quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/): [quality_scale.yaml](custom_components/zeptrion_air/quality_scale.yaml).
 - Bugs and ideas: [issue forms](https://github.com/polar-gith/ha-zeptrion-air-integration/issues/new/choose); contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits

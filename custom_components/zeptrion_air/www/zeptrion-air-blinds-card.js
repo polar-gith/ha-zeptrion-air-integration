@@ -16,7 +16,13 @@ class ZeptrionAirBlindsCard extends HTMLElement {
   }
   
   setConfig(config) {
-    
+    if (!window.__zeptrionAirBlindsCardWarned) {
+      window.__zeptrionAirBlindsCardWarned = true;
+      console.warn(
+        'Zeptrion Air Blinds Card is deprecated and will be removed in a future version. ' +
+          'Use a tile card with the feature "Zeptrion scenes S1–S4" (custom:zeptrion-air-scenes).'
+      );
+    }
     if (!config.entity) {
       throw new Error('You need to define a cover entity');
     }
@@ -303,8 +309,8 @@ window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === 'zeptrion-air-blinds-card')) {
   window.customCards.push({
     type: 'zeptrion-air-blinds-card',
-    name: 'Zeptrion Air Blinds Card',
-    description: 'Blind controls with scenes S1–S4. For new dashboards use a tile card with the feature "Zeptrion scenes S1–S4".'
+    name: 'Zeptrion Air Blinds Card (deprecated)',
+    description: 'Deprecated: use a tile card with the feature "Zeptrion scenes S1–S4". Kept for existing dashboards.'
   });
 }
 
@@ -455,6 +461,19 @@ if (!customElements.get('zeptrion-air-scenes')) {
 // ---------------------------------------------------------------------------
 
 const ZEPTRION_COVER_OPEN_CLOSE = 1 | 2; // OPEN | CLOSE
+
+// Texts of the generated dashboard, by the user's language (English otherwise).
+const ZEPTRION_DASHBOARD_TEXTS = {
+  en: { other: 'Other', empty: 'No Zeptrion Air blinds or lights found.' },
+  de: { other: 'Weitere', empty: 'Keine Zeptrion-Air-Storen oder -Lichter gefunden.' },
+  fr: { other: 'Autres', empty: 'Aucun store ni aucune lumière Zeptrion Air trouvé.' },
+  it: { other: 'Altri', empty: 'Nessuna tenda o luce Zeptrion Air trovata.' },
+};
+
+function zeptrionDashboardText(hass, key) {
+  const language = String((hass.locale && hass.locale.language) || hass.language || 'en').split('-')[0];
+  return (ZEPTRION_DASHBOARD_TEXTS[language] || ZEPTRION_DASHBOARD_TEXTS.en)[key];
+}
 const ZEPTRION_COVER_TILT = 16 | 32; // OPEN_TILT | CLOSE_TILT
 
 function zeptrionDashboardEntities(hass) {
@@ -504,7 +523,7 @@ class ZeptrionAirDashboardStrategy extends HTMLElement {
     if (!groups.size) {
       return {
         title: 'Zeptrion Air',
-        views: [{ title: 'Zeptrion Air', cards: [{ type: 'markdown', content: 'No Zeptrion Air blinds or lights found.' }] }],
+        views: [{ title: 'Zeptrion Air', cards: [{ type: 'markdown', content: zeptrionDashboardText(hass, 'empty') }] }],
       };
     }
 
@@ -514,7 +533,7 @@ class ZeptrionAirDashboardStrategy extends HTMLElement {
       return {
         type: 'grid',
         cards: [
-          { type: 'heading', heading: area ? area.name : 'Other', icon: area && area.icon ? area.icon : undefined },
+          { type: 'heading', heading: area ? area.name : zeptrionDashboardText(hass, 'other'), icon: area && area.icon ? area.icon : undefined },
           ...groups.get(areaId).sort(sort).map((entityId) => zeptrionTile(hass, entityId, scenes)),
         ],
       };
@@ -537,7 +556,7 @@ class ZeptrionAirDashboardStrategy extends HTMLElement {
     const areaName = (id) => (areas[id] ? areas[id].name : '￿');
     const views = floorIds.map((floorId) => {
       const floor = floors[floorId];
-      const title = floor ? floor.name : floorIds.length > 1 ? 'Other' : 'Zeptrion Air';
+      const title = floor ? floor.name : floorIds.length > 1 ? zeptrionDashboardText(hass, 'other') : 'Zeptrion Air';
       return {
         title,
         path: floor ? `floor-${floorId}` : 'other',

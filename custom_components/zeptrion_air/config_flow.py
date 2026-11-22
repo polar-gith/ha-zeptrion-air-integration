@@ -57,7 +57,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> data_entry_flow.FlowResult: 
+    ) -> config_entries.ConfigFlowResult: 
         """Handle a flow initialized by the user."""
         errors: dict[str, str] = {}
 
@@ -81,11 +81,13 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     LOGGER.error("Could not determine serial number from device %s for user setup.", user_input[CONF_HOSTNAME])
                     errors["base"] = "unknown"
+            except data_entry_flow.AbortFlow:
+                raise  # e.g. already configured: abort, not "unknown error"
             except ZeptrionAirApiClientCommunicationError:
                 errors["base"] = "cannot_connect"
             except ZeptrionAirApiClientError:
                 errors["base"] = "unknown"
-            except Exception: 
+            except Exception:
                 LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
             
@@ -112,7 +114,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
 
-    async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> data_entry_flow.FlowResult:
+    async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> config_entries.ConfigFlowResult:
         """Prepare configuration for a discovered Zeptrion Air device."""
         
         hostname: str = discovery_info.hostname[:-1] if discovery_info.hostname.endswith('.') else discovery_info.hostname
@@ -121,27 +123,12 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # this keeps anything else out.
             return self.async_abort(reason="not_zeptrion_device")
         
-        # Extract serial number from hostname
-        unique_id_to_set: str = hostname # Fallback to full hostname
-        try:
-            # Hostname format is typically "zapp-SERIALNUMBER.local"
-            # or just "zapp-SERIALNUMBER" if .local is already stripped (e.g. by discovery_info.name)
-            name_part = hostname.split(".")[0] # Get "zapp-SERIALNUMBER"
-            serial_from_hostname = name_part.split("-")[1] # Get "SERIALNUMBER"
-            if serial_from_hostname:
-                unique_id_to_set = serial_from_hostname
-            else:
-                LOGGER.warning(
-                    "Could not parse serial number from hostname part: '%s' (derived from '%s'). Falling back to full hostname.",
-                    name_part,
-                    hostname
-                )
-        except IndexError:
-            LOGGER.warning(
-                "Could not parse serial number from hostname: '%s' due to unexpected format. Falling back to full hostname.",
-                hostname,
-                exc_info=True
-            )
+        # Host name "zapp-<serial>.local": the serial number is the unique ID;
+        # without one, fall back to the host name.
+        serial_from_hostname = hostname.split(".")[0].removeprefix("zapp-")
+        unique_id_to_set: str = serial_from_hostname or hostname
+        if not serial_from_hostname:
+            LOGGER.warning("No serial number in host name '%s'; using the host name", hostname)
 
         self.discovery_info = {
             CONF_NAME: discovery_info.name, 
@@ -168,7 +155,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return await self.async_step_confirm()
 
-    async def async_step_dhcp(self, discovery_info: DhcpServiceInfo) -> data_entry_flow.FlowResult:
+    async def async_step_dhcp(self, discovery_info: DhcpServiceInfo) -> config_entries.ConfigFlowResult:
         """Handle a zApp seen by DHCP (host name ``zapp-<serial>``).
 
         mDNS is unreliable on some zApps; DHCP also keeps the IP address of an
@@ -198,7 +185,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_confirm(
         self, user_input: dict[str, Any] | None = None
-    ) -> data_entry_flow.FlowResult: 
+    ) -> config_entries.ConfigFlowResult: 
         """Confirm a discovery and allow setting step duration."""
         errors: dict[str, str] = {}
 
@@ -257,7 +244,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="confirm",
             data_schema=CONFIRM_SCHEMA,
             description_placeholders={
-                CONF_NAME: self.discovery_info.get(CONF_NAME, self.discovery_info.get(CONF_HOSTNAME)),
+                CONF_NAME: str(self.discovery_info.get(CONF_NAME, self.discovery_info.get(CONF_HOSTNAME))),
                 CONF_HOSTNAME: self.discovery_info[CONF_HOSTNAME],
                 CONF_IP_ADDRESS: self.discovery_info[CONF_IP_ADDRESS],
             },
@@ -266,7 +253,7 @@ class ZeptrionAirConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
-    ) -> data_entry_flow.FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Change the host name or IP address of a configured zApp."""
         entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
@@ -322,7 +309,7 @@ class ZeptrionAirOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> data_entry_flow.FlowResult: 
+    ) -> config_entries.ConfigFlowResult: 
         """Manage the options."""
         errors: dict[str, str] = {}
 
