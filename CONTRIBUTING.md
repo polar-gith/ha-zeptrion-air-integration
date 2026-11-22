@@ -28,7 +28,6 @@ The HACS action and hassfest run in the *Validate* workflow without exceptions.
 
 - Versions follow Home Assistant: `YEAR.MONTH.PATCH`; the first release of a month is `YYYY.M.0`.
 - The version in `custom_components/zeptrion_air/manifest.json` is the release version; the *Publish release* workflow creates tag and release from it.
-- Changes are collected and released together, normally **once a week**. Fixes for problems that break installations are released right away.
 - Every release has notes and an entry in `CHANGELOG.md`.
 
 ## Licence

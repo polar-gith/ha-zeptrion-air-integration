@@ -7,7 +7,7 @@ All notable changes to this integration. Versions follow Home Assistant style (`
 - This changelog.
 - Issue forms for bug reports (zApp model, firmware, Smartfront, diagnostics, debug log) and feature requests.
 - Automated tests for the dashboard parts (scenes feature, dashboard strategy, blinds card) in CI.
-- Contribution guidelines updated: checks to run, release rhythm.
+- Contribution guidelines updated: checks to run.
 
 ## 2026.11.25 – 2026-11-22
 
