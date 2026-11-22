@@ -107,7 +107,23 @@
               "key_7_press": "Key 7 pressed",
               "key_7_release": "Key 7 released",
               "key_8_press": "Key 8 pressed",
-              "key_8_release": "Key 8 released"
+              "key_8_release": "Key 8 released",
+              "key_9_press": "Key 9 pressed",
+              "key_9_release": "Key 9 released",
+              "key_10_press": "Key 10 pressed",
+              "key_10_release": "Key 10 released",
+              "key_11_press": "Key 11 pressed",
+              "key_11_release": "Key 11 released",
+              "key_12_press": "Key 12 pressed",
+              "key_12_release": "Key 12 released",
+              "key_13_press": "Key 13 pressed",
+              "key_13_release": "Key 13 released",
+              "key_14_press": "Key 14 pressed",
+              "key_14_release": "Key 14 released",
+              "key_15_press": "Key 15 pressed",
+              "key_15_release": "Key 15 released",
+              "key_16_press": "Key 16 pressed",
+              "key_16_release": "Key 16 released"
             }
           }
         }

@@ -2,6 +2,10 @@
 
 All notable changes to this integration. Versions follow Home Assistant style (`YEAR.MONTH.PATCH`); every version is a [GitHub release](https://github.com/polar-gith/ha-zeptrion-air-integration/releases) and installable through HACS.
 
+## Unreleased
+
+- Wall key events of older button faces (keys 9–16) are translated as well (German, French, Italian, English); keys 1–8 already were.
+
 ## 2026.11.28 – 2026-11-22
 
 - Step actions also under the names of the HomersDroid fork: `blind_step_up` / `blind_step_down` (same as `blind_up_step` / `blind_down_step`).

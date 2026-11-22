@@ -107,7 +107,23 @@
               "key_7_press": "Taste 7 gedrückt",
               "key_7_release": "Taste 7 losgelassen",
               "key_8_press": "Taste 8 gedrückt",
-              "key_8_release": "Taste 8 losgelassen"
+              "key_8_release": "Taste 8 losgelassen",
+              "key_9_press": "Taste 9 gedrückt",
+              "key_9_release": "Taste 9 losgelassen",
+              "key_10_press": "Taste 10 gedrückt",
+              "key_10_release": "Taste 10 losgelassen",
+              "key_11_press": "Taste 11 gedrückt",
+              "key_11_release": "Taste 11 losgelassen",
+              "key_12_press": "Taste 12 gedrückt",
+              "key_12_release": "Taste 12 losgelassen",
+              "key_13_press": "Taste 13 gedrückt",
+              "key_13_release": "Taste 13 losgelassen",
+              "key_14_press": "Taste 14 gedrückt",
+              "key_14_release": "Taste 14 losgelassen",
+              "key_15_press": "Taste 15 gedrückt",
+              "key_15_release": "Taste 15 losgelassen",
+              "key_16_press": "Taste 16 gedrückt",
+              "key_16_release": "Taste 16 losgelassen"
             }
           }
         }

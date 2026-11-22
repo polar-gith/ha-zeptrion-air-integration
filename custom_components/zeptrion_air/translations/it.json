@@ -107,7 +107,23 @@
               "key_7_press": "Tasto 7 premuto",
               "key_7_release": "Tasto 7 rilasciato",
               "key_8_press": "Tasto 8 premuto",
-              "key_8_release": "Tasto 8 rilasciato"
+              "key_8_release": "Tasto 8 rilasciato",
+              "key_9_press": "Tasto 9 premuto",
+              "key_9_release": "Tasto 9 rilasciato",
+              "key_10_press": "Tasto 10 premuto",
+              "key_10_release": "Tasto 10 rilasciato",
+              "key_11_press": "Tasto 11 premuto",
+              "key_11_release": "Tasto 11 rilasciato",
+              "key_12_press": "Tasto 12 premuto",
+              "key_12_release": "Tasto 12 rilasciato",
+              "key_13_press": "Tasto 13 premuto",
+              "key_13_release": "Tasto 13 rilasciato",
+              "key_14_press": "Tasto 14 premuto",
+              "key_14_release": "Tasto 14 rilasciato",
+              "key_15_press": "Tasto 15 premuto",
+              "key_15_release": "Tasto 15 rilasciato",
+              "key_16_press": "Tasto 16 premuto",
+              "key_16_release": "Tasto 16 rilasciato"
             }
           }
         }

@@ -107,7 +107,23 @@
               "key_7_press": "Touche 7 appuyée",
               "key_7_release": "Touche 7 relâchée",
               "key_8_press": "Touche 8 appuyée",
-              "key_8_release": "Touche 8 relâchée"
+              "key_8_release": "Touche 8 relâchée",
+              "key_9_press": "Touche 9 appuyée",
+              "key_9_release": "Touche 9 relâchée",
+              "key_10_press": "Touche 10 appuyée",
+              "key_10_release": "Touche 10 relâchée",
+              "key_11_press": "Touche 11 appuyée",
+              "key_11_release": "Touche 11 relâchée",
+              "key_12_press": "Touche 12 appuyée",
+              "key_12_release": "Touche 12 relâchée",
+              "key_13_press": "Touche 13 appuyée",
+              "key_13_release": "Touche 13 relâchée",
+              "key_14_press": "Touche 14 appuyée",
+              "key_14_release": "Touche 14 relâchée",
+              "key_15_press": "Touche 15 appuyée",
+              "key_15_release": "Touche 15 relâchée",
+              "key_16_press": "Touche 16 appuyée",
+              "key_16_release": "Touche 16 relâchée"
             }
           }
         }
