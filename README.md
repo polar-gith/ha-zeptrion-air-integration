@@ -70,6 +70,16 @@ features:
 
 Blinds call `blind_recall_s1`–`s4`, lights `light_recall_scene`, always on the tile's own entity. The feature is offered for Zeptrion Air blinds and lights only. The older *Zeptrion Air Blinds Card* (`custom:zeptrion-air-blinds-card`) is still there for existing dashboards.
 
+**Ready-made dashboard:** the dashboard strategy *Zeptrion Air* builds a dashboard from all Zeptrion Air blinds and lights, one view per floor and one section per area, with tiles for open/close, tilt, brightness and scenes. It is generated on every load, so new zApps and area changes show up without editing. Create a new dashboard, open its raw configuration editor and enter:
+
+```yaml
+strategy:
+  type: custom:zeptrion-air
+  scenes: true   # scene buttons S1–S4 on every tile (default)
+```
+
+To adjust it by hand, use *Take control* in the dashboard menu; Home Assistant then saves the generated cards as a normal dashboard.
+
 ## Wall keys (Smartfront)
 
 One event entity per zApp with event types `key_<n>_press` / `key_<n>_release` for every key in use. Attributes: `key`, `function` (`channel`, `smartbutton`, `unknown`), `code`; channel keys also `channels` and `direction`. Smartbuttons can thus trigger automations:

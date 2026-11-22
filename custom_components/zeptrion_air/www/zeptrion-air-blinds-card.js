@@ -442,3 +442,122 @@ if (!customElements.get('zeptrion-air-scenes')) {
     configurable: false,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard strategy "Zeptrion Air": builds a dashboard from all Zeptrion Air
+// blinds and lights, one view per floor, one section per area.
+//
+//   strategy:
+//     type: custom:zeptrion-air
+//     scenes: true        # scene buttons S1–S4 on every tile (default true)
+//
+// New zApps appear on their own: the dashboard is generated on every load.
+// ---------------------------------------------------------------------------
+
+const ZEPTRION_COVER_OPEN_CLOSE = 1 | 2; // OPEN | CLOSE
+const ZEPTRION_COVER_TILT = 16 | 32; // OPEN_TILT | CLOSE_TILT
+
+function zeptrionDashboardEntities(hass) {
+  return Object.values(hass.entities || {})
+    .filter((entry) => entry.platform === 'zeptrion_air' && !entry.hidden && !entry.entity_category)
+    .filter((entry) => entry.entity_id.startsWith('cover.') || entry.entity_id.startsWith('light.'))
+    .filter((entry) => entry.translation_key !== 'smartfront_led')
+    .filter((entry) => hass.states[entry.entity_id]);
+}
+
+function zeptrionTile(hass, entityId, scenes) {
+  const state = hass.states[entityId];
+  const features = [];
+  if (entityId.startsWith('cover.')) {
+    const supported = (state && state.attributes.supported_features) || 0;
+    if (supported & ZEPTRION_COVER_OPEN_CLOSE) features.push({ type: 'cover-open-close' });
+    if (supported & ZEPTRION_COVER_TILT) features.push({ type: 'cover-tilt' });
+  } else {
+    const modes = (state && state.attributes.supported_color_modes) || [];
+    if (modes.some((mode) => mode !== 'onoff')) features.push({ type: 'light-brightness' });
+  }
+  if (scenes) features.push({ type: 'custom:zeptrion-air-scenes' });
+  return { type: 'tile', entity: entityId, features, features_position: 'bottom' };
+}
+
+function zeptrionByName(hass) {
+  const name = (entityId) => (hass.states[entityId] && hass.states[entityId].attributes.friendly_name) || entityId;
+  return (a, b) => {
+    // blinds first, then lights, each alphabetically
+    const kind = (id) => (id.startsWith('cover.') ? 0 : 1);
+    return kind(a) - kind(b) || name(a).localeCompare(name(b));
+  };
+}
+
+class ZeptrionAirDashboardStrategy extends HTMLElement {
+  static async generate(config, hass) {
+    const scenes = !config || config.scenes !== false;
+    const areas = hass.areas || {};
+    const floors = hass.floors || {};
+    const devices = hass.devices || {};
+    const groups = new Map(); // area_id ('' = none) -> entity IDs
+    for (const entry of zeptrionDashboardEntities(hass)) {
+      const areaId = entry.area_id || (devices[entry.device_id] && devices[entry.device_id].area_id) || '';
+      if (!groups.has(areaId)) groups.set(areaId, []);
+      groups.get(areaId).push(entry.entity_id);
+    }
+    if (!groups.size) {
+      return {
+        title: 'Zeptrion Air',
+        views: [{ title: 'Zeptrion Air', cards: [{ type: 'markdown', content: 'No Zeptrion Air blinds or lights found.' }] }],
+      };
+    }
+
+    const sort = zeptrionByName(hass);
+    const section = (areaId) => {
+      const area = areas[areaId];
+      return {
+        type: 'grid',
+        cards: [
+          { type: 'heading', heading: area ? area.name : 'Other', icon: area && area.icon ? area.icon : undefined },
+          ...groups.get(areaId).sort(sort).map((entityId) => zeptrionTile(hass, entityId, scenes)),
+        ],
+      };
+    };
+
+    // One view per floor (by level), areas without floor and entities without area last.
+    const byFloor = new Map();
+    for (const areaId of groups.keys()) {
+      const floorId = (areas[areaId] && areas[areaId].floor_id) || '';
+      if (!byFloor.has(floorId)) byFloor.set(floorId, []);
+      byFloor.get(floorId).push(areaId);
+    }
+    const floorIds = [...byFloor.keys()].sort((a, b) => {
+      if (!a) return 1;
+      if (!b) return -1;
+      const la = floors[a] && floors[a].level != null ? floors[a].level : 0;
+      const lb = floors[b] && floors[b].level != null ? floors[b].level : 0;
+      return lb - la || String(a).localeCompare(String(b));
+    });
+    const areaName = (id) => (areas[id] ? areas[id].name : '￿');
+    const views = floorIds.map((floorId) => {
+      const floor = floors[floorId];
+      const title = floor ? floor.name : floorIds.length > 1 ? 'Other' : 'Zeptrion Air';
+      return {
+        title,
+        path: floor ? `floor-${floorId}` : 'other',
+        icon: floor && floor.icon ? floor.icon : undefined,
+        type: 'sections',
+        max_columns: 4,
+        sections: byFloor.get(floorId).sort((a, b) => areaName(a).localeCompare(areaName(b))).map(section),
+      };
+    });
+    return { title: 'Zeptrion Air', views };
+  }
+}
+
+if (!customElements.get('ll-strategy-dashboard-zeptrion-air')) {
+  customElements.define('ll-strategy-dashboard-zeptrion-air', ZeptrionAirDashboardStrategy);
+  window.customStrategies = window.customStrategies || [];
+  window.customStrategies.push({
+    type: 'zeptrion-air',
+    strategyType: 'dashboard',
+    name: 'Zeptrion Air',
+    description: 'All Zeptrion Air blinds and lights, one view per floor, one section per area.',
+  });
+}
