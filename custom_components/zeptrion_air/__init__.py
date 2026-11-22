@@ -47,6 +47,9 @@ from .const import (
     PLATFORMS as ZEPTRION_PLATFORMS,
     SIGNAL_AVAILABILITY,
     SIGNAL_KEY_EVENT,
+    SIGNAL_LEGACY_KEYS,
+    CONF_LEGACY_KEYS,
+    MAX_LEGACY_KEYS,
     SIGNAL_TRAVEL_TIMES,
     UNAVAILABLE_GRACE_S,
     is_travel_option,
@@ -450,6 +453,20 @@ def _async_start_event_stream(
 
     @callback
     def _on_key_event(event: KeyEvent) -> None:
+        if runtime_data.smartfront is None and event.pressed:
+            # Older button face without /zapi/smartfront/id: learn the keys from
+            # the event stream (bta has one character per key).
+            count = min(len(event.raw), MAX_LEGACY_KEYS)
+            known = int(entry.data.get(CONF_LEGACY_KEYS, 0))
+            if count > known:
+                LOGGER.info(
+                    "[%s] Key presses without Smartfront key functions: %s keys", hostname, count
+                )
+                hass.config_entries.async_update_entry(
+                    entry, data={**entry.data, CONF_LEGACY_KEYS: count}
+                )
+                async_dispatcher_send(hass, SIGNAL_LEGACY_KEYS.format(entry.entry_id), count, event)
+                return  # the event entity fires this first press once it is added
         async_dispatcher_send(hass, SIGNAL_KEY_EVENT.format(entry.entry_id), event)
 
     @callback

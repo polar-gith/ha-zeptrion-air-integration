@@ -71,6 +71,10 @@ MAX_PARALLEL_REQUESTS: int = 2
 # Dispatcher signals (formatted with the config entry id)
 SIGNAL_AVAILABILITY: str = "zeptrion_air_availability_{}"
 SIGNAL_KEY_EVENT: str = "zeptrion_air_key_event_{}"
+# Older button faces without /zapi/smartfront/id: keys learnt from the event stream
+SIGNAL_LEGACY_KEYS: str = "zeptrion_air_legacy_keys_{}"
+CONF_LEGACY_KEYS: str = "legacy_keys"
+MAX_LEGACY_KEYS: int = 16
 SIGNAL_TRAVEL_TIMES: str = "zeptrion_air_travel_times_{}"
 SIGNAL_CHANNEL_DESCRIPTOR: str = "zeptrion_air_chdes_{}"
 

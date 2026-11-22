@@ -21,14 +21,9 @@ class ZeptrionAirBlindsCard extends HTMLElement {
       throw new Error('You need to define a cover entity');
     }
     
-    this.config = {
-      // Default button entity patterns based on your integration - users can override these
-      scene1_entity: `${config.entity.replace('cover.', 'button.')}_blind_recall_s1`,
-      scene2_entity: `${config.entity.replace('cover.', 'button.')}_blind_recall_s2`,
-      scene3_entity: `${config.entity.replace('cover.', 'button.')}_blind_recall_s3`,
-      scene4_entity: `${config.entity.replace('cover.', 'button.')}_blind_recall_s4`,
-      ...config
-    };
+    // Scene buttons call zeptrion_air.blind_recall_s1-s4 on the cover itself.
+    // scene1_entity ... scene4_entity (button entities) are still honoured if set.
+    this.config = { ...config };
     
     this.render();
   }
@@ -161,19 +156,19 @@ class ZeptrionAirBlindsCard extends HTMLElement {
 
     // Scene recall buttons - call button entities
     this.shadowRoot.getElementById('scene1-btn').addEventListener('click', () => {
-      this.pressButton(this.config.scene1_entity);
+      this.recallScene(1);
     });
 
     this.shadowRoot.getElementById('scene2-btn').addEventListener('click', () => {
-      this.pressButton(this.config.scene2_entity);
+      this.recallScene(2);
     });
 
     this.shadowRoot.getElementById('scene3-btn').addEventListener('click', () => {
-      this.pressButton(this.config.scene3_entity);
+      this.recallScene(3);
     });
 
     this.shadowRoot.getElementById('scene4-btn').addEventListener('click', () => {
-      this.pressButton(this.config.scene4_entity);
+      this.recallScene(4);
     });
   }
 
@@ -182,6 +177,15 @@ class ZeptrionAirBlindsCard extends HTMLElement {
       entity_id: this.config.entity,
       ...data
     });
+  }
+
+  recallScene(scene) {
+    const button = this.config[`scene${scene}_entity`];
+    if (button) {
+      this.pressButton(button);
+      return;
+    }
+    this.callService('zeptrion_air', `blind_recall_s${scene}`);
   }
 
   pressButton(entityId) {

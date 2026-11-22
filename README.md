@@ -71,6 +71,8 @@ triggers:
 
 (Before Home Assistant 2026.7: a `state` trigger on the entity with a condition on its `event_type` attribute.)
 
+**Older button faces** without key functions (`/zapi/smartfront/id` missing): the entity is created with the first key press reported by the zApp and kept from then on. Only the key number is known (`function: unknown`, attribute `keys_learnt: true`); channel and direction cannot be read. Not yet confirmed on such a face: if the zApp does not report their presses, no entity appears.
+
 ## Smartfront LEDs
 
 Each key in use has an LED whose **background colour** can be set, e.g. as status display (window open = red). Per LED there is a light *Smartfront LED n* with colour and brightness sliders. The button *Undo LED change* of the zApp steps back through the last 20 LED changes (made in Home Assistant since the last restart). The zApp keeps using the LEDs for its own indications and shows the background colour otherwise. Turning an LED light off clears its background colour; the zApps come with a pink background (`#ff006d`). The LEDs are bright: 10–25 % is usually enough.
@@ -156,7 +158,7 @@ Not tested: awnings and firmware older than 01.08.28.
 ## Limitations
 
 - Blind positions and dimmer brightness are estimates; the zApp reports neither. Scenes cannot be read back. Position estimates rely on the timing of the WebSocket messages and get less accurate on zApps with a weak Wi-Fi signal.
-- Wall keys, Smartbuttons and LEDs need a Smartfront that reports its keys (`/zapi/smartfront/id`); older button faces without it give no wall-key events yet.
+- LEDs, Smartbuttons and Smartfront sensors need a Smartfront. Older button faces give wall-key events only by key number (see *Wall keys*).
 - The zApp cannot be restarted remotely (firmware 01.08.28 ignores the reboot command).
 - Channel name / group / icon sensors are read at setup (and follow `write_name_to_zapp`).
 

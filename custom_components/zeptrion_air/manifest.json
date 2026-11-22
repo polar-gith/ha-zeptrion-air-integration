@@ -1,10 +1,18 @@
 {
   "domain": "zeptrion_air",
   "name": "Zeptrion Air",
+  "categories": [
+    "blinds_curtains",
+    "plugs_switches",
+    "lighting.lighting_systems"
+  ],
   "codeowners": [
     "@polar-gith"
   ],
   "config_flow": true,
+  "connectivity": [
+    "network"
+  ],
   "dependencies": [
     "http",
     "lovelace"
@@ -20,7 +28,7 @@
   "requirements": [
     "xmltodict>=0.13.0"
   ],
-  "version": "2026.11.21",
+  "version": "2026.11.22",
   "zeroconf": [
     "_zapp._tcp.local.",
     {

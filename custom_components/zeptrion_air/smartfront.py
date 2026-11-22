@@ -67,6 +67,15 @@ def parse_key_function(key: int, code: str) -> KeyFunction:
     return KeyFunction(key=key, raw=code, kind="unknown")
 
 
+def legacy_keys(count: int) -> tuple[KeyFunction, ...]:
+    """Keys of a button face without ``/zapi/smartfront/id`` (no ``btfu``).
+
+    Only the key number is known (position in ``bta``); channel and direction
+    cannot be decoded.
+    """
+    return tuple(KeyFunction(key=key, raw="", kind="unknown") for key in range(1, count + 1))
+
+
 def parse_btfu(btfu: str | None) -> tuple[KeyFunction, ...]:
     """Decode the comma-separated ``btfu`` list (key 1 first)."""
     if not btfu or not str(btfu).strip():

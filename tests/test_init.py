@@ -255,3 +255,42 @@ async def test_migration_drops_light_polling_and_rooms_become_areas(
     assert blind.area_id == area.id
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_wall_keys_of_older_button_face(hass: HomeAssistant, fake_zapp) -> None:
+    """No /zapi/smartfront/id (older face): keys are learnt from the first press."""
+    device, host = fake_zapp
+    device.btfu = None
+    entry = await _setup(hass, host, device.serial)
+    runtime = entry.runtime_data
+    await _wait_for(lambda: runtime.websocket_listener and runtime.websocket_listener.connected)
+    registry = er.async_get(hass)
+    unique_id = f"zapp_{device.serial}_wall_keys"
+    assert registry.async_get_entity_id("event", DOMAIN, unique_id) is None
+
+    # First press creates the entity and is reported as event
+    await device.press(4)
+    await _wait_for(lambda: registry.async_get_entity_id("event", DOMAIN, unique_id) is not None)
+    keys = registry.async_get_entity_id("event", DOMAIN, unique_id)
+    await _wait_for(
+        lambda: hass.states.get(keys) is not None
+        and hass.states.get(keys).attributes.get("event_type") == "key_4_release"
+    )
+    attrs = hass.states.get(keys).attributes
+    assert attrs["keys_learnt"] is True
+    assert attrs["function"] == "unknown"
+    assert "key_9_press" in attrs["event_types"]  # bta has 9 characters
+    assert entry.data["legacy_keys"] == 9
+
+    # Next press goes the normal way
+    await device.press(2)
+    await _wait_for(lambda: hass.states.get(keys).attributes.get("event_type") == "key_2_release")
+
+    # After a reload the entity is there before any press
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(keys) is not None
+    assert "key_1_press" in hass.states.get(keys).attributes["event_types"]
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
