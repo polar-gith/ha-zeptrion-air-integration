@@ -42,6 +42,8 @@ Blinds of different height have different times; measure each one.
 
 **Slats.** With a slat tilt time (typically 1–2 s), the first part of a run after a change of direction turns the slats. The blind then reports a tilt position (100 = open) and supports *set tilt position*; the tilt buttons turn the slats one step (option *step duration*).
 
+**Who started a run.** The attribute `started_by` (while the blind moves) and `last_run.started_by` say who started it: `home_assistant` (a command or action from Home Assistant), `wall_key` (a Smartfront key of this zApp) or `other` (keys of an older button face, a Smartbutton, another zApp or device). Automations can thus react to runs started at the wall only.
+
 **Scenes S1–S4.** The zApp stores a scene as the end stop the blind came from plus the net motor time from there, and replays it as "run to that end stop, then the net time back". Feller therefore says: drive the blind fully **up** first, then to the height, then store. Coming from the top the replay ends with a run down (slats closed/tilted); coming from the bottom it ends with a run up (slats open). The slat angle itself is not stored.
 - *Store S1–S4* (and `blind_store_scene`) store right away if the blind came from the top. Otherwise the blind first runs to the top and back to its current position, then the scene is stored (a notification confirms it). Refused while the blind moves or when its position is unknown.
 - Scenes are recalled from anywhere: the *Scene* buttons, wall keys, Smartbuttons of any zApp (they can send any command to any zApp) or other devices. The integration follows the runs without knowing who started them: from an end stop the run goes away from it; from a known position in between a run that ends at an end stop is recognised by its duration, and the run back follows. A run of unknown direction that ends elsewhere makes the position unknown until the next full run.
@@ -96,7 +98,7 @@ triggers:
 
 (Before Home Assistant 2026.7: a `state` trigger on the entity with a condition on its `event_type` attribute.)
 
-**Older button faces** without key functions (`/zapi/smartfront/id` missing): the entity is created with the first key press reported by the zApp and kept from then on. Only the key number is known (`function: unknown`, attribute `keys_learnt: true`); channel and direction cannot be read. Not yet confirmed on such a face: if the zApp does not report their presses, no entity appears.
+**Older button faces** without key functions (`/zapi/smartfront/id` missing) do not report key presses: on a 3340-2-B with firmware 01.08.26 the keys only show up as the channel starting and stopping (`eid1`), no key event (`eid2`). Use the state of the blind or light as trigger instead; blinds tell such runs apart by `last_run.started_by: other` (see *Blinds*). Should a zApp without key functions report key presses after all, the event entity is created with the first one (keys by number only, `function: unknown`, attribute `keys_learnt: true`).
 
 ## Smartfront LEDs
 
@@ -183,7 +185,7 @@ Not tested: awnings and firmware older than 01.08.28.
 ## Limitations
 
 - Blind positions and dimmer brightness are estimates; the zApp reports neither. Scenes cannot be read back. Position estimates rely on the timing of the WebSocket messages and get less accurate on zApps with a weak Wi-Fi signal.
-- LEDs, Smartbuttons and Smartfront sensors need a Smartfront. Older button faces give wall-key events only by key number (see *Wall keys*).
+- LEDs, Smartbuttons, Smartfront sensors and wall-key events need a Smartfront; older button faces report no key presses (see *Wall keys*).
 - The zApp cannot be restarted remotely (firmware 01.08.28 ignores the reboot command).
 - Channel name / group / icon sensors are read at setup (and follow `write_name_to_zapp`).
 

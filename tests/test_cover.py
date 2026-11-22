@@ -627,3 +627,36 @@ async def test_blind_step_actions(hass: HomeAssistant, fake_zapp, clock) -> None
     clock.now = 510.0
     await hass.services.async_call(DOMAIN, "blind_down_step", {"entity_id": cover}, blocking=True)
     assert device.commands[-1] == (1, "move_close_600")
+
+
+async def test_run_started_by(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """last_run.started_by: home_assistant, wall_key (Smartfront) or other (older faces, scenes elsewhere)."""
+    device, host = fake_zapp
+    await _setup(hass, device, host)
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+
+    # Home Assistant command
+    clock.now = 100.0
+    await hass.services.async_call("cover", "close_cover", {"entity_id": cover}, blocking=True)
+    await _value(hass, device, clock, 100.3, 100)
+    assert hass.states.get(cover).attributes["started_by"] == "home_assistant"
+    await _value(hass, device, clock, 160.0, 0)
+    assert hass.states.get(cover).attributes["last_run"]["started_by"] == "home_assistant"
+
+    # Smartfront key
+    await _key(hass, device, clock, 200.0, 5)  # key 5 = ch1 up
+    await _value(hass, device, clock, 200.2, 100)
+    await _value(hass, device, clock, 205.0, 0)
+    assert hass.states.get(cover).attributes["last_run"]["started_by"] == "wall_key"
+
+    # No command, no key event: older button face, Smartbutton, other zApp
+    await _value(hass, device, clock, 300.0, 100)
+    await _value(hass, device, clock, 306.0, 0)
+    assert hass.states.get(cover).attributes["last_run"]["started_by"] == "other"
+
+    # A command long before does not count
+    clock.now = 400.0
+    await hass.services.async_call("cover", "stop_cover", {"entity_id": cover}, blocking=True)
+    await _value(hass, device, clock, 420.0, 100)
+    await _value(hass, device, clock, 425.0, 0)
+    assert hass.states.get(cover).attributes["last_run"]["started_by"] == "other"

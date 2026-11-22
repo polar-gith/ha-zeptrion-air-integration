@@ -67,6 +67,9 @@ MOVING_CHECK_MARGIN_S = 15.0
 
 _LOGGER = logging.getLogger(__name__)
 
+# A command or key press counts as the start of a run that begins within this time.
+SOURCE_HINT_S = 5.0
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -240,6 +243,9 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         self._moving_check_cancel: CALLBACK_TYPE | None = None
         self._stop_timer_cancel: CALLBACK_TYPE | None = None
         self._last_run: dict[str, Any] | None = None
+        # Who started the current run: home_assistant, wall_key (Smartfront key) or other
+        self._source_hint: tuple[str, float] | None = None
+        self._started_by: str | None = None
         self._run_waiter: asyncio.Future[Run] | None = None
         self._start_waiter: asyncio.Future[None] | None = None
         self._calibration: str | None = None
@@ -315,6 +321,8 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         }
         if self._motion.tilt_time:
             attributes["tilt_time"] = self._motion.tilt_time
+        if self._motion.moving and self._started_by:
+            attributes["started_by"] = self._started_by
         if self._last_run:
             attributes["last_run"] = self._last_run
         if self._calibration:
@@ -394,7 +402,13 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
 
     # ------------------------------------------------------------ commands
 
+    @callback
+    def _mark_source(self, source: str) -> None:
+        """Remember who is about to start a run (matched with the next start)."""
+        self._source_hint = (source, time.monotonic())
+
     async def _send(self, label: str, coro_factory) -> None:
+        self._mark_source("home_assistant")
         try:
             await coro_factory()
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
@@ -532,6 +546,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             # (seen on 01.08.28): keep the key's direction as hint for that start.
             self._motion.stop_requested(now)
         self._motion.hint(function.direction, now)
+        self._mark_source("wall_key")
 
     async def async_handle_websocket_message(self, event: Event) -> None:
         """Handle channel values of this blind (100 = motor runs, 0 = stands)."""
@@ -552,6 +567,12 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             return
 
         if value == 100:
+            if not self._motion.moving:
+                hint = self._source_hint
+                self._started_by = (
+                    hint[0] if hint is not None and now - hint[1] <= SOURCE_HINT_S else "other"
+                )
+                self._source_hint = None
             self._motion.on_value(100, now)
             if self._start_waiter is not None and not self._start_waiter.done():
                 self._start_waiter.set_result(None)
@@ -579,6 +600,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
                     "direction": run.direction,
                     "duration": round(run.duration, 1),
                     "stopped_by_hand": run.stopped_by_hand,
+                    "started_by": self._started_by,
                 }
                 self.async_write_ha_state()
                 return
@@ -586,6 +608,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             "direction": run.direction,
             "duration": round(run.duration, 1),
             "stopped_by_hand": run.stopped_by_hand,
+            "started_by": self._started_by,
         }
         if run.is_auto_sample and run.direction is not None and self._auto_travel_times():
             self._auto_learn(run.direction, run.duration)
@@ -891,6 +914,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         """Recall scene S1 for the blind."""
         _LOGGER.debug("Recalling S1 for blind %s (Channel %s)", self.name, self._channel_id)
         self._motion.scene_hint(time.monotonic())
+        self._mark_source("home_assistant")
         try:
             await self.config_entry.runtime_data.client.async_channel_recall_s1(self._channel_id)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
@@ -904,6 +928,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         """Recall scene S2 for the blind."""
         _LOGGER.debug("Recalling S2 for blind %s (Channel %s)", self.name, self._channel_id)
         self._motion.scene_hint(time.monotonic())
+        self._mark_source("home_assistant")
         try:
             await self.config_entry.runtime_data.client.async_channel_recall_s2(self._channel_id)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
@@ -917,6 +942,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         """Recall scene S3 for the blind."""
         _LOGGER.debug("Recalling S3 for blind %s (Channel %s)", self.name, self._channel_id)
         self._motion.scene_hint(time.monotonic())
+        self._mark_source("home_assistant")
         try:
             await self.config_entry.runtime_data.client.async_channel_recall_s3(self._channel_id)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
@@ -930,6 +956,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         """Recall scene S4 for the blind."""
         _LOGGER.debug("Recalling S4 for blind %s (Channel %s)", self.name, self._channel_id)
         self._motion.scene_hint(time.monotonic())
+        self._mark_source("home_assistant")
         try:
             await self.config_entry.runtime_data.client.async_channel_recall_s4(self._channel_id)
         except (ZeptrionAirApiClientCommunicationError, ZeptrionAirApiClientError) as e:
