@@ -183,3 +183,40 @@ def test_scene_from_an_end_stop_moves_away_from_it() -> None:
     motion.on_value(100, 0.0)
     motion.on_value(0, 58.0)
     assert motion.position == 0.0 and motion.end_stop == "bottom"
+
+
+def test_guards_and_small_moves() -> None:
+    motion = CoverMotion(TRAVEL, position=50.0)
+    assert motion.on_value(55, 0.0) is None  # odd value
+    assert motion.on_value(0, 0.0) is None  # stands already
+    assert motion.seconds_for(50.2) is None  # already there
+    assert motion.reached_end(0.0) is False  # not moving
+    motion.on_value(100, 1.0)  # unknown direction
+    motion.on_value(100, 1.5)  # second start ignored
+    assert motion.reached_end(2.0) is False
+    assert motion.seconds_for(80) is None  # moving
+    motion.mark_end_stop("top")  # ignored while moving
+    assert motion.end_stop is None
+    assert motion.seconds_for_tilt(50) is None  # no tilt time
+
+
+def test_end_stop_with_tilt_and_tilt_targets() -> None:
+    motion = CoverMotion(TRAVEL, position=50.0)
+    motion.tilt_time = 2.0
+    motion.mark_end_stop("bottom")
+    assert motion.tilt == 0.0
+    assert motion.seconds_for_tilt(0.2) is None
+    assert motion.seconds_for_tilt(50) == ("up", 1.0)
+    motion.tilt = None
+    assert motion.seconds_for_tilt(80) == ("up", 2.0)
+    assert motion.current_tilt(0.0) is None
+    motion.tilt_from_end_stop()
+    assert motion.tilt == 0.0
+
+
+def test_no_travel_time_for_a_direction() -> None:
+    motion = CoverMotion(TravelTimes(up=50.0, down=None), position=50.0)
+    assert motion.seconds_for(20) is None
+    motion.hint("down", 0.0)
+    motion.on_value(100, 0.1)
+    assert motion.reached_end(10.0) is False

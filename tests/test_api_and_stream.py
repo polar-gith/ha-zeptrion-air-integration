@@ -204,3 +204,16 @@ async def test_odd_frames_and_broken_consumer(fake_zapp) -> None:
         assert listener.is_alive()
         await listener.stop()
         assert not listener.is_alive()
+
+
+async def test_set_brightness_commands(fake_zapp) -> None:
+    from unittest.mock import AsyncMock, patch
+
+    device, host = fake_zapp
+    async with aiohttp.ClientSession() as session:
+        client = ZeptrionAirApiClient(host, session)
+        with patch("custom_components.zeptrion_air.api.asyncio.sleep", AsyncMock()):
+            await client.async_channel_set_brightness(2, 0)
+            await client.async_channel_set_brightness(2, 300)
+            await client.async_channel_set_brightness(2, 128)
+    assert device.commands == [(2, "off"), (2, "on"), (2, "on"), (2, "dim_down_1693")]

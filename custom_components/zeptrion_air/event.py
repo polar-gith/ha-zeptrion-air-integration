@@ -52,11 +52,9 @@ async def async_setup_entry(
     button faces lack that endpoint; their keys are learnt from the event stream
     (first press) and kept in the config entry.
     """
-    runtime_data: ZeptrionAirData | None = entry.runtime_data
-    platform_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
-    hub_serial: str | None = platform_data.get("hub_serial")
-    if runtime_data is None or not hub_serial:
-        return
+    # Both prepared by async_setup_entry in __init__.py before the platforms are forwarded
+    runtime_data: ZeptrionAirData = entry.runtime_data
+    hub_serial: str = hass.data[DOMAIN][entry.entry_id]["hub_serial"]
 
     if runtime_data.smartfront:
         keys = [key for key in runtime_data.keys if key.kind != "unused"]

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -12,22 +11,6 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.zeptrion_air.const import CONF_HOSTNAME, DOMAIN
-
-
-class Clock:
-    def __init__(self) -> None:
-        self.now = 1000.0
-
-    def monotonic(self) -> float:
-        return self.now
-
-
-@pytest.fixture
-def clock():
-    clock = Clock()
-    fake_time = SimpleNamespace(monotonic=clock.monotonic)
-    with patch("custom_components.zeptrion_air.cover.time", fake_time):
-        yield clock
 
 
 async def _wait_for(predicate, timeout: float = 5.0) -> None:

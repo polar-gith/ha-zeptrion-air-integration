@@ -328,3 +328,42 @@ async def test_entity_names(hass: HomeAssistant, fake_zapp) -> None:
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_wall_keys_edge_cases(hass: HomeAssistant, fake_zapp) -> None:
+    """Unused keys are not reported; more learnt keys extend the event types."""
+    from homeassistant.helpers.dispatcher import async_dispatcher_send
+
+    from custom_components.zeptrion_air.const import SIGNAL_LEGACY_KEYS
+    from custom_components.zeptrion_air.smartfront import KeyEvent
+
+    device, host = fake_zapp
+    device.btfu = None
+    entry = await _setup(hass, host, device.serial)
+    registry = er.async_get(hass)
+    unique_id = f"zapp_{device.serial}_wall_keys"
+    async_dispatcher_send(
+        hass, SIGNAL_LEGACY_KEYS.format(entry.entry_id), 4, KeyEvent(key=2, pressed=True, function=None)
+    )
+    await hass.async_block_till_done()
+    keys = registry.async_get_entity_id("event", DOMAIN, unique_id)
+    async_dispatcher_send(
+        hass, SIGNAL_LEGACY_KEYS.format(entry.entry_id), 6, KeyEvent(key=6, pressed=True, function=None)
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(keys).attributes["event_type"] == "key_6_press"
+    entity = hass.data["entity_components"]["event"].get_entity(keys)
+    entity.set_keys(list(entity._keys.values()))  # no pending event
+    entity._handle_key(KeyEvent(key=9, pressed=True, function=None))  # unknown key: ignored
+    assert hass.states.get(keys).attributes["event_type"] == "key_6_press"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_smartfront_without_used_keys(hass: HomeAssistant, fake_zapp) -> None:
+    device, host = fake_zapp
+    device.btfu = "0,0,0,0,0,0,0,0"
+    entry = await _setup(hass, host, device.serial)
+    assert er.async_get(hass).async_get_entity_id("event", DOMAIN, f"zapp_{device.serial}_wall_keys") is None
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

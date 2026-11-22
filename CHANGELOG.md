@@ -13,10 +13,10 @@ All notable changes to this integration. Versions follow Home Assistant style (`
 - Fix: adding an already configured zApp by hand ended with "unknown error" instead of "already configured".
 - Generated dashboard in the user's language (German, French, Italian, English).
 - *Zeptrion Air Blinds Card* deprecated in favour of the tile card feature *Zeptrion scenes S1–S4*.
-- README: examples, troubleshooting, removal.
+- README: examples, troubleshooting, removal; hint to update the zApp firmware with Feller's zeptrion app.
 - Self-assessment against the Home Assistant quality scale (`quality_scale.yaml`).
-- Tests: switching from heldchen/ha-zeptrion-air (entity IDs, devices, actions kept), config flow, card resource, diagnostics; coverage above 95 % and strict type check in CI.
-- Internal: parallel updates declared for every platform; type fixes.
+- Tests: switching from heldchen/ha-zeptrion-air (entity IDs, devices, actions kept), config flow, card resource, diagnostics; coverage above 97 % and strict type check in CI.
+- Internal: parallel updates declared for every platform; type fixes; unreachable checks and an unused dim command removed.
 
 ## 2026.11.26 – 2026-11-22
 

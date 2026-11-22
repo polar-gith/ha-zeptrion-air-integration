@@ -46,7 +46,7 @@ rules:
     comment: The zApp API has no authentication.
   test-coverage:
     status: done
-    comment: Above 95 % (CI fails below 95 %).
+    comment: Above 97 % (CI fails below 97 %).
 
   # Gold
   devices: done

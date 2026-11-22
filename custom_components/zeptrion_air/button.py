@@ -72,30 +72,17 @@ async def async_setup_entry(
 ) -> None:
     """Set up Zeptrion Air button entities from a config entry."""
     _LOGGER.info("Setting up Zeptrion Air button entities.")
-    platform_data: dict[str, Any] | None = hass.data.get(DOMAIN, {}).get(entry.entry_id)
-
-    if not platform_data:
-        _LOGGER.error("button.py: No platform_data found for entry ID %s", entry.entry_id)
-        return
+    # Prepared by async_setup_entry in __init__.py before the platforms are forwarded
+    platform_data: dict[str, Any] = hass.data[DOMAIN][entry.entry_id]
 
     identified_channels_list: list[dict[str, Any]] = platform_data.get("identified_channels", [])
     hub_entry_title: str = platform_data.get("entry_title", "Zeptrion Air Hub")
-    hub_serial_maybe: str | None = platform_data.get("hub_serial")
-
-    if not hub_serial_maybe:
-        _LOGGER.error("button.py: Hub serial not found in platform_data.")
-        return
-    hub_serial: str = hub_serial_maybe
+    hub_serial: str = platform_data["hub_serial"]
 
     new_entities: list[ZeptrionAirActionButton] = []
     for channel_info_dict in identified_channels_list:
         device_type: str | None = channel_info_dict.get('device_type')
-        channel_id_maybe: int | None = channel_info_dict.get('id')
-
-        if channel_id_maybe is None:
-            _LOGGER.debug(f"Skipping channel due to missing id: {channel_info_dict}")
-            continue
-        channel_id: int = channel_id_maybe
+        channel_id: int = channel_info_dict["id"]  # always set by __init__.py
 
         # Get the entity_base_name for display purposes
         parent_device_name_maybe: str | None = channel_info_dict.get("entity_base_name")
@@ -129,17 +116,13 @@ async def async_setup_entry(
                     )
                 )
         else:
-            _LOGGER.debug("Skipping channel %s for buttons, no scenes.", channel_id_maybe)
+            _LOGGER.debug("Skipping channel %s for buttons, no scenes.", channel_id)
             
     new_entities.append(ZeptrionAirReconnectButton(entry, hub_serial))  # type: ignore[arg-type]
     if entry.runtime_data is not None and entry.runtime_data.leds is not None:
         new_entities.append(ZeptrionAirLedUndoButton(entry, hub_serial))  # type: ignore[arg-type]
 
-    if new_entities:
-        _LOGGER.info("Adding %s Zeptrion Air button entities.", len(new_entities))
-        async_add_entities(new_entities)
-    else:
-        _LOGGER.info("No Zeptrion Air button entities to add.")
+    async_add_entities(new_entities)
 
 class ZeptrionAirActionButton(ButtonEntity):
     """Representation of a Zeptrion Air action button for a cover channel."""

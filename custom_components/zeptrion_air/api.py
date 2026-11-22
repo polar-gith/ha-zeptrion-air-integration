@@ -481,17 +481,6 @@ class ZeptrionAirApiClient:
             data={"cmd": f"dim_down_{time_ms}"},
         )
 
-    async def async_channel_dim_up_for(self, channel: int, time_ms: int) -> dict[str, Any]:
-        """Dim light up for a specified time in milliseconds."""
-        time_ms = max(100, min(32000, int(time_ms)))
-        _LOGGER.debug(
-            f"Sending 'dim_up_({time_ms})' command to channel {channel} on {self._hostname}"
-        )
-        return await self._api_post_url_encoded_wrapper(
-            path=f"/zrap/chctrl/ch{channel}",
-            data={"cmd": f"dim_up_{time_ms}"},
-        )
-
     async def async_channel_set_brightness(self, channel: int, brightness_0_255: int) -> dict[str, Any]:
         """Set brightness using a calibrated press-and-hold strategy."""
         brightness_0_255 = max(0, min(255, int(brightness_0_255)))

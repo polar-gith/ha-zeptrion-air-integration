@@ -281,28 +281,6 @@ async def test_buttons_without_their_channel_entity(hass: HomeAssistant, fake_za
     await _unload(hass, entry)
 
 
-@pytest.mark.parametrize("platform", ["button", "light", "sensor"])
-async def test_platform_setup_guards(hass: HomeAssistant, platform: str) -> None:
-    """Platforms add nothing without the data prepared by the entry setup."""
-    import importlib
-
-    module = importlib.import_module(f"custom_components.zeptrion_air.{platform}")
-    entry = MockConfigEntry(domain=DOMAIN, title="zapp-1", unique_id="1")
-    entry.add_to_hass(hass)
-    added: list = []
-    for platform_data in (None, {"identified_channels": []}):
-        hass.data[DOMAIN] = {} if platform_data is None else {entry.entry_id: platform_data}
-        await module.async_setup_entry(hass, entry, added.extend)
-    # a channel without id is skipped; no coordinator -> no RSSI sensor
-    hass.data[DOMAIN] = {
-        entry.entry_id: {"identified_channels": [{"name": "x"}], "hub_serial": "1"}
-    }
-    entry.runtime_data = None
-    if platform != "light":
-        await module.async_setup_entry(hass, entry, added.extend)
-    assert all(type(e).__name__.endswith("Button") for e in added)
-
-
 async def test_rssi_sensor_values(hass: HomeAssistant, fake_zapp) -> None:
     device, host = fake_zapp
     entry = await _setup(hass, device, host)

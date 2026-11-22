@@ -30,33 +30,22 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     '''Set up Zeptrion Air sensor entities from a config entry.'''
-    platform_data: dict[str, Any] | None = hass.data[DOMAIN].get(entry.entry_id)
-    if not platform_data:
-        _LOGGER.error(f"sensor.py async_setup_entry: No platform_data found for entry ID {entry.entry_id}")
-        return
+    # Prepared by async_setup_entry in __init__.py before the platforms are forwarded
+    platform_data: dict[str, Any] = hass.data[DOMAIN][entry.entry_id]
 
     identified_channels_list: list[dict[str, Any]] = platform_data.get("identified_channels", [])
-    hub_serial: str | None = platform_data.get("hub_serial")
+    hub_serial: str = platform_data["hub_serial"]
     hub_entry_title: str = platform_data.get("entry_title", "Zeptrion Air Hub")
     # main_hub_device_info is needed if we want to link sensors directly to hub,
     # but it's better to link them to channel devices.
 
-    if not hub_serial: # Guard makes hub_serial effectively str after this
-        _LOGGER.error("sensor.py async_setup_entry: Hub serial not found in platform_data.")
-        return
-    
     # Prepare a list to hold all sensor entities (channel sensors + RSSI sensor)
     # Ensure the list type can accommodate both ZeptrionAirChannelSensor and ZeptrionAirRssiSensor.
     # Using SensorEntity as a common base type for the list.
     new_entities: list[SensorEntity] = []
 
     for channel_info_dict in identified_channels_list:
-        channel_id: int | None = channel_info_dict.get('id')
-        
-        # Ensure channel_id is valid before proceeding
-        if channel_id is None:
-            _LOGGER.debug(f"Skipping channel due to missing id: {channel_info_dict}")
-            continue
+        channel_id: int = channel_info_dict["id"]  # always set by __init__.py
 
         # Get the base device info for the channel (created by cover.py or light.py etc.)
         # This assumes that other platforms (like cover) have already created a device for the channel.
@@ -105,39 +94,26 @@ async def async_setup_entry(
                 )
     
     # --- Add ZeptrionAirRssiSensor ---
-    coordinator: ZeptrionAirDataUpdateCoordinator | None = platform_data.get("coordinator")
-    hub_device_info: DeviceInfo | None = platform_data.get("hub_device_info")
-    hub_name: str | None = platform_data.get("entry_title") # entry_title is usually the user-given name or default
+    coordinator: ZeptrionAirDataUpdateCoordinator = platform_data["coordinator"]
+    hub_device_info: DeviceInfo = platform_data["hub_device_info"]
+    hub_name: str = platform_data["entry_title"]
 
-    if coordinator and hub_device_info and hub_serial and hub_name:
-        # Create stable hub slug for RSSI sensor entity ID
-        hub_name_slug = hub_name.lower().replace(' ', '_').replace('-', '_').replace('.', '_').replace(':', '_')
-        hub_name_slug = '_'.join(filter(None, hub_name_slug.split('_')))
-        
-        rssi_sensor = ZeptrionAirRssiSensor(
+    # Stable hub slug for the RSSI sensor entity ID
+    hub_name_slug = hub_name.lower().replace(' ', '_').replace('-', '_').replace('.', '_').replace(':', '_')
+    hub_name_slug = '_'.join(filter(None, hub_name_slug.split('_')))
+    new_entities.append(
+        ZeptrionAirRssiSensor(
             coordinator=coordinator,
             hub_device_info=hub_device_info,
-            hub_serial=hub_serial, # hub_serial is confirmed not None above
+            hub_serial=hub_serial,
             hub_name=hub_name,
-            hub_name_slug=hub_name_slug  # Add stable slug
+            hub_name_slug=hub_name_slug,
         )
-        new_entities.append(rssi_sensor)
-        _LOGGER.info(f"Adding Zeptrion Air RSSI sensor for hub {hub_name} (Serial: {hub_serial})")
-    else:
-        missing_data_elements = []
-        if not coordinator:
-            missing_data_elements.append("coordinator")
-        if not hub_device_info:
-            missing_data_elements.append("hub_device_info")
-        if not hub_name:
-            missing_data_elements.append("hub_name (entry_title)")
-        _LOGGER.error(
-            f"Could not create RSSI sensor for hub {hub_serial} due to missing data: {', '.join(missing_data_elements)}."
-        )
+    )
 
     # --- Smartfront sensors (temperature, illuminance, humidity) ---
     runtime_data = entry.runtime_data
-    if coordinator and hub_serial and runtime_data is not None and runtime_data.smartfront:
+    if runtime_data is not None and runtime_data.smartfront:
         sensor_values = (coordinator.data or {}).get("smartfront_sensors") or {}
         for description in SMARTFRONT_SENSORS:
             if parse_sensor_value(sensor_values.get(description.key)) is None:
@@ -153,11 +129,7 @@ async def async_setup_entry(
                 ZeptrionAirConnectionSensor(coordinator, hub_serial, entry, description)
             )
 
-    if new_entities:
-        _LOGGER.info(f"Adding {len(new_entities)} Zeptrion Air sensor entities in total.")
-        async_add_entities(new_entities)
-    else:
-        _LOGGER.info("No Zeptrion Air sensor entities to add (neither channel nor RSSI).")
+    async_add_entities(new_entities)
 
 
 class ZeptrionAirChannelSensor(SensorEntity):

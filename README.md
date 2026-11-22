@@ -14,7 +14,8 @@ Requires Home Assistant 2026.8 or newer.
 2. Install *Zeptrion Air* and restart Home Assistant.
 3. zApps (host names `zapp-*`) are discovered via mDNS (`_zapp._tcp`, `_http._tcp`) and DHCP; confirm them under **Settings → Devices & services**. A changed IP address is taken over automatically; to change the address by hand use **⋮ → Reconfigure** on the zApp (entities and settings are kept).
 4. The room stored in the zApp (channel group) is suggested as area when a device is created; areas you already assigned are not changed.
-5. Switching from [heldchen/ha-zeptrion-air](https://github.com/heldchen/ha-zeptrion-air): same domain `zeptrion_air`; remove that repository in HACS, install this one and restart. Config entries, entity IDs and the actions `blind_up_step`, `blind_down_step`, `blind_recall_s1`–`s4` and the step duration are kept.
+5. **Firmware:** bring the zApps to the latest firmware first, in Feller's zeptrion app under **Configuration → Verify and update firmware**. Newer firmware reports more (for example key events of the Smartfront); devices from late production batches come with 01.08.28 from the factory.
+6. Switching from [heldchen/ha-zeptrion-air](https://github.com/heldchen/ha-zeptrion-air): same domain `zeptrion_air`; remove that repository in HACS, install this one and restart. Config entries, entity IDs and the actions `blind_up_step`, `blind_down_step`, `blind_recall_s1`–`s4` and the step duration are kept.
 
 ## What you get
 
@@ -193,6 +194,7 @@ Not tested: awnings and firmware older than 01.08.28.
 
 - **zApp not found:** it must be reachable from Home Assistant under its host name `zapp-<serial>` or its IP address; add it by hand with the IP address if mDNS does not cross your network segments.
 - **Entities unavailable:** the WebSocket to the zApp is down for more than 60 s. Check the Wi-Fi signal sensor of the zApp (a weak signal causes drops) and use the button *Reconnect*; a zApp that does not answer at all needs a short power cut.
+- **Old firmware:** the firmware of each zApp is shown on its device page (Settings → Devices & services → Zeptrion Air). Update it with Feller's zeptrion app (Configuration → Verify and update firmware) before reporting a problem.
 - **Blind position wrong or unknown:** run *Calibrate* once, or set the travel times in the options. Runs started elsewhere without a known direction make the position unknown until the next full run.
 - **Card or scenes feature missing in the dashboard:** reload the browser page (clear the cache once after an update).
 - **Report a problem:** enable debug logging for the integration, reproduce the problem and attach the log and the diagnostics download (Settings → Devices & services → Zeptrion Air → ⋮ next to the zApp → Download diagnostics) to an [issue](https://github.com/polar-gith/ha-zeptrion-air-integration/issues/new/choose).

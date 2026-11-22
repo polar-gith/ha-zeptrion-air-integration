@@ -82,11 +82,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> bool:
     """Set up Zeptrion Air cover entities from a config entry."""
-    platform_data: dict[str, Any] | None = hass.data[DOMAIN].get(entry.entry_id)
-
-    if not platform_data:
-        _LOGGER.error("No platform_data found for entry ID %s", entry.entry_id)
-        return False
+    # Prepared by async_setup_entry in __init__.py before the platforms are forwarded
+    platform_data: dict[str, Any] = hass.data[DOMAIN][entry.entry_id]
 
     _LOGGER.debug("Received platform_data: %s", platform_data)
 
@@ -94,11 +91,7 @@ async def async_setup_entry(
     identified_channels_list: list[dict[str, Any]] = platform_data.get("identified_channels", [])
     hub_entry_title: str = platform_data.get("entry_title", "Zeptrion Air Hub")
 
-    hub_serial_for_blinds_maybe: str | None = platform_data.get("hub_serial")
-    if not hub_serial_for_blinds_maybe:
-        _LOGGER.error("Hub serial not found in platform_data.")
-        return False
-    hub_serial_for_blinds: str = hub_serial_for_blinds_maybe
+    hub_serial_for_blinds: str = platform_data["hub_serial"]
 
     # The hub device itself is registered in __init__.py before platform setup
     # is forwarded, so we can resolve its registry device_id here and link
@@ -110,12 +103,6 @@ async def async_setup_entry(
         (DOMAIN, hub_serial_for_blinds), entry.entry_id
     )
     hub_device_id: str | None = hub_device_entry.id if hub_device_entry else None
-    if hub_device_id is None:
-        _LOGGER.warning(
-            "Could not resolve hub device registry entry for serial %s; "
-            "cover entities will be created without a via_device_id link.",
-            hub_serial_for_blinds,
-        )
 
     new_entities: list[ZeptrionAirBlind] = []
 
@@ -833,10 +820,7 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
                 + (f" Back to {round(previous)} %." if previous is not None and 0 < previous < 100 else "")
             )
             _LOGGER.info("Calibration finished: %s", message)
-        except _CalibrationAborted as err:
-            message = f"{self._display_name}: calibration aborted, {err}. Travel times unchanged."
-            _LOGGER.warning("Calibration aborted: %s", message)
-        except HomeAssistantError as err:
+        except (_CalibrationAborted, HomeAssistantError) as err:
             message = f"{self._display_name}: calibration aborted, {err}. Travel times unchanged."
             _LOGGER.warning("Calibration aborted: %s", message)
         finally:

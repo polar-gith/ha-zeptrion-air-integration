@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 from aiohttp.test_utils import TestServer
 
@@ -64,3 +67,19 @@ def device_registry_compat():
     finally:
         del dr.DeviceRegistry.async_get_device_by_identifier
         dr.DeviceRegistry.async_get_or_create = original_get_or_create
+
+
+class Clock:
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def monotonic(self) -> float:
+        return self.now
+
+
+@pytest.fixture
+def clock():
+    clock = Clock()
+    fake_time = SimpleNamespace(monotonic=clock.monotonic)
+    with patch("custom_components.zeptrion_air.cover.time", fake_time):
+        yield clock
