@@ -55,6 +55,21 @@ Switches use on/off, dimmers brightness. The zApp has no "set brightness" comman
 
 **Scenes S1–S4.** A switch or dimmer channel stores its current state as a scene too: on or **off**, and for dimmers the dim level. *Store S1–S4* (and `light_store_scene`) store it on the zApp like holding the scene key; *Scene S1–S4* (and `light_recall_scene`) recall it. Scenes stored through Home Assistant are also kept by the integration (attributes `scene_s1` … `scene_s4`, brightness 0–255, 0 = off), so a recall from Home Assistant shows the stored brightness. A scene recalled elsewhere (wall key, Smartbutton, other device) or stored with the scene key is only seen as on/off; the brightness shown stays the last known one.
 
+## Dashboard cards
+
+Use the standard **tile card**; its features cover most of it: *Cover open/close*, *Cover position*, *Cover tilt* and *Cover tilt position* for blinds, *Light brightness* for lights. The integration adds one feature, **Zeptrion scenes S1–S4** (`custom:zeptrion-air-scenes`), with four buttons that recall the scenes of the tile's blind or light:
+
+```yaml
+type: tile
+entity: cover.living_room_blind
+features:
+  - type: cover-open-close
+  - type: cover-tilt
+  - type: custom:zeptrion-air-scenes
+```
+
+Blinds call `blind_recall_s1`–`s4`, lights `light_recall_scene`, always on the tile's own entity. The feature is offered for Zeptrion Air blinds and lights only. The older *Zeptrion Air Blinds Card* (`custom:zeptrion-air-blinds-card`) is still there for existing dashboards.
+
 ## Wall keys (Smartfront)
 
 One event entity per zApp with event types `key_<n>_press` / `key_<n>_release` for every key in use. Attributes: `key`, `function` (`channel`, `smartbutton`, `unknown`), `code`; channel keys also `channels` and `direction`. Smartbuttons can thus trigger automations:

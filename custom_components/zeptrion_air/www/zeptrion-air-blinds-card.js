@@ -298,10 +298,147 @@ if (!customElements.get('zeptrion-air-blinds-card-editor')) {
   customElements.define('zeptrion-air-blinds-card-editor', ZeptrionAirBlindsCardEditor);
 }
 
-// Register the card
+// Register the card (once, also if the file is loaded twice)
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'zeptrion-air-blinds-card',
-  name: 'Zeptrion Air Blinds Card',
-  description: 'A card for controlling Zeptrion Air blinds with custom actions'
-});
+if (!window.customCards.some((card) => card.type === 'zeptrion-air-blinds-card')) {
+  window.customCards.push({
+    type: 'zeptrion-air-blinds-card',
+    name: 'Zeptrion Air Blinds Card',
+    description: 'Blind controls with scenes S1–S4. For new dashboards use a tile card with the feature "Zeptrion scenes S1–S4".'
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Tile card feature "Zeptrion scenes S1–S4" for Zeptrion Air blinds and lights.
+//
+//   type: tile
+//   entity: cover.living_room_blind
+//   features:
+//     - type: custom:zeptrion-air-scenes
+//
+// Blinds call zeptrion_air.blind_recall_s1-s4, lights zeptrion_air.light_recall_scene,
+// always on the tile's own entity (no guessed entity IDs).
+// ---------------------------------------------------------------------------
+
+const ZEPTRION_SCENES = [1, 2, 3, 4];
+
+function zeptrionSceneEntityId(stateObjOrHass, context) {
+  // Home Assistant passes (hass, context) since 2025.x, (stateObj) before.
+  if (context && context.entity_id) return context.entity_id;
+  if (stateObjOrHass && stateObjOrHass.entity_id) return stateObjOrHass.entity_id;
+  return undefined;
+}
+
+function zeptrionScenesSupported(stateObjOrHass, context) {
+  const entityId = zeptrionSceneEntityId(stateObjOrHass, context);
+  if (!entityId) return false;
+  const domain = entityId.split('.')[0];
+  if (domain !== 'cover' && domain !== 'light') return false;
+  const entities = stateObjOrHass && stateObjOrHass.entities;
+  if (entities && entities[entityId]) {
+    return entities[entityId].platform === 'zeptrion_air';
+  }
+  return true; // older frontends: no entity registry here
+}
+
+class ZeptrionAirScenesFeature extends HTMLElement {
+  static getStubConfig() {
+    return { type: 'custom:zeptrion-air-scenes' };
+  }
+
+  setConfig(config) {
+    if (!config) throw new Error('Invalid configuration');
+    this._config = config;
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._update();
+  }
+
+  // Since Home Assistant 2025.x features get a context with the entity ID.
+  set context(context) {
+    this._context = context;
+    this._render();
+  }
+
+  // Older Home Assistant versions pass the state object instead.
+  set stateObj(stateObj) {
+    this._stateObj = stateObj;
+    this._render();
+  }
+
+  get _entityId() {
+    return (this._context && this._context.entity_id) || (this._stateObj && this._stateObj.entity_id);
+  }
+
+  _render() {
+    const entityId = this._entityId;
+    if (!this._config || !entityId) return;
+    if (this._renderedFor === entityId) return;
+    this._renderedFor = entityId;
+    if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host { display: block; }
+        .row { display: flex; gap: 8px; height: var(--feature-height, 42px); }
+        button {
+          flex: 1 1 0;
+          min-width: 0;
+          border: none;
+          border-radius: var(--feature-border-radius, 12px);
+          background: var(--tile-color, var(--primary-color));
+          background: color-mix(in srgb, var(--tile-color, var(--primary-color)) 20%, transparent);
+          color: var(--primary-text-color);
+          font: inherit;
+          font-weight: 500;
+          cursor: pointer;
+        }
+        button:hover { background: color-mix(in srgb, var(--tile-color, var(--primary-color)) 35%, transparent); }
+        button:disabled { opacity: 0.5; cursor: default; }
+      </style>
+      <div class="row">
+        ${ZEPTRION_SCENES.map(
+          (n) => `<button type="button" data-scene="${n}" title="Scene S${n}" aria-label="Scene S${n}">S${n}</button>`
+        ).join('')}
+      </div>`;
+    this.shadowRoot.querySelectorAll('button').forEach((button) => {
+      button.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        this._recall(Number(button.dataset.scene));
+      });
+    });
+    this._update();
+  }
+
+  _update() {
+    if (!this.shadowRoot || !this._hass) return;
+    const state = this._hass.states[this._entityId];
+    const unavailable = !state || state.state === 'unavailable';
+    this.shadowRoot.querySelectorAll('button').forEach((button) => {
+      button.disabled = unavailable;
+    });
+  }
+
+  _recall(scene) {
+    const entityId = this._entityId;
+    if (!this._hass || !entityId) return;
+    if (entityId.startsWith('cover.')) {
+      this._hass.callService('zeptrion_air', `blind_recall_s${scene}`, { entity_id: entityId });
+    } else {
+      this._hass.callService('zeptrion_air', 'light_recall_scene', { entity_id: entityId, scene });
+    }
+  }
+}
+
+if (!customElements.get('zeptrion-air-scenes')) {
+  customElements.define('zeptrion-air-scenes', ZeptrionAirScenesFeature);
+  window.customCardFeatures = window.customCardFeatures || [];
+  window.customCardFeatures.push({
+    type: 'zeptrion-air-scenes',
+    name: 'Zeptrion scenes S1–S4',
+    supported: zeptrionScenesSupported,
+    configurable: false,
+  });
+}
