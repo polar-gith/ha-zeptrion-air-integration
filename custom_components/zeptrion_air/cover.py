@@ -41,6 +41,10 @@ from .const import (
     SERVICE_BLIND_STORE_SCENE,
     SERVICE_BLIND_CALIBRATE,
     SERVICE_BLIND_UP_STEP,
+    SERVICE_BLIND_STEP_UP,
+    SERVICE_BLIND_STEP_DOWN,
+    MIN_STEP_DURATION_MS,
+    MAX_STEP_DURATION_MS,
     SERVICE_BLIND_DOWN_STEP,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS,
@@ -177,9 +181,20 @@ async def async_setup_entry(
     # setup (e.g. after an entity_id rename): "Cannot get non-set current platform".
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(SERVICE_BLIND_CALIBRATE, {}, "async_blind_calibrate")
-    # One step up/down (option "step duration"), as in heldchen/ha-zeptrion-air.
-    platform.async_register_entity_service(SERVICE_BLIND_UP_STEP, {}, "async_blind_up_step")
-    platform.async_register_entity_service(SERVICE_BLIND_DOWN_STEP, {}, "async_blind_down_step")
+    # One step up/down: names of heldchen/ha-zeptrion-air and of the HomersDroid
+    # fork; optional duration in ms, otherwise the option "step duration".
+    step_schema = {
+        vol.Optional("duration"): vol.All(
+            vol.Coerce(int), vol.Range(min=MIN_STEP_DURATION_MS, max=MAX_STEP_DURATION_MS)
+        )
+    }
+    for service, method in (
+        (SERVICE_BLIND_UP_STEP, "async_blind_up_step"),
+        (SERVICE_BLIND_STEP_UP, "async_blind_up_step"),
+        (SERVICE_BLIND_DOWN_STEP, "async_blind_down_step"),
+        (SERVICE_BLIND_STEP_DOWN, "async_blind_down_step"),
+    ):
+        platform.async_register_entity_service(service, step_schema, method)
     platform.async_register_entity_service(
         SERVICE_BLIND_STORE_SCENE,
         {vol.Required("scene"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4))},
@@ -475,28 +490,28 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
 
         Full open/close of the slats: set_cover_tilt_position.
         """
-        self._motion.hint("up", time.monotonic(), timed=True)
-        step_duration_ms = self._step_duration_ms()
-        client = self.config_entry.runtime_data.client
-        await self._send("tilting open", lambda: client.async_channel_move_open(self._channel_id, time_ms=step_duration_ms))
+        await self.async_blind_up_step()
 
     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
         """Turn the slats one step down (option "step duration").
 
         Full open/close of the slats: set_cover_tilt_position.
         """
-        self._motion.hint("down", time.monotonic(), timed=True)
-        step_duration_ms = self._step_duration_ms()
+        await self.async_blind_down_step()
+
+    async def async_blind_up_step(self, duration: int | None = None) -> None:
+        """Actions blind_up_step / blind_step_up: one step up (duration in ms or the option)."""
+        self._motion.hint("up", time.monotonic(), timed=True)
+        step_ms = duration or self._step_duration_ms()
         client = self.config_entry.runtime_data.client
-        await self._send("tilting close", lambda: client.async_channel_move_close(self._channel_id, time_ms=step_duration_ms))
+        await self._send("tilting open", lambda: client.async_channel_move_open(self._channel_id, time_ms=step_ms))
 
-    async def async_blind_up_step(self) -> None:
-        """Action blind_up_step: one step up (option "step duration")."""
-        await self.async_open_cover_tilt()
-
-    async def async_blind_down_step(self) -> None:
-        """Action blind_down_step: one step down (option "step duration")."""
-        await self.async_close_cover_tilt()
+    async def async_blind_down_step(self, duration: int | None = None) -> None:
+        """Actions blind_down_step / blind_step_down: one step down (duration in ms or the option)."""
+        self._motion.hint("down", time.monotonic(), timed=True)
+        step_ms = duration or self._step_duration_ms()
+        client = self.config_entry.runtime_data.client
+        await self._send("tilting close", lambda: client.async_channel_move_close(self._channel_id, time_ms=step_ms))
 
     async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
         """Turn the slats to a tilt position (needs a tilt time)."""

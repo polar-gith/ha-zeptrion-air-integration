@@ -2,6 +2,12 @@
 
 All notable changes to this integration. Versions follow Home Assistant style (`YEAR.MONTH.PATCH`); every version is a [GitHub release](https://github.com/polar-gith/ha-zeptrion-air-integration/releases) and installable through HACS.
 
+## 2026.11.28 – 2026-11-22
+
+- Step actions also under the names of the HomersDroid fork: `blind_step_up` / `blind_step_down` (same as `blind_up_step` / `blind_down_step`).
+- All four step actions take an optional `duration` in milliseconds (100–32000); without it the step duration option applies.
+- README: switching from alternize/ha-zeptrion-air-integration and its forks.
+
 ## 2026.11.27 – 2026-11-22
 
 - Actions are translated (German, French, Italian) and have icons.

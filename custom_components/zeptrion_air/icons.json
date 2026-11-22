@@ -60,7 +60,13 @@
     "blind_up_step": {
       "service": "mdi:arrow-up-thin"
     },
+    "blind_step_up": {
+      "service": "mdi:arrow-up-thin"
+    },
     "blind_down_step": {
+      "service": "mdi:arrow-down-thin"
+    },
+    "blind_step_down": {
       "service": "mdi:arrow-down-thin"
     },
     "blind_recall_s1": {

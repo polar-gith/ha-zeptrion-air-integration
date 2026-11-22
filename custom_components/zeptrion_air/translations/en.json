@@ -189,11 +189,43 @@
   "services": {
     "blind_up_step": {
       "name": "Blind step up",
-      "description": "Moves the blind one step up (option step duration, default 250 ms); with slats this turns them one step."
+      "description": "Moves the blind one step up (option step duration, default 250 ms); with slats this turns them one step.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "Duration of the step in milliseconds (100-32000); without it the option step duration applies."
+        }
+      }
+    },
+    "blind_step_up": {
+      "name": "Blind step up (blind_step_up)",
+      "description": "Same as blind_up_step, under the name used by the HomersDroid fork.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "Duration of the step in milliseconds (100-32000); without it the option step duration applies."
+        }
+      }
     },
     "blind_down_step": {
       "name": "Blind step down",
-      "description": "Moves the blind one step down (option step duration, default 250 ms); with slats this turns them one step."
+      "description": "Moves the blind one step down (option step duration, default 250 ms); with slats this turns them one step.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "Duration of the step in milliseconds (100-32000); without it the option step duration applies."
+        }
+      }
+    },
+    "blind_step_down": {
+      "name": "Blind step down (blind_step_down)",
+      "description": "Same as blind_down_step, under the name used by the HomersDroid fork.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "Duration of the step in milliseconds (100-32000); without it the option step duration applies."
+        }
+      }
     },
     "blind_recall_s1": {
       "name": "Recall blind scene S1",

@@ -613,6 +613,34 @@ async def test_blind_step_actions(hass: HomeAssistant, fake_zapp, clock) -> None
     clock.now = 510.0
     await hass.services.async_call(DOMAIN, "blind_down_step", {"entity_id": cover}, blocking=True)
     assert device.commands[-1] == (1, "move_close_600")
+    await _value(hass, device, clock, 510.1, 100)
+    await _value(hass, device, clock, 510.7, 0)
+
+
+async def test_blind_step_actions_homersdroid_names_and_duration(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """blind_step_up / blind_step_down (HomersDroid fork) and the optional duration in ms."""
+    import voluptuous as vol
+
+    device, host = fake_zapp
+    await _setup(hass, device, host, {"step_duration_ms": 600})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+    calls = (
+        ("blind_step_up", {}, "move_open_600"),
+        ("blind_step_down", {"duration": 1200}, "move_close_1200"),
+        ("blind_up_step", {"duration": "300"}, "move_open_300"),
+        ("blind_down_step", {}, "move_close_600"),
+    )
+    for n, (service, data, command) in enumerate(calls):
+        clock.now = 600.0 + n * 10
+        await hass.services.async_call(DOMAIN, service, {"entity_id": cover, **data}, blocking=True)
+        assert device.commands[-1] == (1, command), service
+        await _value(hass, device, clock, clock.now + 0.1, 100)
+        await _value(hass, device, clock, clock.now + 0.5, 0)
+    for duration in (50, 40000):
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN, "blind_step_up", {"entity_id": cover, "duration": duration}, blocking=True
+            )
 
 
 async def test_run_started_by(hass: HomeAssistant, fake_zapp, clock) -> None:

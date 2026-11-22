@@ -189,11 +189,43 @@
   "services": {
     "blind_up_step": {
       "name": "Store un pas vers le haut",
-      "description": "Monte le store d'un pas (option durée du pas, 250 ms par défaut) ; avec des lamelles, cela les tourne d'un pas."
+      "description": "Monte le store d'un pas (option durée du pas, 250 ms par défaut) ; avec des lamelles, cela les tourne d'un pas.",
+      "fields": {
+        "duration": {
+          "name": "Durée",
+          "description": "Durée du pas en millisecondes (100-32000) ; sans valeur, l’option durée du pas s’applique."
+        }
+      }
+    },
+    "blind_step_up": {
+      "name": "Store un pas vers le haut (blind_step_up)",
+      "description": "Comme blind_up_step, sous le nom utilisé par le fork de HomersDroid.",
+      "fields": {
+        "duration": {
+          "name": "Durée",
+          "description": "Durée du pas en millisecondes (100-32000) ; sans valeur, l’option durée du pas s’applique."
+        }
+      }
     },
     "blind_down_step": {
       "name": "Store un pas vers le bas",
-      "description": "Descend le store d'un pas (option durée du pas, 250 ms par défaut) ; avec des lamelles, cela les tourne d'un pas."
+      "description": "Descend le store d'un pas (option durée du pas, 250 ms par défaut) ; avec des lamelles, cela les tourne d'un pas.",
+      "fields": {
+        "duration": {
+          "name": "Durée",
+          "description": "Durée du pas en millisecondes (100-32000) ; sans valeur, l’option durée du pas s’applique."
+        }
+      }
+    },
+    "blind_step_down": {
+      "name": "Store un pas vers le bas (blind_step_down)",
+      "description": "Comme blind_down_step, sous le nom utilisé par le fork de HomersDroid.",
+      "fields": {
+        "duration": {
+          "name": "Durée",
+          "description": "Durée du pas en millisecondes (100-32000) ; sans valeur, l’option durée du pas s’applique."
+        }
+      }
     },
     "blind_recall_s1": {
       "name": "Rappeler la scène S1 du store",

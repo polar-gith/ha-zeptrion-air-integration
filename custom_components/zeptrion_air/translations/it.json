@@ -189,11 +189,43 @@
   "services": {
     "blind_up_step": {
       "name": "Tenda un passo su",
-      "description": "Alza la tenda di un passo (opzione durata del passo, predefinito 250 ms); con le lamelle le ruota di un passo."
+      "description": "Alza la tenda di un passo (opzione durata del passo, predefinito 250 ms); con le lamelle le ruota di un passo.",
+      "fields": {
+        "duration": {
+          "name": "Durata",
+          "description": "Durata del passo in millisecondi (100-32000); senza valore vale l’opzione durata del passo."
+        }
+      }
+    },
+    "blind_step_up": {
+      "name": "Tenda un passo su (blind_step_up)",
+      "description": "Come blind_up_step, con il nome usato dal fork di HomersDroid.",
+      "fields": {
+        "duration": {
+          "name": "Durata",
+          "description": "Durata del passo in millisecondi (100-32000); senza valore vale l’opzione durata del passo."
+        }
+      }
     },
     "blind_down_step": {
       "name": "Tenda un passo giù",
-      "description": "Abbassa la tenda di un passo (opzione durata del passo, predefinito 250 ms); con le lamelle le ruota di un passo."
+      "description": "Abbassa la tenda di un passo (opzione durata del passo, predefinito 250 ms); con le lamelle le ruota di un passo.",
+      "fields": {
+        "duration": {
+          "name": "Durata",
+          "description": "Durata del passo in millisecondi (100-32000); senza valore vale l’opzione durata del passo."
+        }
+      }
+    },
+    "blind_step_down": {
+      "name": "Tenda un passo giù (blind_step_down)",
+      "description": "Come blind_down_step, con il nome usato dal fork di HomersDroid.",
+      "fields": {
+        "duration": {
+          "name": "Durata",
+          "description": "Durata del passo in millisecondi (100-32000); senza valore vale l’opzione durata del passo."
+        }
+      }
     },
     "blind_recall_s1": {
       "name": "Richiama scena S1 della tenda",

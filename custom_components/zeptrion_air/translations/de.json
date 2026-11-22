@@ -189,11 +189,43 @@
   "services": {
     "blind_up_step": {
       "name": "Store Schritt hoch",
-      "description": "Fährt die Store einen Schritt hoch (Option Schrittdauer, Standard 250 ms); bei Lamellen dreht das die Lamellen einen Schritt."
+      "description": "Fährt die Store einen Schritt hoch (Option Schrittdauer, Standard 250 ms); bei Lamellen dreht das die Lamellen einen Schritt.",
+      "fields": {
+        "duration": {
+          "name": "Dauer",
+          "description": "Dauer des Schritts in Millisekunden (100-32000); ohne Angabe gilt die Option Schrittdauer."
+        }
+      }
+    },
+    "blind_step_up": {
+      "name": "Store Schritt hoch (blind_step_up)",
+      "description": "Wie blind_up_step, unter dem Namen aus dem Fork von HomersDroid.",
+      "fields": {
+        "duration": {
+          "name": "Dauer",
+          "description": "Dauer des Schritts in Millisekunden (100-32000); ohne Angabe gilt die Option Schrittdauer."
+        }
+      }
     },
     "blind_down_step": {
       "name": "Store Schritt runter",
-      "description": "Fährt die Store einen Schritt runter (Option Schrittdauer, Standard 250 ms); bei Lamellen dreht das die Lamellen einen Schritt."
+      "description": "Fährt die Store einen Schritt runter (Option Schrittdauer, Standard 250 ms); bei Lamellen dreht das die Lamellen einen Schritt.",
+      "fields": {
+        "duration": {
+          "name": "Dauer",
+          "description": "Dauer des Schritts in Millisekunden (100-32000); ohne Angabe gilt die Option Schrittdauer."
+        }
+      }
+    },
+    "blind_step_down": {
+      "name": "Store Schritt runter (blind_step_down)",
+      "description": "Wie blind_down_step, unter dem Namen aus dem Fork von HomersDroid.",
+      "fields": {
+        "duration": {
+          "name": "Dauer",
+          "description": "Dauer des Schritts in Millisekunden (100-32000); ohne Angabe gilt die Option Schrittdauer."
+        }
+      }
     },
     "blind_recall_s1": {
       "name": "Storen-Szene S1 abrufen",

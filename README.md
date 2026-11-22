@@ -19,7 +19,7 @@ Requires Home Assistant 2026.8 or newer.
 3. zApps (host names `zapp-*`) are discovered via mDNS (`_zapp._tcp`, `_http._tcp`) and DHCP; confirm them under **Settings → Devices & services**. A changed IP address is taken over automatically; to change the address by hand use **⋮ → Reconfigure** on the zApp (entities and settings are kept).
 4. The room stored in the zApp (channel group) is suggested as area when a device is created; areas you already assigned are not changed.
 5. **Firmware:** bring the zApps to the latest firmware first, in Feller's zeptrion app under **Configuration → Verify and update firmware**. Newer firmware reports more (for example key events of the Smartfront); devices from late production batches come with 01.08.28 from the factory.
-6. Switching from [heldchen/ha-zeptrion-air](https://github.com/heldchen/ha-zeptrion-air): same domain `zeptrion_air`; remove that repository in HACS, install this one and restart. Config entries, entity IDs and the actions `blind_up_step`, `blind_down_step`, `blind_recall_s1`–`s4` and the step duration are kept.
+6. Switching from [heldchen/ha-zeptrion-air](https://github.com/heldchen/ha-zeptrion-air), from [alternize/ha-zeptrion-air-integration](https://github.com/alternize/ha-zeptrion-air-integration) or from a fork of it (for example HomersDroid's): same domain `zeptrion_air`; remove that repository in HACS, install this one and restart. Config entries, entity IDs, the step duration and the actions are kept: `blind_up_step` / `blind_down_step`, also under the names `blind_step_up` / `blind_step_down` with the optional `duration`, and `blind_recall_s1`–`s4`.
 
 ## What you get
 
@@ -30,7 +30,7 @@ Requires Home Assistant 2026.8 or newer.
 | Smartfront fitted | Event *Wall keys*, sensors temperature (module heat, reads above room temperature) and, if present, illuminance / humidity; light *Smartfront LED n* per key in use; button *Undo LED change* |
 | Always | Button *Reconnect*; Wi-Fi signal; hidden diagnostic counters *Connections*, *Short outages*, *Long outages*; sensors name / group / icon ID per channel (disabled) |
 
-Actions: `zeptrion_air.blind_up_step`, `blind_down_step`, `blind_recall_s1`, `blind_recall_s2`, `blind_recall_s3`, `blind_recall_s4`, `blind_store_scene` (`scene: 1-4`), `blind_calibrate`, `light_store_scene`, `light_recall_scene` (`scene: 1-4`), `program_smartbutton`, `write_name_to_zapp`.
+Actions: `zeptrion_air.blind_up_step`, `blind_down_step` (same as `blind_step_up`, `blind_step_down`; optional `duration` in ms, 100–32000, otherwise the step duration option), `blind_recall_s1`, `blind_recall_s2`, `blind_recall_s3`, `blind_recall_s4`, `blind_store_scene` (`scene: 1-4`), `blind_calibrate`, `light_store_scene`, `light_recall_scene` (`scene: 1-4`), `program_smartbutton`, `write_name_to_zapp`.
 
 ## Blinds
 

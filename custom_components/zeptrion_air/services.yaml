@@ -3,12 +3,68 @@ blind_up_step:
     entity:
       integration: zeptrion_air
       domain: cover
+  fields:
+    duration:
+      required: false
+      example: 400
+      selector:
+        number:
+          min: 100
+          max: 32000
+          step: 50
+          unit_of_measurement: ms
+          mode: box
 
 blind_down_step:
   target:
     entity:
       integration: zeptrion_air
       domain: cover
+  fields:
+    duration:
+      required: false
+      example: 400
+      selector:
+        number:
+          min: 100
+          max: 32000
+          step: 50
+          unit_of_measurement: ms
+          mode: box
+
+blind_step_up:
+  target:
+    entity:
+      integration: zeptrion_air
+      domain: cover
+  fields:
+    duration:
+      required: false
+      example: 400
+      selector:
+        number:
+          min: 100
+          max: 32000
+          step: 50
+          unit_of_measurement: ms
+          mode: box
+
+blind_step_down:
+  target:
+    entity:
+      integration: zeptrion_air
+      domain: cover
+  fields:
+    duration:
+      required: false
+      example: 400
+      selector:
+        number:
+          min: 100
+          max: 32000
+          step: 50
+          unit_of_measurement: ms
+          mode: box
 
 blind_recall_s1:
   target:
