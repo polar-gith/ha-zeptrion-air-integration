@@ -19,7 +19,7 @@
           "step_duration_ms": "Blind step duration (ms)"
         },
         "data_description": {
-          "hostname": "Host name of the zApp (`zapp-<serial>.local`, on the sticker of the device) or its IP address.",
+          "hostname": "Host name of the zApp (`zapp-21510211.local`, on the sticker of the device) or its IP address.",
           "step_duration_ms": "Duration of a single up/down step for blinds (100-32000 ms). Can be changed later in the options."
         }
       },
@@ -216,7 +216,7 @@
         },
         "actions": {
           "name": "Commands",
-          "description": "List of blinds or lights of any zApp, each with entity_id and command, e.g. entity_id cover.play_blind with command recall_s1. Commands: on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close, and timed move_open_<ms>, move_close_<ms>, dim_up_<ms>, dim_down_<ms>."
+          "description": "List of blinds or lights of any zApp, each with entity_id and command, e.g. entity_id cover.play_blind with command recall_s1. Commands: on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close, and timed move_open_1500, move_close_1500, dim_up_1500, dim_down_1500 (time in ms)."
         },
         "requests": {
           "name": "HTTP requests",

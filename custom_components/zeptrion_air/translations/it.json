@@ -9,7 +9,7 @@
           "step_duration_ms": "Durata di un passo delle tende (ms)"
         },
         "data_description": {
-          "hostname": "Nome host dello zApp (`zapp-<serial>.local`, sull'etichetta del dispositivo) o il suo indirizzo IP.",
+          "hostname": "Nome host dello zApp (`zapp-21510211.local`, sull'etichetta del dispositivo) o il suo indirizzo IP.",
           "step_duration_ms": "Durata di un singolo passo su/giù per le tende (100-32000 ms). Modificabile più tardi nelle opzioni."
         }
       },
@@ -216,7 +216,7 @@
         },
         "actions": {
           "name": "Comandi",
-          "description": "Elenco di tende o luci di qualsiasi zApp, ciascuna con entity_id e command, ad es. entity_id cover.play_blind con command recall_s1. Comandi: on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close e temporizzati move_open_<ms>, move_close_<ms>, dim_up_<ms>, dim_down_<ms>."
+          "description": "Elenco di tende o luci di qualsiasi zApp, ciascuna con entity_id e command, ad es. entity_id cover.play_blind con command recall_s1. Comandi: on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close e temporizzati move_open_1500, move_close_1500, dim_up_1500, dim_down_1500 (tempo in ms)."
         },
         "requests": {
           "name": "Richieste HTTP",

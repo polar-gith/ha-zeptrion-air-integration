@@ -9,7 +9,7 @@
           "step_duration_ms": "Durée d'un pas des stores (ms)"
         },
         "data_description": {
-          "hostname": "Nom d'hôte du zApp (`zapp-<serial>.local`, sur l'étiquette de l'appareil) ou son adresse IP.",
+          "hostname": "Nom d'hôte du zApp (`zapp-21510211.local`, sur l'étiquette de l'appareil) ou son adresse IP.",
           "step_duration_ms": "Durée d'un pas vers le haut ou le bas pour les stores (100-32000 ms). Modifiable plus tard dans les options."
         }
       },
@@ -216,7 +216,7 @@
         },
         "actions": {
           "name": "Commandes",
-          "description": "Liste de stores ou de lumières de n'importe quel zApp, chacun avec entity_id et command, p. ex. entity_id cover.play_blind avec command recall_s1. Commandes : on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close, et temporisées move_open_<ms>, move_close_<ms>, dim_up_<ms>, dim_down_<ms>."
+          "description": "Liste de stores ou de lumières de n'importe quel zApp, chacun avec entity_id et command, p. ex. entity_id cover.play_blind avec command recall_s1. Commandes : on, off, toggle, stop, open, close, recall_s1-recall_s4, dim_up, dim_down, move_open, move_close, et temporisées move_open_1500, move_close_1500, dim_up_1500, dim_down_1500 (durée en ms)."
         },
         "requests": {
           "name": "Requêtes HTTP",
