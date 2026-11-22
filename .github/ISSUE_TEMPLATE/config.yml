@@ -1,1 +1,8 @@
 blank_issues_enabled: false
+contact_links:
+  - name: "README: functions, options and limitations"
+    url: "https://github.com/polar-gith/ha-zeptrion-air-integration#readme"
+    about: "Most questions are answered there."
+  - name: "Changelog"
+    url: "https://github.com/polar-gith/ha-zeptrion-air-integration/blob/main/CHANGELOG.md"
+    about: "What changed in which version."

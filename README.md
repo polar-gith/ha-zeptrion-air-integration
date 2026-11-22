@@ -194,7 +194,8 @@ Not tested: awnings and firmware older than 01.08.28.
 - zApp API by Feller: [docs/zapp-api.md](docs/zapp-api.md) (summary, observed behaviour) and the PDF in [docs/api](docs/api).
 - Protocol notes by diaznet: [zeptrionair-api `docs/protocol.md`](https://github.com/diaznet/zeptrionair-api/blob/main/docs/protocol.md).
 - The blinds card is served at `/api/zeptrion_air/zeptrion-air-blinds-card.js` and registered once as a dashboard resource.
-- Versions follow `YEAR.MONTH.PATCH`, released as tags `vYYYY.M.PATCH`.
+- Versions follow `YEAR.MONTH.PATCH`, released as tags `vYYYY.M.PATCH`; changes per version in [CHANGELOG.md](CHANGELOG.md).
+- Bugs and ideas: [issue forms](https://github.com/polar-gith/ha-zeptrion-air-integration/issues/new/choose); contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 

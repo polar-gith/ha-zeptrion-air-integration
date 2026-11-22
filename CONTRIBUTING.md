@@ -1,59 +1,36 @@
-# Contribution guidelines
+# Contributing
 
-Contributing to this project should be as easy and transparent as possible, whether it's:
+Bug reports, ideas and pull requests are welcome.
 
-- Reporting a bug
-- Discussing the current state of the code
-- Submitting a fix
-- Proposing new features
+## Issues
 
-## Github is used for everything
+Use the [issue forms](../../issues/new/choose). For bugs they ask for the integration version, the zApp model and firmware, the button face and a diagnostics download; that is usually what it takes to reproduce a problem. One problem per issue.
 
-Github is used to host code, to track issues and feature requests, as well as accept pull requests.
+## Pull requests
 
-Pull requests are the best way to propose changes to the codebase.
+1. Fork the repository and branch from `main`.
+2. Keep the change focused; update the README and `CHANGELOG.md` (section of the next version) if behaviour changes.
+3. Run the checks below; CI runs the same on every pull request.
+4. Open the pull request against `main`.
 
-1. Fork the repo and create your branch from `main`.
-2. If you've changed something, update the documentation.
-3. Make sure your code lints (using `scripts/lint`).
-4. Test you contribution.
-5. Issue that pull request!
+## Checks
 
-## Any contributions you make will be under the MIT Software License
+```bash
+pip install -r requirements_test.txt
+ruff check .                              # lint
+python -m pytest -q                       # integration tests against a simulated zApp
+node --test tests/js/*.test.mjs           # dashboard parts (Node.js 22, no packages needed)
+```
 
-In short, when you submit code changes, your submissions are understood to be under the same [MIT License](http://choosealicense.com/licenses/mit/) that covers the project. Feel free to contact the maintainers if that's a concern.
+The HACS action and hassfest run in the *Validate* workflow without exceptions.
 
-## Report bugs using Github's [issues](../../issues)
+## Releases
 
-GitHub issues are used to track public bugs.
-Report a bug by [opening a new issue](../../issues/new/choose); it's that easy!
+- Versions follow Home Assistant: `YEAR.MONTH.PATCH`; the first release of a month is `YYYY.M.0`.
+- The version in `custom_components/zeptrion_air/manifest.json` is the release version; the *Publish release* workflow creates tag and release from it.
+- Changes are collected and released together, normally **once a week**. Fixes for problems that break installations are released right away.
+- Every release has notes and an entry in `CHANGELOG.md`.
 
-## Write bug reports with detail, background, and sample code
+## Licence
 
-**Great Bug Reports** tend to have:
-
-- A quick summary and/or background
-- Steps to reproduce
-  - Be specific!
-  - Give sample code if you can.
-- What you expected would happen
-- What actually happens
-- Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
-
-People *love* thorough bug reports. I'm not even kidding.
-
-## Use a Consistent Coding Style
-
-Use [black](https://github.com/ambv/black) to make sure the code follows the style.
-
-## Test your code modification
-
-It comes with development environment in a container, easy to launch
-if you use Visual Studio Code. With this container you will have a stand alone
-Home Assistant instance running and already configured with the included
-[`configuration.yaml`](./config/configuration.yaml)
-file.
-
-## License
-
-By contributing, you agree that your contributions will be licensed under its MIT License.
+Contributions are under the [MIT licence](LICENSE) of this project.
