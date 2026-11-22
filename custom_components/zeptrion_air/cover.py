@@ -37,6 +37,8 @@ from .const import (
     SERVICE_BLIND_RECALL_S4,
     SERVICE_BLIND_STORE_SCENE,
     SERVICE_BLIND_CALIBRATE,
+    SERVICE_BLIND_UP_STEP,
+    SERVICE_BLIND_DOWN_STEP,
     CONF_STEP_DURATION_MS,
     DEFAULT_STEP_DURATION_MS,
     SIGNAL_AVAILABILITY,
@@ -179,6 +181,9 @@ async def async_setup_entry(
     # setup (e.g. after an entity_id rename): "Cannot get non-set current platform".
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(SERVICE_BLIND_CALIBRATE, {}, "async_blind_calibrate")
+    # One step up/down (option "step duration"), as in heldchen/ha-zeptrion-air.
+    platform.async_register_entity_service(SERVICE_BLIND_UP_STEP, {}, "async_blind_up_step")
+    platform.async_register_entity_service(SERVICE_BLIND_DOWN_STEP, {}, "async_blind_down_step")
     platform.async_register_entity_service(
         SERVICE_BLIND_STORE_SCENE,
         {vol.Required("scene"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4))},
@@ -475,6 +480,14 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
         step_duration_ms = self._step_duration_ms()
         client = self.config_entry.runtime_data.client
         await self._send("tilting close", lambda: client.async_channel_move_close(self._channel_id, time_ms=step_duration_ms))
+
+    async def async_blind_up_step(self) -> None:
+        """Action blind_up_step: one step up (option "step duration")."""
+        await self.async_open_cover_tilt()
+
+    async def async_blind_down_step(self) -> None:
+        """Action blind_down_step: one step down (option "step duration")."""
+        await self.async_close_cover_tilt()
 
     async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
         """Turn the slats to a tilt position (needs a tilt time)."""

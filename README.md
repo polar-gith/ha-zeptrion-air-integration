@@ -14,6 +14,7 @@ Requires Home Assistant 2026.8 or newer.
 2. Install *Zeptrion Air* and restart Home Assistant.
 3. zApps (host names `zapp-*`) are discovered via mDNS (`_zapp._tcp`, `_http._tcp`) and DHCP; confirm them under **Settings → Devices & services**. A changed IP address is taken over automatically; to change the address by hand use **⋮ → Reconfigure** on the zApp (entities and settings are kept).
 4. The room stored in the zApp (channel group) is suggested as area when a device is created; areas you already assigned are not changed.
+5. Switching from [heldchen/ha-zeptrion-air](https://github.com/heldchen/ha-zeptrion-air): same domain `zeptrion_air`; remove that repository in HACS, install this one and restart. Config entries, entity IDs and the actions `blind_up_step`, `blind_down_step`, `blind_recall_s1`–`s4` and the step duration are kept.
 
 ## What you get
 
@@ -154,8 +155,8 @@ Not tested: awnings and firmware older than 01.08.28.
 
 ## Limitations
 
-- Blind positions and dimmer brightness are estimates; the zApp reports neither. Scenes cannot be read back.
-- Wall keys, Smartbuttons and LEDs need a Smartfront.
+- Blind positions and dimmer brightness are estimates; the zApp reports neither. Scenes cannot be read back. Position estimates rely on the timing of the WebSocket messages and get less accurate on zApps with a weak Wi-Fi signal.
+- Wall keys, Smartbuttons and LEDs need a Smartfront that reports its keys (`/zapi/smartfront/id`); older button faces without it give no wall-key events yet.
 - The zApp cannot be restarted remotely (firmware 01.08.28 ignores the reboot command).
 - Channel name / group / icon sensors are read at setup (and follow `write_name_to_zapp`).
 

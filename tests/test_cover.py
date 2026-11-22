@@ -610,3 +610,20 @@ async def test_unknown_run_from_middle_told_by_duration(hass: HomeAssistant, fak
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_blind_step_actions(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """blind_up_step / blind_down_step (heldchen/ha-zeptrion-air) use the step duration."""
+    device, host = fake_zapp
+    await _setup(hass, device, host, {"step_duration_ms": 600})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+
+    clock.now = 500.0
+    await hass.services.async_call(DOMAIN, "blind_up_step", {"entity_id": cover}, blocking=True)
+    assert device.commands[-1] == (1, "move_open_600")
+    await _value(hass, device, clock, 500.1, 100)
+    await _value(hass, device, clock, 500.7, 0)
+
+    clock.now = 510.0
+    await hass.services.async_call(DOMAIN, "blind_down_step", {"entity_id": cover}, blocking=True)
+    assert device.commands[-1] == (1, "move_close_600")

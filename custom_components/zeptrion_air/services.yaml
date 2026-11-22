@@ -1,3 +1,19 @@
+blind_up_step:
+  name: Blind Up Step
+  description: Moves the blind one step up (option "step duration", default 250 ms); with slats this turns them one step.
+  target:
+    entity:
+      integration: zeptrion_air
+      domain: cover
+
+blind_down_step:
+  name: Blind Down Step
+  description: Moves the blind one step down (option "step duration", default 250 ms); with slats this turns them one step.
+  target:
+    entity:
+      integration: zeptrion_air
+      domain: cover
+
 blind_recall_s1:
   name: Blind Recall S1
   description: Recalls scene S1 for the blind.
