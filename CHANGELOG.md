@@ -2,7 +2,7 @@
 
 All notable changes to this integration. Versions follow Home Assistant style (`YEAR.MONTH.PATCH`); every version is a [GitHub release](https://github.com/polar-gith/ha-zeptrion-air-integration/releases) and installable through HACS.
 
-## Unreleased
+## 2026.11.27 – 2026-11-22
 
 - Actions are translated (German, French, Italian) and have icons.
 - Blinds and lights take their name from their channel device (Home Assistant naming rule). Names you set yourself are kept; otherwise a blind or light now shows the name of its device where the two differed.
