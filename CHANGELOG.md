@@ -5,6 +5,8 @@ All notable changes to this integration. Versions follow Home Assistant style (`
 ## Unreleased
 
 - Wall key events of older button faces (keys 9–16) are translated as well (German, French, Italian, English); keys 1–8 already were.
+- Scenes feature and blinds card press the standard *Scene S1*–*S4* button of the device; only if that button is disabled do they call `blind_recall_sN` / `light_recall_scene`. Dashboards and automations need no changes; all actions stay.
+- README: *Without custom cards* – scenes, storing, calibrating and slat steps with standard entities.
 
 ## 2026.11.28 – 2026-11-22
 

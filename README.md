@@ -75,7 +75,7 @@ features:
   - type: custom:zeptrion-air-scenes
 ```
 
-Blinds call `blind_recall_s1`–`s4`, lights `light_recall_scene`, always on the tile's own entity. The feature is offered for Zeptrion Air blinds and lights only. The older *Zeptrion Air Blinds Card* (`custom:zeptrion-air-blinds-card`) is **deprecated**: it still works in existing dashboards but will be removed in a future version; replace it by a tile card with this feature.
+The feature presses the *Scene S1*–*S4* button of the tile's blind or light; if that button is disabled, it calls `blind_recall_s1`–`s4` (blinds) or `light_recall_scene` (lights) instead. The feature is offered for Zeptrion Air blinds and lights only. The older *Zeptrion Air Blinds Card* (`custom:zeptrion-air-blinds-card`) is **deprecated**: it still works in existing dashboards but will be removed in a future version; replace it by a tile card with this feature.
 
 **Ready-made dashboard:** the dashboard strategy *Zeptrion Air* builds a dashboard from all Zeptrion Air blinds and lights, one view per floor and one section per area, with tiles for open/close, tilt, brightness and scenes. It is generated on every load, so new zApps and area changes show up without editing. Create a new dashboard, open its raw configuration editor and enter:
 
@@ -86,6 +86,22 @@ strategy:
 ```
 
 To adjust it by hand, use *Take control* in the dashboard menu; Home Assistant then saves the generated cards as a normal dashboard.
+
+**Without custom cards:** everything is also available as standard entities, so plain tile, button or entities cards are enough:
+
+| Function | Standard entity / action |
+|---|---|
+| Recall scene S1–S4 (blind or light) | button *Scene S1*–*S4* of the channel → `button.press` |
+| Store scene S1–S4 | button *Store S1*–*S4* |
+| Calibrate travel times | button *Calibrate* |
+| One slat step up / down | `cover.open_cover_tilt` / `cover.close_cover_tilt` (tile feature *Cover tilt*) |
+
+```yaml
+type: tile
+entity: button.living_room_blind_scene_s1
+```
+
+The actions `blind_recall_s1`–`s4`, `blind_up_step` / `blind_down_step` and the other `zeptrion_air` actions remain available, so existing dashboards and automations keep working unchanged.
 
 ## Wall keys (Smartfront)
 

@@ -255,3 +255,37 @@ test('blinds card labels its buttons in the user language', () => {
   card.hass = { ...fakeHass(), locale: { language: 'xx' } };
   assert.equal(card.shadowRoot.getElementById('down-btn').title, 'Close');
 });
+
+test('scenes are recalled by pressing the Scene SN button of the same device when it exists', () => {
+  const { registry } = load();
+  const hass = fakeHass();
+  hass.states['cover.kitchen'] = { entity_id: 'cover.kitchen', state: 'open', attributes: { supported_features: 191 } };
+  hass.entities['cover.kitchen'] = { entity_id: 'cover.kitchen', platform: 'zeptrion_air', device_id: 'd6' };
+  for (const n of [1, 2, 3, 4]) {
+    const id = `button.kitchen_scene_s${n}`;
+    hass.states[id] = { entity_id: id, state: 'unknown', attributes: {} };
+    hass.entities[id] = { entity_id: id, platform: 'zeptrion_air', device_id: 'd6', translation_key: `scene_s${n}` };
+  }
+  // a store button and a button of another device must not be used
+  hass.entities['button.kitchen_store_s2'] = { entity_id: 'button.kitchen_store_s2', platform: 'zeptrion_air', device_id: 'd6', translation_key: 'store_s2' };
+
+  const Feature = registry.get('zeptrion-air-scenes');
+  const feature = new Feature();
+  feature.setConfig({});
+  feature.hass = hass;
+  feature.context = { entity_id: 'cover.kitchen' };
+  feature.shadowRoot.querySelectorAll('button').find((b) => b.dataset.scene === '3').click();
+  assert.deepEqual(plain(hass.calls.at(-1)), ['button', 'press', { entity_id: 'button.kitchen_scene_s3' }]);
+
+  const Card = registry.get('zeptrion-air-blinds-card');
+  const card = new Card();
+  card.setConfig({ entity: 'cover.kitchen' });
+  card.hass = hass;
+  card.shadowRoot.getElementById('scene2-btn').click();
+  assert.deepEqual(plain(hass.calls.at(-1)), ['button', 'press', { entity_id: 'button.kitchen_scene_s2' }]);
+
+  // button unavailable -> the integration's own action
+  hass.states['button.kitchen_scene_s4'].state = 'unavailable';
+  card.shadowRoot.getElementById('scene4-btn').click();
+  assert.deepEqual(plain(hass.calls.at(-1)), ['zeptrion_air', 'blind_recall_s4', { entity_id: 'cover.kitchen' }]);
+});

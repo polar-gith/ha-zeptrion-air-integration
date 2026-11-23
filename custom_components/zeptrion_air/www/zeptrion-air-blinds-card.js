@@ -9,6 +9,36 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+// Scene S1-S4 of a blind or light: press its "Scene SN" button entity (a standard
+// Home Assistant entity on the same device); if that button is missing or disabled,
+// fall back to the integration's own action. Dashboards need no changes either way.
+function zeptrionSceneButton(hass, entityId, scene) {
+  const entities = (hass && hass.entities) || {};
+  const own = entities[entityId];
+  if (!own || !own.device_id) return undefined;
+  const match = Object.values(entities).find(
+    (entry) =>
+      entry.platform === 'zeptrion_air' &&
+      entry.device_id === own.device_id &&
+      entry.translation_key === `scene_s${scene}` &&
+      String(entry.entity_id).startsWith('button.') &&
+      hass.states[entry.entity_id] &&
+      hass.states[entry.entity_id].state !== 'unavailable'
+  );
+  return match ? match.entity_id : undefined;
+}
+
+function zeptrionRecallScene(hass, entityId, scene) {
+  const button = zeptrionSceneButton(hass, entityId, scene);
+  if (button) {
+    hass.callService('button', 'press', { entity_id: button });
+  } else if (String(entityId).startsWith('cover.')) {
+    hass.callService('zeptrion_air', `blind_recall_s${scene}`, { entity_id: entityId });
+  } else {
+    hass.callService('zeptrion_air', 'light_recall_scene', { entity_id: entityId, scene });
+  }
+}
+
 // Button tooltips of the blinds card, by the user's language (English otherwise).
 const ZEPTRION_CARD_TEXTS = {
   en: { up: 'Open', step_up: 'Step up', stop: 'Stop', step_down: 'Step down', down: 'Close', scene: 'Scene' },
@@ -40,7 +70,7 @@ class ZeptrionAirBlindsCard extends HTMLElement {
       throw new Error('You need to define a cover entity');
     }
     
-    // Scene buttons call zeptrion_air.blind_recall_s1-s4 on the cover itself.
+    // Scene buttons press the blind's "Scene SN" button (fallback: zeptrion_air.blind_recall_sN).
     // scene1_entity ... scene4_entity (button entities) are still honoured if set.
     this.config = { ...config };
     
@@ -173,7 +203,7 @@ class ZeptrionAirBlindsCard extends HTMLElement {
       this.pressButton(button);
       return;
     }
-    this.callService('zeptrion_air', `blind_recall_s${scene}`);
+    zeptrionRecallScene(this._hass, this.config.entity, scene);
   }
 
   pressButton(entityId) {
@@ -341,8 +371,8 @@ if (!window.customCards.some((card) => card.type === 'zeptrion-air-blinds-card')
 //   features:
 //     - type: custom:zeptrion-air-scenes
 //
-// Blinds call zeptrion_air.blind_recall_s1-s4, lights zeptrion_air.light_recall_scene,
-// always on the tile's own entity (no guessed entity IDs).
+// Presses the "Scene SN" button of the tile's device; if it is missing or disabled,
+// blinds call zeptrion_air.blind_recall_s1-s4, lights zeptrion_air.light_recall_scene.
 // ---------------------------------------------------------------------------
 
 const ZEPTRION_SCENES = [1, 2, 3, 4];
@@ -449,11 +479,7 @@ class ZeptrionAirScenesFeature extends HTMLElement {
   _recall(scene) {
     const entityId = this._entityId;
     if (!this._hass || !entityId) return;
-    if (entityId.startsWith('cover.')) {
-      this._hass.callService('zeptrion_air', `blind_recall_s${scene}`, { entity_id: entityId });
-    } else {
-      this._hass.callService('zeptrion_air', 'light_recall_scene', { entity_id: entityId, scene });
-    }
+    zeptrionRecallScene(this._hass, entityId, scene);
   }
 }
 
