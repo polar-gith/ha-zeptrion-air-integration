@@ -2,6 +2,10 @@
 
 All notable changes to this integration. Versions follow Home Assistant style (`YEAR.MONTH.PATCH`); every version is a [GitHub release](https://github.com/polar-gith/ha-zeptrion-air-integration/releases) and installable through HACS.
 
+## Unreleased
+
+- Lights and blinds stay in sync when a Smartbutton switches several channels of one zApp at once: the zApp does not always report every channel (seen on a 3340-4-B, where only one of three channels was reported). After every reported change, all channel states of that zApp are now read again 1.5 s later and corrected where needed. Diagnostics show the number of resyncs and corrections.
+
 ## 2026.11.29 – 2026-11-23
 
 - Wall key events of older button faces (keys 9–16) are translated as well (German, French, Italian, English); keys 1–8 already were.

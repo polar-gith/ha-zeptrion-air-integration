@@ -8,6 +8,11 @@ Behaviour (protocol observations by diaznet, zeptrionair-api docs/protocol.md, s
   connection is dropped and re-established.
 * After every (re)connect, all channel states are read once (``/zrap/chscan``)
   and passed on as ``snapshot`` updates, so changes made during the gap are not lost.
+* After a pushed channel change (``eid1``), all channel states are read again
+  after a short pause, and channels whose value differs are passed on as
+  ``snapshot`` updates. A zApp that switches several channels with one request
+  (seen with a Smartbutton programme on a 3340-4-B) does not always send ``eid1``
+  for every channel.
 * Reconnects use exponential backoff (1 s to 60 s) with +/-20 % jitter.
 
 The class does not depend on Home Assistant: it reports through callbacks.
@@ -28,6 +33,7 @@ import aiohttp
 from .api import ZeptrionAirApiClient, ZeptrionAirApiClientError
 from .const import (
     LIVENESS_INTERVAL_S,
+    RESYNC_AFTER_CHANGE_S,
     RECONNECT_BACKOFF_MAX_S,
     RECONNECT_BACKOFF_MIN_S,
 )
@@ -65,6 +71,7 @@ class ZeptrionAirWebsocketListener:
         liveness_interval: float = LIVENESS_INTERVAL_S,
         backoff_min: float = RECONNECT_BACKOFF_MIN_S,
         backoff_max: float = RECONNECT_BACKOFF_MAX_S,
+        resync_delay: float = RESYNC_AFTER_CHANGE_S,
         create_task: Callable[[Coroutine[Any, Any, None]], asyncio.Task[None]] | None = None,
     ) -> None:
         self._client = client
@@ -77,6 +84,9 @@ class ZeptrionAirWebsocketListener:
         self._liveness = liveness_interval
         self._backoff_min = backoff_min
         self._backoff_max = backoff_max
+        self._resync_delay = resync_delay
+        self._resync_task: asyncio.Task[None] | None = None
+        self._values: dict[int, int] = {}
         self._create_task = create_task or asyncio.create_task
         self._task: asyncio.Task[None] | None = None
         self._ws: aiohttp.ClientWebSocketResponse | None = None
@@ -88,6 +98,8 @@ class ZeptrionAirWebsocketListener:
         self.messages_received = 0
         self.connects = 0
         self.liveness_checks = 0
+        self.resyncs = 0
+        self.resync_corrections = 0
         self.last_error: str | None = None
 
     # ------------------------------------------------------------- lifecycle
@@ -100,6 +112,7 @@ class ZeptrionAirWebsocketListener:
 
     async def stop(self) -> None:
         """Stop the background task and close the connection."""
+        self._cancel_resync()
         task, self._task = self._task, None
         if task and not task.done():
             task.cancel()
@@ -131,6 +144,8 @@ class ZeptrionAirWebsocketListener:
             "messages_received": self.messages_received,
             "connects": self.connects,
             "liveness_checks": self.liveness_checks,
+            "resyncs": self.resyncs,
+            "resync_corrections": self.resync_corrections,
             "last_error": self.last_error,
             "task_running": self.is_alive(),
         }
@@ -204,6 +219,7 @@ class ZeptrionAirWebsocketListener:
                     raise _DisconnectedError(f"WebSocket closed ({message.type.name}, code {code})")
         finally:
             self._ws = None
+            self._cancel_resync()
             if not ws.closed:
                 await ws.close()
 
@@ -229,6 +245,44 @@ class ZeptrionAirWebsocketListener:
             channel = _parse_int(key[2:])
             value = _parse_int(node.get("val"))
             if channel is not None and value is not None:
+                self._values[channel] = value
+                self._safe_call(self._on_channel_update, channel, value, True)
+
+    def _schedule_resync(self) -> None:
+        """Read all channel states again shortly after the last pushed change."""
+        self._cancel_resync()
+        self._resync_task = self._create_task(self._resync())
+
+    def _cancel_resync(self) -> None:
+        task, self._resync_task = self._resync_task, None
+        if task is not None and not task.done():
+            task.cancel()
+
+    async def _resync(self) -> None:
+        await asyncio.sleep(self._resync_delay)
+        self.resyncs += 1
+        try:
+            data = await self._client.async_get_all_channels_scan_info()
+        except ZeptrionAirApiClientError as err:
+            _LOGGER.debug("[%s] Resync after change failed: %s", self._hostname, err)
+            return
+        chscan = data.get("chscan") if isinstance(data, dict) else None
+        if not isinstance(chscan, dict):
+            return
+        for key, node in chscan.items():
+            if not key.startswith("ch") or not isinstance(node, dict):
+                continue
+            channel = _parse_int(key[2:])
+            value = _parse_int(node.get("val"))
+            if channel is None or value is None or value < 0:
+                continue
+            if self._values.get(channel) != value:
+                _LOGGER.debug(
+                    "[%s] ch%s is %s, but no eid1 reported it; correcting",
+                    self._hostname, channel, value,
+                )
+                self._values[channel] = value
+                self.resync_corrections += 1
                 self._safe_call(self._on_channel_update, channel, value, True)
 
     # --------------------------------------------------------------- frames
@@ -247,7 +301,9 @@ class ZeptrionAirWebsocketListener:
             channel = _parse_int(eid1.get("ch"))
             value = _parse_int(eid1.get("val"))
             if channel is not None and value is not None:
+                self._values[channel] = value
                 self._safe_call(self._on_channel_update, channel, value, False)
+                self._schedule_resync()
             else:
                 _LOGGER.debug("[%s] Ignoring malformed eid1 frame: %s", self._hostname, data)
 

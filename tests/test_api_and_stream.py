@@ -143,6 +143,43 @@ async def test_event_stream_reconnects_and_resyncs(fake_zapp) -> None:
             await listener.stop()
 
 
+async def test_channels_without_eid1_are_corrected_after_a_change(fake_zapp) -> None:
+    """A Smartbutton switching three channels may report only one of them (3340-4-B)."""
+    device, host = fake_zapp
+    device.values = {1: 100, 2: 100, 3: 100, 4: -1}
+    updates: list[tuple[int, int, bool]] = []
+
+    async with aiohttp.ClientSession() as session:
+        client = ZeptrionAirApiClient(host, session)
+        listener = ZeptrionAirWebsocketListener(
+            client,
+            on_channel_update=lambda ch, val, snap: updates.append((ch, val, snap)),
+            resync_delay=0.05,
+        )
+        await listener.start()
+        try:
+            await _wait_for(lambda: len(updates) >= 3)
+            updates.clear()
+            device.values.update({1: 0, 2: 0, 3: 0})
+            await device.push({"eid1": {"ch": 3, "val": 0}})  # the only frame sent
+            await _wait_for(lambda: (1, 0, True) in updates and (2, 0, True) in updates)
+            assert (3, 0, False) in updates
+            # ch3 was already known, unused ch4 (-1) is never passed on
+            assert not any(ch == 3 and snap for ch, _, snap in updates)
+            assert not any(ch == 4 for ch, _, _ in updates)
+            assert listener.resync_corrections == 2
+
+            # A further change restarts the pause; unchanged channels are not repeated.
+            updates.clear()
+            device.values[1] = 100
+            await device.push({"eid1": {"ch": 1, "val": 100}})
+            await asyncio.sleep(0.3)
+            assert updates == [(1, 100, False)]
+            assert listener.get_stats()["resyncs"] == 2
+        finally:
+            await listener.stop()
+
+
 async def test_silent_dead_device_is_detected(fake_zapp) -> None:
     """No frames and no HTTP answer: the liveness check drops the connection."""
     device, host = fake_zapp
@@ -198,6 +235,14 @@ async def test_odd_frames_and_broken_consumer(fake_zapp) -> None:
         with patch.object(client, "async_get_all_channels_scan_info", AsyncMock(side_effect=ZeptrionAirApiClientError("x"))):
             with pytest.raises(Exception, match="cannot read channel states"):
                 await listener._snapshot()
+        assert updates == [(1, 7), (2, 0)]
+        listener._cancel_resync()
+        listener._resync_delay = 0
+        for result in (ZeptrionAirApiClientError("x"), {"chscan": "x"},
+                       {"chscan": {"id": 1, "chx": {"val": 1}, "ch3": "x", "ch4": {"val": "-1"}}}):
+            mock = AsyncMock(side_effect=result) if isinstance(result, Exception) else AsyncMock(return_value=result)
+            with patch.object(client, "async_get_all_channels_scan_info", mock):
+                await listener._resync()  # failures and odd answers are ignored
         assert updates == [(1, 7), (2, 0)]
         await listener.start()
         await listener.start()  # restart stops the running task first

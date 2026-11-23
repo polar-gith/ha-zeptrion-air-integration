@@ -65,6 +65,10 @@ ZEPTRION_AIR_WEBSOCKET_MESSAGE: str = "zeptrion_air_websocket_message"
 LIVENESS_INTERVAL_S: float = 60.0
 # Entities only become unavailable after the event stream has been down this long.
 UNAVAILABLE_GRACE_S: float = 60.0
+# After a pushed channel change, all channel states are read again after this delay.
+# A zApp that switches several channels with one request (e.g. a Smartbutton
+# programme) does not always send eid1 for every channel.
+RESYNC_AFTER_CHANGE_S: float = 1.5
 # Reconnect backoff with +/-20 % jitter, so 17 zApps do not reconnect in lockstep.
 RECONNECT_BACKOFF_MIN_S: float = 1.0
 RECONNECT_BACKOFF_MAX_S: float = 60.0
