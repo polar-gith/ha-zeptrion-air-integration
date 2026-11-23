@@ -58,7 +58,7 @@ Blinds of different height have different times; measure each one.
 
 ## Lights
 
-Switches use on/off, dimmers brightness. The zApp has no "set brightness" command: brightness is reached by switching on and dimming down for a time (full travel 3.4 s), and the zApp reports any lit dimmer as `100`, so brightness is optimistic. `transition` is ignored. On/off changes from the wall are pushed in real time.
+Switches use on/off, dimmers brightness. The zApp has no "set brightness" command: brightness is reached by switching on and dimming down for a time (full travel 5.5 s, measured on a 3340-2-B with firmware 01.08.28), and the zApp reports any lit dimmer as `100`, so brightness is optimistic. `transition` is ignored. On/off changes from the wall are pushed in real time.
 
 **Scenes S1–S4.** A switch or dimmer channel stores its current state as a scene too: on or **off**, and for dimmers the dim level. *Store S1–S4* (and `light_store_scene`) store it on the zApp like holding the scene key; *Scene S1–S4* (and `light_recall_scene`) recall it. Scenes stored through Home Assistant are also kept by the integration (attributes `scene_s1` … `scene_s4`, brightness 0–255, 0 = off), so a recall from Home Assistant shows the stored brightness. A scene recalled elsewhere (wall key, Smartbutton, other device) or stored with the scene key is only seen as on/off; the brightness shown stays the last known one.
 

@@ -216,4 +216,4 @@ async def test_set_brightness_commands(fake_zapp) -> None:
             await client.async_channel_set_brightness(2, 0)
             await client.async_channel_set_brightness(2, 300)
             await client.async_channel_set_brightness(2, 128)
-    assert device.commands == [(2, "off"), (2, "on"), (2, "on"), (2, "dim_down_1693")]
+    assert device.commands == [(2, "off"), (2, "on"), (2, "on"), (2, "dim_down_2739")]

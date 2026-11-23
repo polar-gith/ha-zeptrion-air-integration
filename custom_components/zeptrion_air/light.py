@@ -32,6 +32,7 @@ from .areas import suggested_area_for_channel
 from .leds import SIGNAL_LED, LedState
 from .services import async_write_name_to_zapp as _write_name
 from .const import (
+    DIMMER_FULL_TRAVEL_MS,
     DOMAIN,
     SERVICE_LIGHT_RECALL_SCENE,
     SERVICE_LIGHT_STORE_SCENE,
@@ -44,7 +45,6 @@ _LOGGER = logging.getLogger(__name__)
 # State comes pushed over the WebSocket; commands are limited per zApp by the API client.
 PARALLEL_UPDATES = 0
 
-DIMMER_FULL_TRAVEL_MS = 3400
 SCENE_SCHEMA: dict[str | vol.Marker, Any] = {vol.Required("scene"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4))}
 
 # Lights are not polled (the event stream re-reads all channels after a reconnect).

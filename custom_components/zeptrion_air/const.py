@@ -104,3 +104,7 @@ def tilt_option_key(channel: int) -> str:
 def is_travel_option(key: str) -> bool:
     """True for the per-blind time options (changed without a reload)."""
     return key.startswith(("travel_up_ch", "travel_down_ch", "tilt_time_ch"))
+
+# Time a zApp dimmer needs to dim from 100 % to its minimum (wall key held down),
+# measured on a 3340-2-B with firmware 01.08.28: about 5.5 s.
+DIMMER_FULL_TRAVEL_MS = 5500

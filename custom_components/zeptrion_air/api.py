@@ -23,7 +23,7 @@ from urllib.parse import urlencode
 import aiohttp
 import xmltodict
 
-from .const import MAX_PARALLEL_REQUESTS
+from .const import DIMMER_FULL_TRAVEL_MS, MAX_PARALLEL_REQUESTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -491,7 +491,7 @@ class ZeptrionAirApiClient:
         if brightness_0_255 == 255:
             return await self.async_channel_on(channel)
 
-        full_travel_ms = 3400
+        full_travel_ms = DIMMER_FULL_TRAVEL_MS
         dim_down_ms = round((255 - brightness_0_255) / 255 * full_travel_ms)
         dim_down_ms = max(100, min(full_travel_ms, dim_down_ms))
 
