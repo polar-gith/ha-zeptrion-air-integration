@@ -45,6 +45,8 @@ Actions: `zeptrion_air.blind_up_step`, `blind_down_step` (same as `blind_step_up
 
 Blinds of different height have different times; measure each one.
 
+Travel and slat tilt times depend on the blind and its slats, so they are set or learned per channel; values from another installation are only a starting point.
+
 **Slats.** With a slat tilt time (typically 1–2 s), the first part of a run after a change of direction turns the slats. The blind then reports a tilt position (100 = open) and supports *set tilt position*; the tilt buttons turn the slats one step (option *step duration*).
 
 **Who started a run.** The attribute `started_by` (while the blind moves) and `last_run.started_by` say who started it: `home_assistant` (a command or action from Home Assistant), `wall_key` (a Smartfront key of this zApp) or `other` (keys of an older button face, a Smartbutton, another zApp or device). Automations can thus react to runs started at the wall only.
@@ -58,7 +60,7 @@ Blinds of different height have different times; measure each one.
 
 ## Lights
 
-Switches use on/off, dimmers brightness. The zApp has no "set brightness" command: brightness is reached by switching on and dimming down for a time (full travel 5.5 s, measured on a 3340-2-B and a 3340-4-B with firmware 01.08.28), and the zApp reports any lit dimmer as `100`, so brightness is optimistic. `transition` is ignored. On/off changes from the wall are pushed in real time.
+Switches use on/off, dimmers brightness. The zApp has no "set brightness" command: brightness is reached by switching on and dimming down for a time (full travel 5.5 s, measured on a 3340-2-B and a 3340-4-B with firmware 01.08.28), and the zApp reports any lit dimmer as `100`, so brightness is optimistic. `transition` is ignored. On/off changes from the wall are pushed in real time. The 5.5 s are a measured example: how far a dimmer goes down, and how long it takes, depends on the dimmer and the lamp.
 
 **Scenes S1–S4.** A switch or dimmer channel stores its current state as a scene too: on or **off**, and for dimmers the dim level. *Store S1–S4* (and `light_store_scene`) store it on the zApp like holding the scene key; *Scene S1–S4* (and `light_recall_scene`) recall it. Scenes stored through Home Assistant are also kept by the integration (attributes `scene_s1` … `scene_s4`, brightness 0–255, 0 = off), so a recall from Home Assistant shows the stored brightness. A scene recalled elsewhere (wall key, Smartbutton, other device) or stored with the scene key is only seen as on/off; the brightness shown stays the last known one.
 
@@ -124,6 +126,8 @@ triggers:
 ## Smartfront LEDs
 
 Each key in use has an LED whose **background colour** can be set, e.g. as status display (window open = red). Per LED there is a light *Smartfront LED n* with colour and brightness sliders. The button *Undo LED change* of the zApp steps back through the last 20 LED changes (made in Home Assistant since the last restart). The zApp keeps using the LEDs for its own indications and shows the background colour otherwise. Turning an LED light off clears its background colour; the zApps come with a pink background (`#ff006d`). The LEDs are bright: 10–25 % is usually enough.
+
+This goes beyond the Feller app: there, a front offers nine colours and four brightness levels, and only one colour for all Smartbuttons and one for all keys. The LEDs themselves show any colour, and the integration sets every LED on its own, in any colour and brightness.
 
 ## Smartbuttons
 

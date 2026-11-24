@@ -4,6 +4,7 @@ All notable changes to this integration. Versions follow Home Assistant style (`
 
 ## Unreleased
 
+- README: dim, travel and slat tilt times depend on the installation; Smartfront LEDs can be set individually in any colour and brightness, unlike in the Feller app.
 - Lights and blinds stay in sync when a Smartbutton switches several channels of one zApp at once: the zApp does not always report every channel (seen on a 3340-4-B, where only one of three channels was reported). After every reported change, all channel states of that zApp are now read again 1.5 s later and corrected where needed. Diagnostics show the number of resyncs and corrections.
 
 ## 2026.11.29 – 2026-11-23
