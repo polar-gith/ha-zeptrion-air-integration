@@ -358,10 +358,93 @@ async def test_calibration_run_measures_travel_times(hass: HomeAssistant, fake_z
 
     assert entry.options["travel_down_ch1"] == 59.2
     assert entry.options["travel_up_ch1"] == 61.4
-    state = hass.states.get(cover)
-    assert "calibration" not in state.attributes
     # back to 40 %: a timed move down of 60 % of 59.2 s does not fit a timed command
+    assert hass.states.get(cover).attributes["calibration"] == "back to 40 %"
     await _wait_for(lambda: device.commands[-1][1] == "close")
+    from datetime import timedelta
+
+    from homeassistant.util import dt as dt_util
+    from pytest_homeassistant_custom_component.common import async_fire_time_changed
+
+    await _value(hass, device, clock, 9253.0, 100)
+    clock.now = 9253.0 + 0.6 * 59.2
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=60))  # stop timer
+    await _wait_for(lambda: device.commands[-1][1] == "stop")
+    await _value(hass, device, clock, 9253.0 + 0.6 * 59.2, 0)
+    await _wait_for(lambda: "calibration" not in hass.states.get(cover).attributes)
+    assert hass.states.get(cover).attributes["current_position"] == 40
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_calibration_returns_to_closed_with_tilt(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """A blind closed before calibrating runs down again and the slats get their tilt back."""
+    device, host = fake_zapp
+    entry = await _setup(
+        hass, device, host,
+        {"travel_up_ch1": 61.0, "travel_down_ch1": 59.0, "tilt_time_ch1": 1.2},
+    )
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+
+    # closed, slats turned to about 25 %
+    await _key(hass, device, clock, 9000.0, 6)
+    await _value(hass, device, clock, 9000.1, 100)
+    await _value(hass, device, clock, 9059.1, 0)
+    await hass.services.async_call(
+        "cover", "set_cover_tilt_position", {"entity_id": cover, "tilt_position": 25}, blocking=True
+    )
+    assert device.commands[-1] == (1, "move_open_300")
+    await _value(hass, device, clock, 9070.0, 100)
+    await _value(hass, device, clock, 9070.3, 0)
+    state = hass.states.get(cover)
+    assert state.attributes["current_position"] == 0
+    assert state.attributes["current_tilt_position"] == 25
+
+    clock.now = 9100.0
+    await hass.services.async_call(DOMAIN, "blind_calibrate", {"entity_id": cover}, blocking=True)
+    await _run_after_command(hass, device, clock, "open", 9100.5, 61.0)
+    await _run_after_command(hass, device, clock, "close", 9162.0, 59.2)
+    await _run_after_command(hass, device, clock, "open", 9222.0, 61.4)
+    # back down to the bottom, then the slats
+    await _wait_for(lambda: hass.states.get(cover).attributes.get("calibration") == "back to 0 %")
+    await _run_after_command(hass, device, clock, "close", 9284.0, 59.2)
+    await _wait_for(lambda: device.commands[-1] == (1, "move_open_300"))
+    await _value(hass, device, clock, 9344.0, 100)
+    await _value(hass, device, clock, 9344.3, 0)
+    await _wait_for(lambda: "calibration" not in hass.states.get(cover).attributes)
+
+    assert entry.options["travel_down_ch1"] == 59.2
+    assert entry.options["travel_up_ch1"] == 61.4
+    state = hass.states.get(cover)
+    assert state.state == "closed"
+    assert state.attributes["current_position"] == 0
+    assert state.attributes["current_tilt_position"] == 25
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_calibration_keeps_times_when_return_fails(hass: HomeAssistant, fake_zapp, clock) -> None:
+    """The travel times are stored even if the way back to the old position does not end."""
+    device, host = fake_zapp
+    entry = await _setup(hass, device, host, {"travel_up_ch1": 50.0, "travel_down_ch1": 50.0})
+    cover = _eid(hass, "cover", f"zapp_{device.serial}_ch1")
+
+    await _key(hass, device, clock, 9000.0, 6)
+    await _value(hass, device, clock, 9000.1, 100)
+    await _value(hass, device, clock, 9050.1, 0)  # closed
+    clock.now = 9100.0
+    await hass.services.async_call(DOMAIN, "blind_calibrate", {"entity_id": cover}, blocking=True)
+    await _run_after_command(hass, device, clock, "open", 9100.5, 50.0)
+    await _run_after_command(hass, device, clock, "close", 9151.0, 59.2)
+    # the measuring runs already wait; the way back down gets a short timeout and no end
+    with patch("custom_components.zeptrion_air.cover.CALIBRATION_RUN_TIMEOUT_S", 0.2):
+        await _run_after_command(hass, device, clock, "open", 9211.0, 61.4)
+        await _wait_for(lambda: device.commands[-1] == (1, "close"))
+        await _wait_for(lambda: "calibration" not in hass.states.get(cover).attributes)
+    await hass.async_block_till_done()
+
+    assert entry.options["travel_down_ch1"] == 59.2
+    assert entry.options["travel_up_ch1"] == 61.4
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
 

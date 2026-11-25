@@ -40,7 +40,7 @@ Actions: `zeptrion_air.blind_up_step`, `blind_down_step` (same as `blind_step_up
 
 **Travel times** are set in three ways:
 - automatically: a full run from one end stop to the other that nobody stopped lasted the travel time (option *Take over blind travel times from the zApp*, on by default),
-- with **Calibrate**: fully up (skipped if the blind is already at the top; the zApp then ignores *open*), fully down, fully up, back to the previous position; the two full runs are stored and a notification shows the result. Stopping or reversing aborts without changes. Use it after installing or replacing a blind,
+- with **Calibrate**: fully up (skipped if the blind is already at the top; the zApp then ignores *open*), fully down, fully up, then back to the previous position (also fully closed) and the previous slat tilt; the two full runs are stored and a notification shows the result. Stopping or reversing aborts without changes. Use it after installing or replacing a blind,
 - by hand in the hub options.
 
 Blinds of different height have different times; measure each one.

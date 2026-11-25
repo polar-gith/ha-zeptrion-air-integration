@@ -802,8 +802,58 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
             raise _CalibrationAborted(f"the {direction} run was stopped or reversed")
         return run
 
+    async def _async_wait_for_run(self, command: Callable[[], Awaitable[None]]) -> None:
+        """Send a move command and wait until the zApp reports the end of the run."""
+        self._run_waiter = self.hass.loop.create_future()
+        try:
+            await command()
+            async with asyncio.timeout(CALIBRATION_RUN_TIMEOUT_S):
+                await self._run_waiter
+        except TimeoutError as err:
+            raise _CalibrationAborted(f"no end of the run within {CALIBRATION_RUN_TIMEOUT_S} s") from err
+        finally:
+            self._run_waiter = None
+
+    async def _async_return_after_calibration(
+        self, position: float | None, tilt: float | None
+    ) -> str:
+        """Bring the blind (now at the top) back to where it stood before calibrating.
+
+        Returns the text for the notification; empty if the blind stays at the top.
+        """
+        if position is None or position >= 99.5:
+            target = 100
+        elif position <= 0.5:
+            target = 0
+        else:
+            target = round(position)
+        if target < 100:
+            self._calibration = f"back to {target} %"
+            self.async_write_ha_state()
+            if target == 0:
+                await self._async_wait_for_run(self.async_close_cover)
+            else:
+                await self._async_wait_for_run(
+                    lambda: self.async_set_cover_position(position=target)
+                )
+        text = f" Back to {target} %." if target < 100 else ""
+        if tilt is None or self._motion.tilt_time is None:
+            return text
+        tilt_target = round(tilt)
+        if self._motion.seconds_for_tilt(tilt_target) is None or (
+            self._motion.tilt is not None and abs(self._motion.tilt - tilt_target) < 1
+        ):
+            return text
+        self._calibration = f"slats back to {tilt_target} %"
+        self.async_write_ha_state()
+        await self._async_wait_for_run(
+            lambda: self.async_set_cover_tilt_position(tilt_position=tilt_target)
+        )
+        return text + f" Slats back to {tilt_target} %."
+
     async def _async_calibrate(self) -> None:
         previous = self._motion.position
+        previous_tilt = self._motion.tilt
         result: dict[str, float] = {}
         try:
             await self._async_calibration_run("up", "1/3 up to the top (reference)", reference=True)
@@ -826,14 +876,15 @@ class ZeptrionAirBlind(CoverEntity, RestoreEntity):
                 },
             )
             self._reload_travel_times()
-            self._calibration = None
-            if previous is not None and 0 < previous < 100:
-                await self.async_set_cover_position(position=round(previous))
-            message = (
-                f"{self._display_name}: travel time up {result['up']} s, down {result['down']} s."
-                + (f" Back to {round(previous)} %." if previous is not None and 0 < previous < 100 else "")
-            )
-            _LOGGER.info("Calibration finished: %s", message)
+            message = f"{self._display_name}: travel time up {result['up']} s, down {result['down']} s."
+            try:
+                message += await self._async_return_after_calibration(previous, previous_tilt)
+            except (_CalibrationAborted, HomeAssistantError) as err:
+                # the travel times are stored; only the way back failed
+                message += f" Could not return to the previous position: {err}."
+                _LOGGER.warning("Calibration: return failed: %s", message)
+            else:
+                _LOGGER.info("Calibration finished: %s", message)
         except (_CalibrationAborted, HomeAssistantError) as err:
             message = f"{self._display_name}: calibration aborted, {err}. Travel times unchanged."
             _LOGGER.warning("Calibration aborted: %s", message)

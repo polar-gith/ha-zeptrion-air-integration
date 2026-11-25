@@ -4,6 +4,7 @@ All notable changes to this integration. Versions follow Home Assistant style (`
 
 ## Unreleased
 
+- Fix: after calibrating, a blind that was fully closed stayed at the top; it now runs down again. The slats also get their previous tilt back, and the run back is shown in the `calibration` attribute. If only the way back fails, the measured travel times are kept and the notification says so.
 - README: dim, travel and slat tilt times depend on the installation; Smartfront LEDs can be set individually in any colour and brightness, unlike in the Feller app.
 - Lights and blinds stay in sync when a Smartbutton switches several channels of one zApp at once: the zApp does not always report every channel (seen repeatedly on a 3340-4-B with three switched channels, where only one of three channels was reported; 3340-2-B devices switched by the same key reported both channels). After every reported change, all channel states of that zApp are now read again 1.5 s later and corrected where needed. Diagnostics show the number of resyncs and corrections.
 
